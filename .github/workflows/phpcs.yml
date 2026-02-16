@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: PHPCS
 
 on:
     pull_request:
@@ -9,7 +9,7 @@ jobs:
         strategy:
             matrix:
                 php-versions: ['7.4']
-        name: PHP ${{ matrix.php-versions }}
+        name: PHPCS with PHP ${{ matrix.php-versions }}
         steps:
             -   uses: actions/checkout@v2
 
