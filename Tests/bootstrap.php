@@ -26,14 +26,6 @@ if ( ! defined( 'SYBGO_PLUGIN_FILE' ) ) {
 	define( 'SYBGO_PLUGIN_FILE', dirname( __DIR__ ) . '/class-sybgo.php' );
 }
 
-// WordPress constants for unit tests.
-if ( ! defined( 'ARRAY_A' ) ) {
-	define( 'ARRAY_A', 'ARRAY_A' );
-}
-if ( ! defined( 'OBJECT' ) ) {
-	define( 'OBJECT', 'OBJECT' );
-}
-
 // Load WordPress test library if available (for integration tests).
 if ( file_exists( WP_TESTS_DIR . '/includes/functions.php' ) ) {
 	require_once WP_TESTS_DIR . '/includes/functions.php';
@@ -48,4 +40,12 @@ if ( file_exists( WP_TESTS_DIR . '/includes/functions.php' ) ) {
 
 	// Start WordPress test suite.
 	require WP_TESTS_DIR . '/includes/bootstrap.php';
+} else {
+	// WordPress constants for unit tests (only when WP is not loaded).
+	if ( ! defined( 'ARRAY_A' ) ) {
+		define( 'ARRAY_A', 'ARRAY_A' );
+	}
+	if ( ! defined( 'OBJECT' ) ) {
+		define( 'OBJECT', 'OBJECT' );
+	}
 }
