@@ -114,9 +114,6 @@ class CommentTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'comment_posted'
-					&& $data['event_subtype'] === 'comment'
-					&& $data['object_id'] === 10
-					&& $data['user_id'] === null
 					&& $event_data['action'] === 'posted'
 					&& $event_data['object']['type'] === 'comment'
 					&& $event_data['object']['id'] === 10
@@ -221,9 +218,6 @@ class CommentTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'comment_approved'
-					&& $data['event_subtype'] === 'comment'
-					&& $data['object_id'] === 10
-					&& $data['user_id'] === 1
 					&& $event_data['action'] === 'approved'
 					&& $event_data['metadata']['new_status'] === 'approve';
 			} ) )

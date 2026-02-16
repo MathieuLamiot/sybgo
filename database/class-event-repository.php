@@ -48,9 +48,6 @@ class Event_Repository {
 
 		$defaults = array(
 			'event_type'      => '',
-			'event_subtype'   => null,
-			'object_id'       => null,
-			'user_id'         => null,
 			'event_data'      => null,
 			'event_timestamp' => current_time( 'mysql' ),
 			'report_id'       => null,
@@ -212,6 +209,8 @@ class Event_Repository {
 	/**
 	 * Get last event for a specific object (for throttling).
 	 *
+	 * Uses JSON_EXTRACT to query the object ID from event_data JSON.
+	 *
 	 * @param string $event_type Event type.
 	 * @param int    $object_id Object ID.
 	 * @return array|null Last event or null if none found.
@@ -222,7 +221,7 @@ class Event_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$event = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE event_type = %s AND object_id = %d ORDER BY event_timestamp DESC LIMIT 1",
+				"SELECT * FROM {$this->table} WHERE event_type = %s AND JSON_EXTRACT(event_data, '$.object.id') = %d ORDER BY event_timestamp DESC LIMIT 1",
 				$event_type,
 				$object_id
 			),

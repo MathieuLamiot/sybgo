@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Events\Trackers;
 
 use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * Post Tracker class.
@@ -46,8 +45,8 @@ class Post_Tracker {
 	public function __construct( Event_Repository $event_repo ) {
 		$this->event_repo = $event_repo;
 
-		// Register event types with descriptions.
-		$this->register_event_types();
+		// Register event types via filter.
+		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
 	}
 
 	/**
@@ -67,15 +66,27 @@ class Post_Tracker {
 	}
 
 	/**
-	 * Register event types with AI-friendly descriptions.
+	 * Register post event types via filter.
 	 *
-	 * @return void
+	 * @param array $types Existing event types.
+	 * @return array Modified event types.
 	 */
-	private function register_event_types(): void {
-		// Post Published event.
-		Event_Registry::register_event_type(
-			'post_published',
-			function ( array $event_data ): string {
+	public function register_event_types( array $types ): array {
+		$types['post_published'] = array(
+			'icon'            => '📝',
+			'stat_label'      => __( 'Posts Published', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'New %s: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'New %s published: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Published post: "%s"', $object['title'] ?? 'Untitled' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Post Published\n";
 				$description .= "Description: A new post or page was published on the site.\n\n";
 				$description .= "Data Structure:\n";
@@ -89,15 +100,28 @@ class Post_Tracker {
 				$description .= "  - metadata.tags: Array of tag names\n";
 				$description .= "  - metadata.word_count: Total word count\n";
 				$description .= "  - metadata.edit_magnitude: Always 100 for new publishes\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Post Edited event.
-		Event_Registry::register_event_type(
-			'post_edited',
-			function ( array $event_data ): string {
+		$types['post_edited'] = array(
+			'icon'            => '✏️',
+			'stat_label'      => __( 'Posts Edited', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object    = $event_data['object'] ?? array();
+				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
+				return sprintf( '%s edited (%d%% changed)', $object['title'] ?? 'Post', $magnitude );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object    = $event_data['object'] ?? array();
+				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
+				return sprintf( '%s edited (%d%% of content changed)', $object['title'] ?? 'Post', $magnitude );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				$magnitude = $metadata['edit_magnitude'] ?? 0;
+				return sprintf( 'Edited post "%s" (%d%% changed)', $object['title'] ?? 'Untitled', $magnitude );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Post Edited\n";
 				$description .= "Description: An existing published post or page was updated.\n\n";
 				$description .= "Data Structure:\n";
@@ -106,21 +130,26 @@ class Post_Tracker {
 				$description .= "  - object.title: The post title\n";
 				$description .= "  - object.url: The permalink URL\n";
 				$description .= "  - metadata.edit_magnitude: Percentage of content changed (0-100)\n";
-				$description .= "    * 0-5%: Minimal changes (typos, formatting)\n";
-				$description .= "    * 5-25%: Minor updates (small additions/corrections)\n";
-				$description .= "    * 25-50%: Moderate updates (significant revisions)\n";
-				$description .= "    * 50-75%: Major updates (substantial rewrite)\n";
-				$description .= "    * 75-100%: Complete rewrite\n";
 				$description .= "  - metadata.word_count: New word count after edit\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Post Deleted event.
-		Event_Registry::register_event_type(
-			'post_deleted',
-			function ( array $event_data ): string {
+		$types['post_deleted'] = array(
+			'icon'            => '🗑️',
+			'stat_label'      => __( 'Posts Deleted', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( '%s deleted', $object['title'] ?? 'Post' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( '%s "%s" was deleted', ucfirst( $object['type'] ?? 'Post' ), $object['title'] ?? 'Untitled' );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Deleted post: "%s"', $object['title'] ?? 'Untitled' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Post Deleted\n";
 				$description .= "Description: A post or page was permanently deleted.\n\n";
 				$description .= "Data Structure:\n";
@@ -128,10 +157,11 @@ class Post_Tracker {
 				$description .= "  - object.id: The post ID\n";
 				$description .= "  - object.title: The post title (before deletion)\n";
 				$description .= "  - context.user_id: ID of the user who deleted it\n";
-
 				return $description;
-			}
+			},
 		);
+
+		return $types;
 	}
 
 	/**
@@ -191,11 +221,8 @@ class Post_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'post_published',
-				'event_subtype' => $post->post_type,
-				'object_id'    => $post->ID,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'post_published',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -268,11 +295,8 @@ class Post_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'post_edited',
-				'event_subtype' => $post_after->post_type,
-				'object_id'    => $post_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'post_edited',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -307,11 +331,8 @@ class Post_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'post_deleted',
-				'event_subtype' => $post->post_type,
-				'object_id'    => $post_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'post_deleted',
+				'event_data' => $event_data,
 			)
 		);
 	}

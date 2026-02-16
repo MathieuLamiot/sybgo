@@ -73,7 +73,6 @@ class EventRepositoryTest extends TestCase {
 	public function test_create_event() {
 		$event_data = array(
 			'event_type' => 'post_published',
-			'object_id'  => 123,
 			'event_data' => array( 'action' => 'published' ),
 		);
 
@@ -85,7 +84,6 @@ class EventRepositoryTest extends TestCase {
 				'wp_sybgo_events',
 				Mockery::on( function( $data ) {
 					$this->assertEquals( 'post_published', $data['event_type'] );
-					$this->assertEquals( 123, $data['object_id'] );
 					$this->assertStringContainsString( 'published', $data['event_data'] );
 					return true;
 				} )
@@ -241,8 +239,8 @@ class EventRepositoryTest extends TestCase {
 		$expected_event = array(
 			'id'              => 1,
 			'event_type'      => 'post_edited',
-			'object_id'       => 123,
 			'event_timestamp' => '2026-02-16 11:00:00',
+			'event_data'      => '{"object":{"id":123}}',
 		);
 
 		$this->wpdb->shouldReceive( 'prepare' )
@@ -257,7 +255,7 @@ class EventRepositoryTest extends TestCase {
 		$result = $this->event_repo->get_last_event_for_object( 'post_edited', 123 );
 
 		$this->assertEquals( $expected_event, $result );
-		$this->assertEquals( 123, $result['object_id'] );
+		$this->assertEquals( 'post_edited', $result['event_type'] );
 	}
 
 	/**

@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Email;
 
+use Rocket\Sybgo\Events\Event_Registry;
+
 /**
  * Email Template class.
  *
@@ -21,6 +23,21 @@ namespace Rocket\Sybgo\Email;
  * @since   1.0.0
  */
 class Email_Template {
+	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $event_registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Event_Registry $event_registry Event registry.
+	 */
+	public function __construct( Event_Registry $event_registry ) {
+		$this->event_registry = $event_registry;
+	}
 	/**
 	 * Get email subject.
 	 *
@@ -347,7 +364,7 @@ class Email_Template {
 				<?php foreach ( $summary['totals'] as $type => $count ) : ?>
 					<?php
 					$trend      = $summary['trends'][ $type ] ?? null;
-					$type_label = $this->get_stat_label( $type );
+					$type_label = $this->event_registry->get_stat_label( $type );
 					?>
 					<div class="stat-card">
 						<div class="stat-label"><?php echo esc_html( $type_label ); ?></div>
@@ -424,29 +441,6 @@ class Email_Template {
 			</ul>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Get human-readable label for stat type.
-	 *
-	 * @param string $type Stat type.
-	 * @return string Human-readable label.
-	 */
-	private function get_stat_label( string $type ): string {
-		$labels = array(
-			'post_published'    => __( 'Posts Published', 'sybgo' ),
-			'post_edited'       => __( 'Posts Edited', 'sybgo' ),
-			'post_deleted'      => __( 'Posts Deleted', 'sybgo' ),
-			'user_registered'   => __( 'New Users', 'sybgo' ),
-			'user_role_changed' => __( 'Role Changes', 'sybgo' ),
-			'core_updated'      => __( 'Core Updates', 'sybgo' ),
-			'plugin_updated'    => __( 'Plugin Updates', 'sybgo' ),
-			'theme_updated'     => __( 'Theme Updates', 'sybgo' ),
-			'comment_new'       => __( 'New Comments', 'sybgo' ),
-			'comment_approved'  => __( 'Comments Approved', 'sybgo' ),
-		);
-
-		return $labels[ $type ] ?? ucwords( str_replace( '_', ' ', $type ) );
 	}
 
 	/**

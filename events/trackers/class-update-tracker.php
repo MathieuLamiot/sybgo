@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Events\Trackers;
 
 use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * Update Tracker class.
@@ -39,8 +38,8 @@ class Update_Tracker {
 	public function __construct( Event_Repository $event_repo ) {
 		$this->event_repo = $event_repo;
 
-		// Register event types with descriptions.
-		$this->register_event_types();
+		// Register event types via filter.
+		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
 	}
 
 	/**
@@ -64,15 +63,27 @@ class Update_Tracker {
 	}
 
 	/**
-	 * Register event types with AI-friendly descriptions.
+	 * Register update event types via filter.
 	 *
-	 * @return void
+	 * @param array $types Existing event types.
+	 * @return array Modified event types.
 	 */
-	private function register_event_types(): void {
-		// WordPress Core Updated event.
-		Event_Registry::register_event_type(
-			'core_updated',
-			function ( array $event_data ): string {
+	public function register_event_types( array $types ): array {
+		$types['core_updated'] = array(
+			'icon'            => '🔄',
+			'stat_label'      => __( 'Core Updates', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				return sprintf( 'WordPress updated to %s', $event_data['metadata']['new_version'] ?? 'latest' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
+				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
+				return sprintf( 'WordPress updated from %s to %s', $old_ver, $new_ver );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Updated WordPress to v%s', $metadata['new_version'] ?? 'latest' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: WordPress Core Updated\n";
 				$description .= "Description: WordPress core was updated to a new version.\n\n";
 				$description .= "Data Structure:\n";
@@ -80,15 +91,27 @@ class Update_Tracker {
 				$description .= "  - metadata.old_version: Previous WordPress version\n";
 				$description .= "  - metadata.new_version: New WordPress version\n";
 				$description .= "  - metadata.update_type: Type of update (major, minor, security)\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Plugin Updated event.
-		Event_Registry::register_event_type(
-			'plugin_updated',
-			function ( array $event_data ): string {
+		$types['plugin_updated'] = array(
+			'icon'            => '🔌',
+			'stat_label'      => __( 'Plugin Updates', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin updated: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object  = $event_data['object'] ?? array();
+				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
+				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
+				return sprintf( 'Plugin "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Updated plugin %s to v%s', $object['name'] ?? 'Unknown', $metadata['new_version'] ?? 'latest' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Plugin Updated\n";
 				$description .= "Description: A WordPress plugin was updated to a new version.\n\n";
 				$description .= "Data Structure:\n";
@@ -96,74 +119,128 @@ class Update_Tracker {
 				$description .= "  - object.slug: Plugin slug/folder name\n";
 				$description .= "  - metadata.old_version: Previous plugin version\n";
 				$description .= "  - metadata.new_version: New plugin version\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Plugin Installed event.
-		Event_Registry::register_event_type(
-			'plugin_installed',
-			function ( array $event_data ): string {
+		$types['plugin_installed'] = array(
+			'icon'            => '➕',
+			'stat_label'      => __( 'Plugins Installed', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin installed: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object  = $event_data['object'] ?? array();
+				$version = $event_data['metadata']['version'] ?? 'unknown';
+				return sprintf( 'Plugin "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Installed plugin: %s', $object['name'] ?? 'Unknown' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Plugin Installed\n";
 				$description .= "Description: A new WordPress plugin was installed.\n\n";
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: Plugin name\n";
 				$description .= "  - object.slug: Plugin slug/folder name\n";
 				$description .= "  - metadata.version: Plugin version\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Plugin Activated event.
-		Event_Registry::register_event_type(
-			'plugin_activated',
-			function ( array $event_data ): string {
+		$types['plugin_activated'] = array(
+			'icon'            => '✅',
+			'stat_label'      => __( 'Plugins Activated', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin activated: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin "%s" activated', $object['name'] ?? 'Unknown' );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Activated plugin: %s', $object['name'] ?? 'Unknown' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Plugin Activated\n";
 				$description .= "Description: A WordPress plugin was activated.\n\n";
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: Plugin name\n";
 				$description .= "  - object.slug: Plugin slug/folder name\n";
 				$description .= "  - metadata.version: Plugin version\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Plugin Deactivated event.
-		Event_Registry::register_event_type(
-			'plugin_deactivated',
-			function ( array $event_data ): string {
+		$types['plugin_deactivated'] = array(
+			'icon'            => '⏸️',
+			'stat_label'      => __( 'Plugins Deactivated', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin deactivated: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Plugin "%s" deactivated', $object['name'] ?? 'Unknown' );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Deactivated plugin: %s', $object['name'] ?? 'Unknown' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Plugin Deactivated\n";
 				$description .= "Description: A WordPress plugin was deactivated.\n\n";
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: Plugin name\n";
 				$description .= "  - object.slug: Plugin slug/folder name\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Theme Installed event.
-		Event_Registry::register_event_type(
-			'theme_installed',
-			function ( array $event_data ): string {
+		$types['theme_installed'] = array(
+			'icon'            => '🎨',
+			'stat_label'      => __( 'Themes Installed', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Theme installed: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object  = $event_data['object'] ?? array();
+				$version = $event_data['metadata']['version'] ?? 'unknown';
+				return sprintf( 'Theme "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Installed theme: %s', $object['name'] ?? 'Unknown' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Theme Installed\n";
 				$description .= "Description: A new WordPress theme was installed.\n\n";
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: Theme name\n";
 				$description .= "  - object.slug: Theme slug/folder name\n";
 				$description .= "  - metadata.version: Theme version\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Theme Updated event.
-		Event_Registry::register_event_type(
-			'theme_updated',
-			function ( array $event_data ): string {
+		$types['theme_updated'] = array(
+			'icon'            => '🎨',
+			'stat_label'      => __( 'Theme Updates', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Theme updated: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object  = $event_data['object'] ?? array();
+				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
+				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
+				return sprintf( 'Theme "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Updated theme %s to v%s', $object['name'] ?? 'Unknown', $metadata['new_version'] ?? 'latest' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Theme Updated\n";
 				$description .= "Description: A WordPress theme was updated to a new version.\n\n";
 				$description .= "Data Structure:\n";
@@ -171,25 +248,37 @@ class Update_Tracker {
 				$description .= "  - object.slug: Theme slug/folder name\n";
 				$description .= "  - metadata.old_version: Previous theme version\n";
 				$description .= "  - metadata.new_version: New theme version\n";
-
 				return $description;
-			}
+			},
 		);
 
-		// Theme Switched event.
-		Event_Registry::register_event_type(
-			'theme_switched',
-			function ( array $event_data ): string {
+		$types['theme_switched'] = array(
+			'icon'            => '🔄',
+			'stat_label'      => __( 'Theme Switches', 'sybgo' ),
+			'short_title'     => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? array();
+				return sprintf( 'Theme switched to: %s', $object['name'] ?? 'Unknown' );
+			},
+			'detailed_title'  => function ( array $event_data ): string {
+				$object    = $event_data['object'] ?? array();
+				$old_theme = $event_data['metadata']['old_theme'] ?? 'Unknown';
+				return sprintf( 'Theme switched from "%s" to "%s"', $old_theme, $object['name'] ?? 'Unknown' );
+			},
+			'ai_description'  => function ( array $object, array $metadata ): string {
+				return sprintf( 'Switched theme to: %s', $object['name'] ?? 'Unknown' );
+			},
+			'describe'        => function ( array $event_data ): string {
 				$description  = "Event Type: Theme Switched\n";
 				$description .= "Description: The active theme was changed to a different theme.\n\n";
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: New theme name\n";
 				$description .= "  - object.slug: New theme slug\n";
 				$description .= "  - metadata.old_theme: Previous theme name\n";
-
 				return $description;
-			}
+			},
 		);
+
+		return $types;
 	}
 
 	/**
@@ -233,11 +322,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'core_updated',
-				'event_subtype' => 'core',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'core_updated',
+				'event_data' => $event_data,
 			)
 		);
 
@@ -321,11 +407,8 @@ class Update_Tracker {
 			// Create event.
 			$this->event_repo->create(
 				array(
-					'event_type'   => 'plugin_updated',
-					'event_subtype' => 'plugin',
-					'object_id'    => 0,
-					'user_id'      => get_current_user_id(),
-					'event_data'   => $event_data,
+					'event_type' => 'plugin_updated',
+					'event_data' => $event_data,
 				)
 			);
 
@@ -372,11 +455,8 @@ class Update_Tracker {
 			// Create event.
 			$this->event_repo->create(
 				array(
-					'event_type'   => 'theme_updated',
-					'event_subtype' => 'theme',
-					'object_id'    => 0,
-					'user_id'      => get_current_user_id(),
-					'event_data'   => $event_data,
+					'event_type' => 'theme_updated',
+					'event_data' => $event_data,
 				)
 			);
 
@@ -459,11 +539,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'plugin_installed',
-				'event_subtype' => 'plugin',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'plugin_installed',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -508,11 +585,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'plugin_activated',
-				'event_subtype' => 'plugin',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'plugin_activated',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -556,11 +630,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'plugin_deactivated',
-				'event_subtype' => 'plugin',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'plugin_deactivated',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -605,11 +676,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'theme_installed',
-				'event_subtype' => 'theme',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'theme_installed',
+				'event_data' => $event_data,
 			)
 		);
 	}
@@ -644,11 +712,8 @@ class Update_Tracker {
 		// Create event.
 		$this->event_repo->create(
 			array(
-				'event_type'   => 'theme_switched',
-				'event_subtype' => 'theme',
-				'object_id'    => 0,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
+				'event_type' => 'theme_switched',
+				'event_data' => $event_data,
 			)
 		);
 	}

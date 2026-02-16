@@ -121,8 +121,7 @@ class Sybgo {
 	 * @return void
 	 */
 	private function init_event_tracking(): void {
-		// Load Event Registry and Event Tracker.
-		require_once SYBGO_PLUGIN_DIR . 'events/class-event-registry.php';
+		// Load Event Tracker.
 		require_once SYBGO_PLUGIN_DIR . 'events/class-event-tracker.php';
 
 		// Initialize event tracker.
@@ -140,13 +139,12 @@ class Sybgo {
 	 * @return void
 	 */
 	private function init_extensibility_api(): void {
-		// Load API files.
-		require_once SYBGO_PLUGIN_DIR . 'api/class-extensibility-api.php';
+		// Load API functions.
 		require_once SYBGO_PLUGIN_DIR . 'api/functions.php';
 
 		// Initialize API with event repository.
 		$event_repo = $this->factory->create_event_repository();
-		API\Extensibility_API::init( $event_repo );
+		sybgo_init_api( $event_repo );
 	}
 
 	/**

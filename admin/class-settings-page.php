@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Admin;
 
+use Rocket\Sybgo\Events\Event_Registry;
+
 /**
  * Settings Page class.
  *
@@ -27,6 +29,22 @@ class Settings_Page {
 	 * @var string
 	 */
 	const OPTION_NAME = 'sybgo_settings';
+
+	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $event_registry;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Event_Registry $event_registry Event registry.
+	 */
+	public function __construct( Event_Registry $event_registry ) {
+		$this->event_registry = $event_registry;
+	}
 
 	/**
 	 * Initialize the settings page.
@@ -359,18 +377,11 @@ class Settings_Page {
 		$settings = $this->get_settings();
 		$enabled  = $settings['enabled_event_types'] ?? $this->get_default_event_types();
 
-		$event_types = array(
-			'post_published'     => __( 'Posts Published', 'sybgo' ),
-			'post_edited'        => __( 'Posts Edited', 'sybgo' ),
-			'post_deleted'       => __( 'Posts Deleted', 'sybgo' ),
-			'user_registered'    => __( 'Users Registered', 'sybgo' ),
-			'user_role_changed'  => __( 'User Roles Changed', 'sybgo' ),
-			'core_updated'       => __( 'WordPress Core Updated', 'sybgo' ),
-			'plugin_updated'     => __( 'Plugins Updated', 'sybgo' ),
-			'theme_updated'      => __( 'Themes Updated', 'sybgo' ),
-			'comment_new'        => __( 'New Comments', 'sybgo' ),
-			'comment_approved'   => __( 'Comments Approved', 'sybgo' ),
-		);
+		// Build event types dynamically from registry.
+		$event_types = array();
+		foreach ( $this->event_registry->get_registered_types() as $type ) {
+			$event_types[ $type ] = $this->event_registry->get_stat_label( $type );
+		}
 
 		?>
 		<fieldset>
@@ -479,7 +490,7 @@ class Settings_Page {
 			'core_updated',
 			'plugin_updated',
 			'theme_updated',
-			'comment_new',
+			'comment_posted',
 			'comment_approved',
 		);
 	}

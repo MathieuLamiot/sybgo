@@ -16,6 +16,7 @@ use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Reports\Report_Generator;
 use Rocket\Sybgo\AI\AI_Summarizer;
+use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * Dashboard Widget class.
@@ -55,23 +56,33 @@ class Dashboard_Widget {
 	private AI_Summarizer $ai_summarizer;
 
 	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $event_registry;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Event_Repository  $event_repo Event repository.
 	 * @param Report_Repository $report_repo Report repository.
 	 * @param Report_Generator  $report_generator Report generator.
 	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
+	 * @param Event_Registry    $event_registry Event registry.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
 		Report_Generator $report_generator,
-		AI_Summarizer $ai_summarizer
+		AI_Summarizer $ai_summarizer,
+		Event_Registry $event_registry
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
 		$this->report_generator = $report_generator;
 		$this->ai_summarizer    = $ai_summarizer;
+		$this->event_registry   = $event_registry;
 	}
 
 	/**
@@ -318,8 +329,8 @@ class Dashboard_Widget {
 			return;
 		}
 
-		$icon  = $this->get_event_icon( $event['event_type'] );
-		$title = $this->get_event_title( $event['event_type'], $event_data );
+		$icon  = $this->event_registry->get_icon( $event['event_type'] );
+		$title = $this->event_registry->get_short_title( $event['event_type'], $event_data );
 		$time  = human_time_diff( strtotime( $event['event_timestamp'] ), current_time( 'timestamp' ) );
 
 		?>
@@ -329,97 +340,6 @@ class Dashboard_Widget {
 			<span class="sybgo-event-time"><?php echo esc_html( $time . ' ago' ); ?></span>
 		</li>
 		<?php
-	}
-
-	/**
-	 * Get icon for event type.
-	 *
-	 * @param string $event_type Event type.
-	 * @return string Icon character.
-	 */
-	private function get_event_icon( string $event_type ): string {
-		$icons = array(
-			'post_published'     => '📝',
-			'post_edited'        => '✏️',
-			'post_deleted'       => '🗑️',
-			'user_registered'    => '👤',
-			'user_role_changed'  => '👥',
-			'core_updated'       => '🔄',
-			'plugin_installed'   => '➕',
-			'plugin_activated'   => '✅',
-			'plugin_deactivated' => '⏸️',
-			'plugin_updated'     => '🔌',
-			'theme_installed'    => '🎨',
-			'theme_updated'      => '🎨',
-			'theme_switched'     => '🔄',
-			'comment_new'        => '💬',
-			'comment_approved'   => '✅',
-		);
-
-		return $icons[ $event_type ] ?? '•';
-	}
-
-	/**
-	 * Get human-readable title for event.
-	 *
-	 * @param string $event_type Event type.
-	 * @param array  $event_data Event data.
-	 * @return string Event title.
-	 */
-	private function get_event_title( string $event_type, array $event_data ): string {
-		$action = $event_data['action'] ?? '';
-		$object = $event_data['object'] ?? array();
-
-		switch ( $event_type ) {
-			case 'post_published':
-				return sprintf( 'New %s: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
-
-			case 'post_edited':
-				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
-				return sprintf( '%s edited (%d%% changed)', $object['title'] ?? 'Post', $magnitude );
-
-			case 'post_deleted':
-				return sprintf( '%s deleted', $object['title'] ?? 'Post' );
-
-			case 'user_registered':
-				return sprintf( 'New user: %s', $object['username'] ?? 'Unknown' );
-
-			case 'user_role_changed':
-				return sprintf( 'User %s role changed to %s', $object['username'] ?? 'Unknown', $event_data['metadata']['role'] ?? 'subscriber' );
-
-			case 'core_updated':
-				return sprintf( 'WordPress updated to %s', $event_data['metadata']['new_version'] ?? 'latest' );
-
-			case 'plugin_installed':
-				return sprintf( 'Plugin installed: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_activated':
-				return sprintf( 'Plugin activated: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_deactivated':
-				return sprintf( 'Plugin deactivated: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_updated':
-				return sprintf( 'Plugin updated: %s', $object['name'] ?? 'Unknown' );
-
-			case 'theme_installed':
-				return sprintf( 'Theme installed: %s', $object['name'] ?? 'Unknown' );
-
-			case 'theme_updated':
-				return sprintf( 'Theme updated: %s', $object['name'] ?? 'Unknown' );
-
-			case 'theme_switched':
-				return sprintf( 'Theme switched to: %s', $object['name'] ?? 'Unknown' );
-
-			case 'comment_new':
-				return sprintf( 'New comment on: %s', $event_data['metadata']['post_title'] ?? 'Unknown post' );
-
-			case 'comment_approved':
-				return 'Comment approved';
-
-			default:
-				return ucwords( str_replace( '_', ' ', $event_type ) );
-		}
 	}
 
 	/**

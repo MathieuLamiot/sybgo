@@ -64,6 +64,7 @@
 		"phpcs:fix": "phpcbf"
 	},
 	"require": {
-		"berlindb/core": "^2.0"
+		"berlindb/core": "^2.0",
+		"wp-media/apply-filters-typed": "^1.2"
 	}
 }

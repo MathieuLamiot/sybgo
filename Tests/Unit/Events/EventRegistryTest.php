@@ -17,17 +17,20 @@ use Rocket\Sybgo\Events\Event_Registry;
 class EventRegistryTest extends TestCase {
 
 	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $registry;
+
+	/**
 	 * Set up test environment.
 	 */
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
 
-		// Clear static registry between tests.
-		$reflection = new \ReflectionClass( 'Rocket\Sybgo\Events\Event_Registry' );
-		$property   = $reflection->getProperty( 'event_types' );
-		$property->setAccessible( true );
-		$property->setValue( array() );
+		$this->registry = new Event_Registry();
 	}
 
 	/**
@@ -39,54 +42,42 @@ class EventRegistryTest extends TestCase {
 	}
 
 	/**
-	 * Test register_event_type stores callback.
+	 * Inject event types directly into the registry's cached property
+	 * to bypass the wpm_apply_filters_typesafe call (which can't be mocked
+	 * by Brain\Monkey because it's already defined via composer autoload).
+	 *
+	 * @param array $types Event type definitions.
 	 */
-	public function test_register_event_type() {
-		$callback = function( $event_data ) {
-			return 'Test description';
-		};
-
-		Event_Registry::register_event_type( 'test_event', $callback );
-
-		$this->assertTrue( Event_Registry::is_registered( 'test_event' ) );
+	private function inject_event_types( array $types ): void {
+		$reflection = new \ReflectionClass( $this->registry );
+		$property   = $reflection->getProperty( 'event_types' );
+		$property->setAccessible( true );
+		$property->setValue( $this->registry, $types );
 	}
 
 	/**
-	 * Test describe_event calls registered callback.
+	 * Test is_registered returns correct boolean.
 	 */
-	public function test_describe_event_calls_callback() {
-		$event_data = array( 'test' => 'data' );
+	public function test_is_registered() {
+		$this->inject_event_types( array(
+			'existing_event' => array( 'icon' => '📝' ),
+		) );
 
-		$callback = function( $data ) {
-			return 'Description: ' . $data['test'];
-		};
-
-		Event_Registry::register_event_type( 'test_event', $callback );
-
-		$description = Event_Registry::describe_event( 'test_event', $event_data );
-
-		$this->assertEquals( 'Description: data', $description );
-	}
-
-	/**
-	 * Test describe_event with unregistered type.
-	 */
-	public function test_describe_event_unregistered() {
-		$description = Event_Registry::describe_event( 'nonexistent', array() );
-
-		$this->assertStringContainsString( 'Unknown event type', $description );
-		$this->assertStringContainsString( 'nonexistent', $description );
+		$this->assertTrue( $this->registry->is_registered( 'existing_event' ) );
+		$this->assertFalse( $this->registry->is_registered( 'nonexistent_event' ) );
 	}
 
 	/**
 	 * Test get_registered_types returns all types.
 	 */
 	public function test_get_registered_types() {
-		Event_Registry::register_event_type( 'type1', function() {} );
-		Event_Registry::register_event_type( 'type2', function() {} );
-		Event_Registry::register_event_type( 'type3', function() {} );
+		$this->inject_event_types( array(
+			'type1' => array( 'icon' => '📝' ),
+			'type2' => array( 'icon' => '👤' ),
+			'type3' => array( 'icon' => '💬' ),
+		) );
 
-		$types = Event_Registry::get_registered_types();
+		$types = $this->registry->get_registered_types();
 
 		$this->assertIsArray( $types );
 		$this->assertCount( 3, $types );
@@ -96,29 +87,189 @@ class EventRegistryTest extends TestCase {
 	}
 
 	/**
-	 * Test is_registered returns correct boolean.
+	 * Test describe_event calls registered callback.
 	 */
-	public function test_is_registered() {
-		Event_Registry::register_event_type( 'existing_event', function() {} );
+	public function test_describe_event_calls_callback() {
+		$this->inject_event_types( array(
+			'test_event' => array(
+				'describe' => function( $data ) {
+					return 'Description: ' . $data['test'];
+				},
+			),
+		) );
 
-		$this->assertTrue( Event_Registry::is_registered( 'existing_event' ) );
-		$this->assertFalse( Event_Registry::is_registered( 'nonexistent_event' ) );
+		$event_data = array( 'test' => 'data' );
+		$description = $this->registry->describe_event( 'test_event', $event_data );
+
+		$this->assertEquals( 'Description: data', $description );
+	}
+
+	/**
+	 * Test describe_event with unregistered type.
+	 */
+	public function test_describe_event_unregistered() {
+		$this->inject_event_types( array() );
+
+		$description = $this->registry->describe_event( 'nonexistent', array() );
+
+		$this->assertStringContainsString( 'Unknown event type', $description );
+		$this->assertStringContainsString( 'nonexistent', $description );
+	}
+
+	/**
+	 * Test get_icon returns registered icon.
+	 */
+	public function test_get_icon() {
+		$this->inject_event_types( array(
+			'test_event' => array( 'icon' => '📝' ),
+		) );
+
+		$this->assertEquals( '📝', $this->registry->get_icon( 'test_event' ) );
+	}
+
+	/**
+	 * Test get_icon returns fallback for unregistered type.
+	 */
+	public function test_get_icon_fallback() {
+		$this->inject_event_types( array() );
+
+		$this->assertEquals( '•', $this->registry->get_icon( 'nonexistent' ) );
+	}
+
+	/**
+	 * Test get_stat_label returns registered label.
+	 */
+	public function test_get_stat_label() {
+		$this->inject_event_types( array(
+			'post_published' => array( 'stat_label' => 'Posts Published' ),
+		) );
+
+		$this->assertEquals( 'Posts Published', $this->registry->get_stat_label( 'post_published' ) );
+	}
+
+	/**
+	 * Test get_stat_label fallback for unregistered type.
+	 */
+	public function test_get_stat_label_fallback() {
+		$this->inject_event_types( array() );
+
+		$this->assertEquals( 'Post Published', $this->registry->get_stat_label( 'post_published' ) );
+	}
+
+	/**
+	 * Test get_short_title calls callable.
+	 */
+	public function test_get_short_title() {
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'short_title' => function( $data ) {
+					return 'Published: ' . ( $data['object']['title'] ?? 'Unknown' );
+				},
+			),
+		) );
+
+		$event_data = array( 'object' => array( 'title' => 'Test Post' ) );
+		$title = $this->registry->get_short_title( 'post_published', $event_data );
+
+		$this->assertEquals( 'Published: Test Post', $title );
+	}
+
+	/**
+	 * Test get_short_title falls back to detailed_title.
+	 */
+	public function test_get_short_title_fallback_to_detailed() {
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'detailed_title' => function( $data ) {
+					return 'Detailed: ' . ( $data['object']['title'] ?? 'Unknown' );
+				},
+			),
+		) );
+
+		$event_data = array( 'object' => array( 'title' => 'Test Post' ) );
+		$title = $this->registry->get_short_title( 'post_published', $event_data );
+
+		$this->assertEquals( 'Detailed: Test Post', $title );
+	}
+
+	/**
+	 * Test get_detailed_title calls callable.
+	 */
+	public function test_get_detailed_title() {
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'detailed_title' => function( $data ) {
+					return 'Post published: ' . ( $data['object']['title'] ?? 'Unknown' );
+				},
+			),
+		) );
+
+		$event_data = array( 'object' => array( 'title' => 'Test Post' ) );
+		$title = $this->registry->get_detailed_title( 'post_published', $event_data );
+
+		$this->assertEquals( 'Post published: Test Post', $title );
+	}
+
+	/**
+	 * Test get_detailed_title fallback for unregistered type.
+	 */
+	public function test_get_detailed_title_fallback() {
+		$this->inject_event_types( array() );
+
+		$title = $this->registry->get_detailed_title( 'post_published', array() );
+
+		$this->assertEquals( 'Post Published', $title );
+	}
+
+	/**
+	 * Test get_ai_description calls callable.
+	 */
+	public function test_get_ai_description() {
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'ai_description' => function( $object, $metadata ) {
+					return sprintf( 'Published "%s"', $object['title'] ?? 'Unknown' );
+				},
+			),
+		) );
+
+		$description = $this->registry->get_ai_description(
+			'post_published',
+			array( 'title' => 'Test Post' ),
+			array()
+		);
+
+		$this->assertEquals( 'Published "Test Post"', $description );
+	}
+
+	/**
+	 * Test get_ai_description returns empty for unregistered type.
+	 */
+	public function test_get_ai_description_fallback() {
+		$this->inject_event_types( array() );
+
+		$description = $this->registry->get_ai_description( 'nonexistent', array(), array() );
+
+		$this->assertEquals( '', $description );
 	}
 
 	/**
 	 * Test get_ai_context_for_events generates context.
 	 */
 	public function test_get_ai_context_for_events() {
-		// Register test event type.
-		Event_Registry::register_event_type( 'post_published', function( $event_data ) {
-			return "Event Type: Post Published\nDescription: Test description";
-		} );
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'describe' => function( $event_data ) {
+					return "Event Type: Post Published\nDescription: Test description";
+				},
+			),
+			'user_registered' => array(
+				'describe' => function( $event_data ) {
+					return "Event Type: User Registered\nDescription: User joined";
+				},
+			),
+		) );
 
-		Event_Registry::register_event_type( 'user_registered', function( $event_data ) {
-			return "Event Type: User Registered\nDescription: User joined";
-		} );
-
-		// Create test events.
 		$events = array(
 			array(
 				'event_type' => 'post_published',
@@ -134,40 +285,34 @@ class EventRegistryTest extends TestCase {
 			),
 		);
 
-		$context = Event_Registry::get_ai_context_for_events( $events );
+		$context = $this->registry->get_ai_context_for_events( $events );
 
 		$this->assertIsString( $context );
 		$this->assertStringContainsString( 'Event Types Reference', $context );
 		$this->assertStringContainsString( 'Post Published', $context );
 		$this->assertStringContainsString( 'User Registered', $context );
-		$this->assertStringContainsString( '---', $context ); // Separator.
+		$this->assertStringContainsString( '---', $context );
 	}
 
 	/**
 	 * Test AI context includes only unique event types.
 	 */
 	public function test_get_ai_context_unique_types() {
-		Event_Registry::register_event_type( 'post_published', function() {
-			return 'Post description';
-		} );
+		$this->inject_event_types( array(
+			'post_published' => array(
+				'describe' => function() {
+					return 'Post description';
+				},
+			),
+		) );
 
-		// 3 events of same type.
 		$events = array(
-			array(
-				'event_type' => 'post_published',
-				'event_data' => '{}',
-			),
-			array(
-				'event_type' => 'post_published',
-				'event_data' => '{}',
-			),
-			array(
-				'event_type' => 'post_published',
-				'event_data' => '{}',
-			),
+			array( 'event_type' => 'post_published', 'event_data' => '{}' ),
+			array( 'event_type' => 'post_published', 'event_data' => '{}' ),
+			array( 'event_type' => 'post_published', 'event_data' => '{}' ),
 		);
 
-		$context = Event_Registry::get_ai_context_for_events( $events );
+		$context = $this->registry->get_ai_context_for_events( $events );
 
 		// Should only describe post_published once.
 		$count = substr_count( $context, 'Post description' );
@@ -180,19 +325,21 @@ class EventRegistryTest extends TestCase {
 	public function test_describe_callback_receives_data() {
 		$received_data = null;
 
-		$callback = function( $event_data ) use ( &$received_data ) {
-			$received_data = $event_data;
-			return 'Description';
-		};
-
-		Event_Registry::register_event_type( 'test_event', $callback );
+		$this->inject_event_types( array(
+			'test_event' => array(
+				'describe' => function( $event_data ) use ( &$received_data ) {
+					$received_data = $event_data;
+					return 'Description';
+				},
+			),
+		) );
 
 		$test_data = array(
 			'action'   => 'published',
 			'metadata' => array( 'key' => 'value' ),
 		);
 
-		Event_Registry::describe_event( 'test_event', $test_data );
+		$this->registry->describe_event( 'test_event', $test_data );
 
 		$this->assertEquals( $test_data, $received_data );
 	}

@@ -87,9 +87,6 @@ class DatabaseManager {
 		$events_sql = "CREATE TABLE {$this->events_table} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			event_type VARCHAR(50) NOT NULL,
-			event_subtype VARCHAR(50) DEFAULT NULL,
-			object_id BIGINT UNSIGNED DEFAULT NULL,
-			user_id BIGINT UNSIGNED DEFAULT NULL,
 			event_data LONGTEXT DEFAULT NULL,
 			event_timestamp DATETIME NOT NULL,
 			report_id BIGINT UNSIGNED DEFAULT NULL,

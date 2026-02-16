@@ -42,8 +42,11 @@ class AISummarizerTest extends TestCase {
 		// Load the AI_Summarizer class.
 		require_once dirname( __DIR__, 3 ) . '/ai/class-ai-summarizer.php';
 
-		$this->report_repo = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
-		$this->summarizer  = new AI_Summarizer( $this->report_repo );
+		$this->report_repo    = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
+		$event_registry       = Mockery::mock( 'Rocket\Sybgo\Events\Event_Registry' );
+		$event_registry->shouldReceive( 'get_ai_description' )->andReturn( '' );
+		$event_registry->shouldReceive( 'get_ai_context_for_events' )->andReturn( '' );
+		$this->summarizer     = new AI_Summarizer( $this->report_repo, $event_registry );
 
 		// Mock WordPress functions.
 		Functions\when( 'get_option' )->justReturn( array() );

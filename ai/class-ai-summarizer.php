@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\AI;
 
 use Rocket\Sybgo\Database\Report_Repository;
+use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * AI Summarizer class.
@@ -31,12 +32,21 @@ class AI_Summarizer {
 	private Report_Repository $report_repo;
 
 	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $event_registry;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Report_Repository $report_repo Report repository.
+	 * @param Event_Registry    $event_registry Event registry.
 	 */
-	public function __construct( Report_Repository $report_repo ) {
-		$this->report_repo = $report_repo;
+	public function __construct( Report_Repository $report_repo, Event_Registry $event_registry ) {
+		$this->report_repo    = $report_repo;
+		$this->event_registry = $event_registry;
 	}
 
 	/**
@@ -122,7 +132,7 @@ class AI_Summarizer {
 			$type        = $event['event_type'];
 			$object      = $event_data['object'] ?? array();
 			$metadata    = $event_data['metadata'] ?? array();
-			$description = $this->get_event_description( $type, $object, $metadata );
+			$description = $this->event_registry->get_ai_description( $type, $object, $metadata );
 
 			if ( $description ) {
 				$prompt .= "- {$description}\n";
@@ -135,51 +145,6 @@ class AI_Summarizer {
 		$prompt .= "Don't just list numbers - tell a story about what happened on the site this week.";
 
 		return $prompt;
-	}
-
-	/**
-	 * Get human-readable description of an event.
-	 *
-	 * @param string $type Event type.
-	 * @param array  $object Object data.
-	 * @param array  $metadata Metadata.
-	 * @return string Event description.
-	 */
-	private function get_event_description( string $type, array $object, array $metadata ): string {
-		switch ( $type ) {
-			case 'post_published':
-				return sprintf( 'Published post: "%s"', $object['title'] ?? 'Untitled' );
-
-			case 'post_edited':
-				$magnitude = $metadata['edit_magnitude'] ?? 0;
-				return sprintf( 'Edited post "%s" (%d%% changed)', $object['title'] ?? 'Untitled', $magnitude );
-
-			case 'plugin_installed':
-				return sprintf( 'Installed plugin: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_activated':
-				return sprintf( 'Activated plugin: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_deactivated':
-				return sprintf( 'Deactivated plugin: %s', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_updated':
-				$new_ver = $metadata['new_version'] ?? 'latest';
-				return sprintf( 'Updated plugin %s to v%s', $object['name'] ?? 'Unknown', $new_ver );
-
-			case 'theme_switched':
-				return sprintf( 'Switched theme to: %s', $object['name'] ?? 'Unknown' );
-
-			case 'user_registered':
-				return sprintf( 'New user registered: %s', $object['username'] ?? 'Unknown' );
-
-			case 'core_updated':
-				$new_ver = $metadata['new_version'] ?? 'latest';
-				return sprintf( 'Updated WordPress to v%s', $new_ver );
-
-			default:
-				return '';
-		}
 	}
 
 	/**
