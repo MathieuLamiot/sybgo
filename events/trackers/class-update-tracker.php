@@ -52,8 +52,15 @@ class Update_Tracker {
 		// Track WordPress core updates.
 		add_action( '_core_updated_successfully', array( $this, 'track_core_update' ), 10, 1 );
 
-		// Track plugin and theme updates.
+		// Track plugin and theme updates, installs.
 		add_action( 'upgrader_process_complete', array( $this, 'track_upgrader_process' ), 10, 2 );
+
+		// Track plugin activation and deactivation.
+		add_action( 'activated_plugin', array( $this, 'track_plugin_activated' ), 10, 2 );
+		add_action( 'deactivated_plugin', array( $this, 'track_plugin_deactivated' ), 10, 2 );
+
+		// Track theme switching.
+		add_action( 'switch_theme', array( $this, 'track_theme_switched' ), 10, 3 );
 	}
 
 	/**
@@ -94,6 +101,21 @@ class Update_Tracker {
 			}
 		);
 
+		// Plugin Installed event.
+		Event_Registry::register_event_type(
+			'plugin_installed',
+			function ( array $event_data ): string {
+				$description  = "Event Type: Plugin Installed\n";
+				$description .= "Description: A new WordPress plugin was installed.\n\n";
+				$description .= "Data Structure:\n";
+				$description .= "  - object.name: Plugin name\n";
+				$description .= "  - object.slug: Plugin slug/folder name\n";
+				$description .= "  - metadata.version: Plugin version\n";
+
+				return $description;
+			}
+		);
+
 		// Plugin Activated event.
 		Event_Registry::register_event_type(
 			'plugin_activated',
@@ -118,6 +140,21 @@ class Update_Tracker {
 				$description .= "Data Structure:\n";
 				$description .= "  - object.name: Plugin name\n";
 				$description .= "  - object.slug: Plugin slug/folder name\n";
+
+				return $description;
+			}
+		);
+
+		// Theme Installed event.
+		Event_Registry::register_event_type(
+			'theme_installed',
+			function ( array $event_data ): string {
+				$description  = "Event Type: Theme Installed\n";
+				$description .= "Description: A new WordPress theme was installed.\n\n";
+				$description .= "Data Structure:\n";
+				$description .= "  - object.name: Theme name\n";
+				$description .= "  - object.slug: Theme slug/folder name\n";
+				$description .= "  - metadata.version: Theme version\n";
 
 				return $description;
 			}
@@ -216,19 +253,27 @@ class Update_Tracker {
 	 * @return void
 	 */
 	public function track_upgrader_process( \WP_Upgrader $upgrader, array $options ): void {
-		// Only track updates (not installs).
-		if ( 'update' !== $options['action'] ) {
+		// Track both updates and installs.
+		if ( ! in_array( $options['action'], array( 'update', 'install' ), true ) ) {
 			return;
 		}
 
-		// Handle plugin updates.
+		// Handle plugin updates and installs.
 		if ( 'plugin' === $options['type'] ) {
-			$this->track_plugin_updates( $options );
+			if ( 'update' === $options['action'] ) {
+				$this->track_plugin_updates( $options );
+			} elseif ( 'install' === $options['action'] ) {
+				$this->track_plugin_installed( $upgrader, $options );
+			}
 		}
 
-		// Handle theme updates.
+		// Handle theme updates and installs.
 		if ( 'theme' === $options['type'] ) {
-			$this->track_theme_updates( $options );
+			if ( 'update' === $options['action'] ) {
+				$this->track_theme_updates( $options );
+			} elseif ( 'install' === $options['action'] ) {
+				$this->track_theme_installed( $upgrader, $options );
+			}
 		}
 	}
 
@@ -368,5 +413,243 @@ class Update_Tracker {
 
 		// Patch/security release (e.g., 6.1.1 to 6.1.2).
 		return 'security';
+	}
+
+	/**
+	 * Track plugin installation.
+	 *
+	 * @param \WP_Upgrader $upgrader Upgrader instance.
+	 * @param array        $options Install options.
+	 * @return void
+	 */
+	private function track_plugin_installed( \WP_Upgrader $upgrader, array $options ): void {
+		// Get the installed plugin file.
+		$plugin_file = isset( $upgrader->result['destination_name'] ) ? $upgrader->result['destination_name'] : null;
+
+		if ( ! $plugin_file ) {
+			return;
+		}
+
+		// Find the main plugin file.
+		$plugin_files = get_plugins( '/' . $plugin_file );
+		if ( empty( $plugin_files ) ) {
+			return;
+		}
+
+		// Get the first (main) plugin file.
+		$main_file   = key( $plugin_files );
+		$plugin_data = $plugin_files[ $main_file ];
+
+		// Build event data.
+		$event_data = array(
+			'action'   => 'installed',
+			'object'   => array(
+				'type' => 'plugin',
+				'name' => $plugin_data['Name'],
+				'slug' => $plugin_file,
+			),
+			'context'  => array(
+				'installed_by_id' => get_current_user_id(),
+			),
+			'metadata' => array(
+				'version' => $plugin_data['Version'],
+			),
+		);
+
+		// Create event.
+		$this->event_repo->create(
+			array(
+				'event_type'   => 'plugin_installed',
+				'event_subtype' => 'plugin',
+				'object_id'    => 0,
+				'user_id'      => get_current_user_id(),
+				'event_data'   => $event_data,
+			)
+		);
+	}
+
+	/**
+	 * Track plugin activation.
+	 *
+	 * @param string $plugin_file Plugin file path.
+	 * @param bool   $network_wide Whether activated network-wide.
+	 * @return void
+	 */
+	public function track_plugin_activated( string $plugin_file, bool $network_wide ): void {
+		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin_file, false, false );
+
+		if ( empty( $plugin_data['Name'] ) ) {
+			return;
+		}
+
+		// Get plugin slug.
+		$slug = dirname( $plugin_file );
+		if ( '.' === $slug ) {
+			$slug = basename( $plugin_file, '.php' );
+		}
+
+		// Build event data.
+		$event_data = array(
+			'action'   => 'activated',
+			'object'   => array(
+				'type' => 'plugin',
+				'name' => $plugin_data['Name'],
+				'slug' => $slug,
+			),
+			'context'  => array(
+				'activated_by_id' => get_current_user_id(),
+			),
+			'metadata' => array(
+				'version'      => $plugin_data['Version'],
+				'network_wide' => $network_wide,
+			),
+		);
+
+		// Create event.
+		$this->event_repo->create(
+			array(
+				'event_type'   => 'plugin_activated',
+				'event_subtype' => 'plugin',
+				'object_id'    => 0,
+				'user_id'      => get_current_user_id(),
+				'event_data'   => $event_data,
+			)
+		);
+	}
+
+	/**
+	 * Track plugin deactivation.
+	 *
+	 * @param string $plugin_file Plugin file path.
+	 * @param bool   $network_wide Whether deactivated network-wide.
+	 * @return void
+	 */
+	public function track_plugin_deactivated( string $plugin_file, bool $network_wide ): void {
+		$plugin_data = get_plugin_data( WP_PLUGIN_DIR . '/' . $plugin_file, false, false );
+
+		if ( empty( $plugin_data['Name'] ) ) {
+			return;
+		}
+
+		// Get plugin slug.
+		$slug = dirname( $plugin_file );
+		if ( '.' === $slug ) {
+			$slug = basename( $plugin_file, '.php' );
+		}
+
+		// Build event data.
+		$event_data = array(
+			'action'   => 'deactivated',
+			'object'   => array(
+				'type' => 'plugin',
+				'name' => $plugin_data['Name'],
+				'slug' => $slug,
+			),
+			'context'  => array(
+				'deactivated_by_id' => get_current_user_id(),
+			),
+			'metadata' => array(
+				'network_wide' => $network_wide,
+			),
+		);
+
+		// Create event.
+		$this->event_repo->create(
+			array(
+				'event_type'   => 'plugin_deactivated',
+				'event_subtype' => 'plugin',
+				'object_id'    => 0,
+				'user_id'      => get_current_user_id(),
+				'event_data'   => $event_data,
+			)
+		);
+	}
+
+	/**
+	 * Track theme installation.
+	 *
+	 * @param \WP_Upgrader $upgrader Upgrader instance.
+	 * @param array        $options Install options.
+	 * @return void
+	 */
+	private function track_theme_installed( \WP_Upgrader $upgrader, array $options ): void {
+		// Get the installed theme slug.
+		$theme_slug = isset( $upgrader->result['destination_name'] ) ? $upgrader->result['destination_name'] : null;
+
+		if ( ! $theme_slug ) {
+			return;
+		}
+
+		$theme = wp_get_theme( $theme_slug );
+
+		if ( ! $theme->exists() ) {
+			return;
+		}
+
+		// Build event data.
+		$event_data = array(
+			'action'   => 'installed',
+			'object'   => array(
+				'type' => 'theme',
+				'name' => $theme->get( 'Name' ),
+				'slug' => $theme_slug,
+			),
+			'context'  => array(
+				'installed_by_id' => get_current_user_id(),
+			),
+			'metadata' => array(
+				'version' => $theme->get( 'Version' ),
+			),
+		);
+
+		// Create event.
+		$this->event_repo->create(
+			array(
+				'event_type'   => 'theme_installed',
+				'event_subtype' => 'theme',
+				'object_id'    => 0,
+				'user_id'      => get_current_user_id(),
+				'event_data'   => $event_data,
+			)
+		);
+	}
+
+	/**
+	 * Track theme switching.
+	 *
+	 * @param string    $new_name  New theme name.
+	 * @param \WP_Theme $new_theme New theme object.
+	 * @param \WP_Theme $old_theme Old theme object.
+	 * @return void
+	 */
+	public function track_theme_switched( string $new_name, \WP_Theme $new_theme, \WP_Theme $old_theme ): void {
+		// Build event data.
+		$event_data = array(
+			'action'   => 'switched',
+			'object'   => array(
+				'type' => 'theme',
+				'name' => $new_theme->get( 'Name' ),
+				'slug' => $new_theme->get_stylesheet(),
+			),
+			'context'  => array(
+				'switched_by_id' => get_current_user_id(),
+			),
+			'metadata' => array(
+				'old_theme' => $old_theme->get( 'Name' ),
+				'old_slug'  => $old_theme->get_stylesheet(),
+				'version'   => $new_theme->get( 'Version' ),
+			),
+		);
+
+		// Create event.
+		$this->event_repo->create(
+			array(
+				'event_type'   => 'theme_switched',
+				'event_subtype' => 'theme',
+				'object_id'    => 0,
+				'user_id'      => get_current_user_id(),
+				'event_data'   => $event_data,
+			)
+		);
 	}
 }

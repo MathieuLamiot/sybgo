@@ -610,8 +610,13 @@ class Reports_Page {
 			'user_registered'    => '👤',
 			'user_role_changed'  => '👥',
 			'core_updated'       => '🔄',
+			'plugin_installed'   => '➕',
+			'plugin_activated'   => '✅',
+			'plugin_deactivated' => '⏸️',
 			'plugin_updated'     => '🔌',
+			'theme_installed'    => '🎨',
 			'theme_updated'      => '🎨',
+			'theme_switched'     => '🔄',
 			'comment_new'        => '💬',
 			'comment_approved'   => '✅',
 		);
@@ -653,15 +658,33 @@ class Reports_Page {
 				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
 				return sprintf( 'WordPress updated from %s to %s', $old_ver, $new_ver );
 
+			case 'plugin_installed':
+				$version = $event_data['metadata']['version'] ?? 'unknown';
+				return sprintf( 'Plugin "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
+
+			case 'plugin_activated':
+				return sprintf( 'Plugin "%s" activated', $object['name'] ?? 'Unknown' );
+
+			case 'plugin_deactivated':
+				return sprintf( 'Plugin "%s" deactivated', $object['name'] ?? 'Unknown' );
+
 			case 'plugin_updated':
 				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
 				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
 				return sprintf( 'Plugin "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
 
+			case 'theme_installed':
+				$version = $event_data['metadata']['version'] ?? 'unknown';
+				return sprintf( 'Theme "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
+
 			case 'theme_updated':
 				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
 				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
 				return sprintf( 'Theme "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
+
+			case 'theme_switched':
+				$old_theme = $event_data['metadata']['old_theme'] ?? 'Unknown';
+				return sprintf( 'Theme switched from "%s" to "%s"', $old_theme, $object['name'] ?? 'Unknown' );
 
 			case 'comment_new':
 				return sprintf( 'New comment on: %s', $event_data['metadata']['post_title'] ?? 'Unknown post' );

@@ -331,16 +331,21 @@ class Dashboard_Widget {
 	 */
 	private function get_event_icon( string $event_type ): string {
 		$icons = array(
-			'post_published' => '📝',
-			'post_edited'    => '✏️',
-			'post_deleted'   => '🗑️',
-			'user_registered' => '👤',
-			'user_role_changed' => '👥',
-			'core_updated'   => '🔄',
-			'plugin_updated' => '🔌',
-			'theme_updated'  => '🎨',
-			'comment_new'    => '💬',
-			'comment_approved' => '✅',
+			'post_published'     => '📝',
+			'post_edited'        => '✏️',
+			'post_deleted'       => '🗑️',
+			'user_registered'    => '👤',
+			'user_role_changed'  => '👥',
+			'core_updated'       => '🔄',
+			'plugin_installed'   => '➕',
+			'plugin_activated'   => '✅',
+			'plugin_deactivated' => '⏸️',
+			'plugin_updated'     => '🔌',
+			'theme_installed'    => '🎨',
+			'theme_updated'      => '🎨',
+			'theme_switched'     => '🔄',
+			'comment_new'        => '💬',
+			'comment_approved'   => '✅',
 		);
 
 		return $icons[ $event_type ] ?? '•';
@@ -377,11 +382,26 @@ class Dashboard_Widget {
 			case 'core_updated':
 				return sprintf( 'WordPress updated to %s', $event_data['metadata']['new_version'] ?? 'latest' );
 
+			case 'plugin_installed':
+				return sprintf( 'Plugin installed: %s', $object['name'] ?? 'Unknown' );
+
+			case 'plugin_activated':
+				return sprintf( 'Plugin activated: %s', $object['name'] ?? 'Unknown' );
+
+			case 'plugin_deactivated':
+				return sprintf( 'Plugin deactivated: %s', $object['name'] ?? 'Unknown' );
+
 			case 'plugin_updated':
 				return sprintf( 'Plugin updated: %s', $object['name'] ?? 'Unknown' );
 
+			case 'theme_installed':
+				return sprintf( 'Theme installed: %s', $object['name'] ?? 'Unknown' );
+
 			case 'theme_updated':
 				return sprintf( 'Theme updated: %s', $object['name'] ?? 'Unknown' );
+
+			case 'theme_switched':
+				return sprintf( 'Theme switched to: %s', $object['name'] ?? 'Unknown' );
 
 			case 'comment_new':
 				return sprintf( 'New comment on: %s', $event_data['metadata']['post_title'] ?? 'Unknown post' );
@@ -413,9 +433,19 @@ class Dashboard_Widget {
 
 		// Filter by type if needed.
 		if ( 'all' !== $filter ) {
-			$events = array_filter( $events, function( $event ) use ( $filter ) {
-				return strpos( $event['event_type'], $filter ) === 0;
-			} );
+			$events = array_filter(
+				$events,
+				function( $event ) use ( $filter ) {
+					// Special handling for 'update' filter.
+					if ( 'update' === $filter ) {
+						$update_types = array( 'core_updated', 'plugin_installed', 'plugin_activated', 'plugin_deactivated', 'plugin_updated', 'theme_installed', 'theme_updated', 'theme_switched' );
+						return in_array( $event['event_type'], $update_types, true );
+					}
+
+					// Default: check if event type starts with filter.
+					return strpos( $event['event_type'], $filter ) === 0;
+				}
+			);
 		}
 
 		ob_start();
