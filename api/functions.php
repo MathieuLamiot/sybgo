@@ -34,7 +34,7 @@ use Rocket\Sybgo\API\Extensibility_API;
  * ], 'my-plugin');
  * ```
  */
-function sybgo_track_event( string $event_type, array $event_data, string $source_plugin = '' ): int|false {
+function sybgo_track_event( string $event_type, array $event_data, string $source_plugin = '' ) {
 	return Extensibility_API::track_event( $event_type, $event_data, $source_plugin );
 }
 

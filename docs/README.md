@@ -5,8 +5,11 @@
 ## Documentation Index
 
 ### For New Developers
-1. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Start here! Understand the system design, data flow, and key concepts.
-2. **[IMPLEMENTATION.md](./IMPLEMENTATION.md)** - Implementation details, code patterns, and development workflow.
+1. **[GETTING_STARTED.md](./GETTING_STARTED.md)** - Start here! Your first day guide, initialization flow, and common tasks.
+2. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design, data flow, and key architectural concepts.
+3. **[IMPLEMENTATION.md](./IMPLEMENTATION.md)** - Implementation details, code patterns, and development workflow.
+4. **[API.md](./API.md)** - Extensibility API for integrating other plugins.
+5. **[TESTING.md](./TESTING.md)** - Test writing guide and coverage goals.
 
 ### Quick Start
 

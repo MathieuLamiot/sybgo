@@ -82,7 +82,7 @@ class Extensibility_API {
 	 * ], 'woocommerce');
 	 * ```
 	 */
-	public static function track_event( string $event_type, array $event_data, string $source_plugin = '' ): int|false {
+	public static function track_event( string $event_type, array $event_data, string $source_plugin = '' ) {
 		if ( ! self::$event_repo ) {
 			return false;
 		}
