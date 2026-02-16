@@ -46,13 +46,13 @@ class Event_Repository {
 	public function create( array $event_data ) {
 		global $wpdb;
 
-		$defaults = array(
+		$defaults = [
 			'event_type'      => '',
 			'event_data'      => null,
 			'event_timestamp' => current_time( 'mysql' ),
 			'report_id'       => null,
 			'source_plugin'   => 'core',
-		);
+		];
 
 		$data = wp_parse_args( $event_data, $defaults );
 
@@ -107,7 +107,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : array();
+		return $events ? $events : [];
 	}
 
 	/**
@@ -135,7 +135,7 @@ class Event_Repository {
 			ARRAY_A
 		);
 
-		$events = $events ? $events : array();
+		$events = $events ? $events : [];
 
 		wp_cache_set( $cache_key, $events, 'sybgo_cache', 300 ); // Cache for 5 minutes.
 
@@ -176,7 +176,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : array();
+		return $events ? $events : [];
 	}
 
 	/**
@@ -257,7 +257,7 @@ class Event_Repository {
 			);
 		}
 
-		$result = array();
+		$result = [];
 		if ( $counts ) {
 			foreach ( $counts as $row ) {
 				$result[ $row['event_type'] ] = (int) $row['count'];

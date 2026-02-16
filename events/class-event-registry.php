@@ -38,7 +38,7 @@ class Event_Registry {
 	 */
 	public function get_event_types(): array {
 		if ( null === $this->event_types ) {
-			$this->event_types = wpm_apply_filters_typesafe( 'sybgo_event_types', array() );
+			$this->event_types = wpm_apply_filters_typesafe( 'sybgo_event_types', [] );
 		}
 
 		return $this->event_types;
@@ -190,7 +190,7 @@ class Event_Registry {
 		$context = "Event Types Reference:\n\n";
 
 		// Get unique event types.
-		$event_types = array();
+		$event_types = [];
 		foreach ( $events as $event ) {
 			if ( ! in_array( $event['event_type'], $event_types, true ) ) {
 				$event_types[] = $event['event_type'];

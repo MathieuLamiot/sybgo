@@ -81,11 +81,11 @@ class Sybgo {
 		$this->factory = new Factory();
 
 		// Activation and Deactivation Hooks.
-		register_activation_hook( SYBGO_PLUGIN_FILE, array( $this, 'activate' ) );
-		register_deactivation_hook( SYBGO_PLUGIN_FILE, array( $this, 'deactivate' ) );
+		register_activation_hook( SYBGO_PLUGIN_FILE, [ $this, 'activate' ] );
+		register_deactivation_hook( SYBGO_PLUGIN_FILE, [ $this, 'deactivate' ] );
 
 		// Initialize plugin.
-		add_action( 'plugins_loaded', array( $this, 'init' ) );
+		add_action( 'plugins_loaded', [ $this, 'init' ] );
 	}
 
 	/**
@@ -166,7 +166,7 @@ class Sybgo {
 		$reports_page->init();
 
 		// Enqueue admin assets.
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
 	}
 
 	/**
@@ -176,7 +176,7 @@ class Sybgo {
 	 */
 	private function init_cron_schedules(): void {
 		// Register custom cron intervals.
-		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
+		add_filter( 'cron_schedules', [ $this, 'add_cron_intervals' ] );
 
 		// Schedule weekly freeze (Sunday 23:55).
 		if ( ! wp_next_scheduled( 'sybgo_freeze_weekly_report' ) ) {
@@ -203,10 +203,10 @@ class Sybgo {
 		}
 
 		// Register cron callbacks.
-		add_action( 'sybgo_freeze_weekly_report', array( $this, 'freeze_weekly_report_callback' ) );
-		add_action( 'sybgo_send_report_emails', array( $this, 'send_report_emails_callback' ) );
-		add_action( 'sybgo_cleanup_old_events', array( $this, 'cleanup_old_events_callback' ) );
-		add_action( 'sybgo_retry_failed_emails', array( $this, 'retry_failed_emails_callback' ) );
+		add_action( 'sybgo_freeze_weekly_report', [ $this, 'freeze_weekly_report_callback' ] );
+		add_action( 'sybgo_send_report_emails', [ $this, 'send_report_emails_callback' ] );
+		add_action( 'sybgo_cleanup_old_events', [ $this, 'cleanup_old_events_callback' ] );
+		add_action( 'sybgo_retry_failed_emails', [ $this, 'retry_failed_emails_callback' ] );
 	}
 
 	/**
@@ -217,10 +217,10 @@ class Sybgo {
 	 */
 	public function add_cron_intervals( array $schedules ): array {
 		if ( ! isset( $schedules['weekly'] ) ) {
-			$schedules['weekly'] = array(
+			$schedules['weekly'] = [
 				'interval' => 604800, // 7 days in seconds.
 				'display'  => esc_html__( 'Once Weekly', 'sybgo' ),
-			);
+			];
 		}
 		return $schedules;
 	}
@@ -308,7 +308,7 @@ class Sybgo {
 	 */
 	public function enqueue_admin_assets( string $hook ): void {
 		// Enqueue only on our admin pages and dashboard.
-		$our_pages = array( 'toplevel_page_sybgo-reports', 'settings_page_sybgo-settings', 'index.php' );
+		$our_pages = [ 'toplevel_page_sybgo-reports', 'settings_page_sybgo-settings', 'index.php' ];
 
 		if ( ! in_array( $hook, $our_pages, true ) ) {
 			return;
@@ -318,7 +318,7 @@ class Sybgo {
 		wp_enqueue_style(
 			'sybgo-admin',
 			SYBGO_PLUGIN_URL . 'assets/css/admin.css',
-			array(),
+			[],
 			SYBGO_VERSION
 		);
 
@@ -326,7 +326,7 @@ class Sybgo {
 		wp_enqueue_script(
 			'sybgo-admin',
 			SYBGO_PLUGIN_URL . 'assets/js/admin.js',
-			array( 'jquery' ),
+			[ 'jquery' ],
 			SYBGO_VERSION,
 			true
 		);
@@ -335,10 +335,10 @@ class Sybgo {
 		wp_localize_script(
 			'sybgo-admin',
 			'sybgoAdmin',
-			array(
+			[
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'sybgo_admin_nonce' ),
-			)
+			]
 		);
 	}
 
@@ -357,10 +357,10 @@ class Sybgo {
 
 		if ( null === $active ) {
 			$report_repo->create(
-				array(
+				[
 					'status'       => 'active',
 					'period_start' => current_time( 'mysql' ),
-				)
+				]
 			);
 		}
 

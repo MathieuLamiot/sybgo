@@ -91,10 +91,10 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'wp_dashboard_setup', array( $this, 'register_widget' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
-		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
+		add_action( 'wp_dashboard_setup', [ $this, 'register_widget' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_sybgo_filter_events', [ $this, 'ajax_filter_events' ] );
+		add_action( 'wp_ajax_sybgo_preview_digest', [ $this, 'ajax_preview_digest' ] );
 	}
 
 	/**
@@ -106,7 +106,7 @@ class Dashboard_Widget {
 		wp_add_dashboard_widget(
 			'sybgo_activity_widget',
 			esc_html__( 'Site Activity Digest', 'sybgo' ),
-			array( $this, 'render_widget' ),
+			[ $this, 'render_widget' ],
 			null,
 			null,
 			'side',
@@ -128,14 +128,14 @@ class Dashboard_Widget {
 		wp_enqueue_style(
 			'sybgo-dashboard-widget',
 			plugins_url( 'assets/admin.css', dirname( __FILE__ ) ),
-			array(),
+			[],
 			'1.0.0'
 		);
 
 		wp_enqueue_script(
 			'sybgo-dashboard-widget',
 			plugins_url( 'assets/admin.js', dirname( __FILE__ ) ),
-			array( 'jquery' ),
+			[ 'jquery' ],
 			'1.0.0',
 			true
 		);
@@ -143,10 +143,10 @@ class Dashboard_Widget {
 		wp_localize_script(
 			'sybgo-dashboard-widget',
 			'sybgoWidget',
-			array(
+			[
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'sybgo_widget_nonce' ),
-			)
+			]
 		);
 	}
 
@@ -174,7 +174,7 @@ class Dashboard_Widget {
 				<?php $this->render_filter_buttons(); ?>
 
 				<div class="sybgo-event-stats">
-					<strong><?php echo esc_html( count( $current_events ) ); ?></strong>
+					<strong><?php echo esc_html( (string) count( $current_events ) ); ?></strong>
 					<?php esc_html_e( 'events tracked', 'sybgo' ); ?>
 				</div>
 
@@ -246,13 +246,13 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	private function render_filter_buttons(): void {
-		$filters = array(
-			'all'      => __( 'All', 'sybgo' ),
-			'post'     => __( 'Posts', 'sybgo' ),
-			'user'     => __( 'Users', 'sybgo' ),
-			'update'   => __( 'Updates', 'sybgo' ),
-			'comment'  => __( 'Comments', 'sybgo' ),
-		);
+		$filters = [
+			'all'     => __( 'All', 'sybgo' ),
+			'post'    => __( 'Posts', 'sybgo' ),
+			'user'    => __( 'Users', 'sybgo' ),
+			'update'  => __( 'Updates', 'sybgo' ),
+			'comment' => __( 'Comments', 'sybgo' ),
+		];
 
 		?>
 		<div class="sybgo-filters">
@@ -287,9 +287,12 @@ class Dashboard_Widget {
 		}
 
 		// Sort by timestamp descending.
-		usort( $events, function( $a, $b ) {
-			return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
-		} );
+		usort(
+			$events,
+			function( $a, $b ) {
+				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
+			}
+		);
 
 		// Limit display.
 		$display_events = array_slice( $events, 0, $limit );
@@ -366,7 +369,7 @@ class Dashboard_Widget {
 				function( $event ) use ( $filter ) {
 					// Special handling for 'update' filter.
 					if ( 'update' === $filter ) {
-						$update_types = array( 'core_updated', 'plugin_installed', 'plugin_activated', 'plugin_deactivated', 'plugin_updated', 'theme_installed', 'theme_updated', 'theme_switched' );
+						$update_types = [ 'core_updated', 'plugin_installed', 'plugin_activated', 'plugin_deactivated', 'plugin_updated', 'theme_installed', 'theme_updated', 'theme_switched' ];
 						return in_array( $event['event_type'], $update_types, true );
 					}
 
@@ -381,10 +384,10 @@ class Dashboard_Widget {
 		$html = ob_get_clean();
 
 		wp_send_json_success(
-			array(
+			[
 				'html'  => $html,
 				'count' => count( $events ),
-			)
+			]
 		);
 	}
 
@@ -398,7 +401,7 @@ class Dashboard_Widget {
 			check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
 
 			if ( ! current_user_can( 'read' ) ) {
-				wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+				wp_send_json_error( [ 'message' => 'Unauthorized' ] );
 			}
 
 			// Get current week's events.
@@ -409,7 +412,7 @@ class Dashboard_Widget {
 
 			// Try to get active report for trends, but don't fail if it doesn't exist.
 			$active_report = $this->report_repo->get_active();
-			$trends        = array();
+			$trends        = [];
 
 			if ( $active_report ) {
 				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
@@ -429,15 +432,15 @@ class Dashboard_Widget {
 			$this->render_preview_content( $totals, $trends, $events, $ai_summary, $ai_error );
 			$html = ob_get_clean();
 
-			wp_send_json_success( array( 'html' => $html ) );
+			wp_send_json_success( [ 'html' => $html ] );
 		} catch ( \Exception $e ) {
 			wp_send_json_error(
-				array(
+				[
 					'message' => $e->getMessage(),
 					'file'    => $e->getFile(),
 					'line'    => $e->getLine(),
 					'trace'   => $e->getTraceAsString(),
-				)
+				]
 			);
 		}
 	}
@@ -542,7 +545,7 @@ class Dashboard_Widget {
 	 * @return array Counts by type.
 	 */
 	private function count_events_by_type( array $events ): array {
-		$counts = array();
+		$counts = [];
 
 		foreach ( $events as $event ) {
 			$type = $event['event_type'];

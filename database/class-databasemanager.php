@@ -161,11 +161,11 @@ class DatabaseManager {
 	 * @since 1.0.0
 	 */
 	public function get_table_names(): array {
-		return array(
+		return [
 			'events'    => $this->events_table,
 			'reports'   => $this->reports_table,
 			'email_log' => $this->email_log_table,
-		);
+		];
 	}
 
 	/**

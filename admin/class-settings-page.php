@@ -52,8 +52,8 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
+		add_action( 'admin_init', [ $this, 'register_settings' ] );
 	}
 
 	/**
@@ -67,7 +67,7 @@ class Settings_Page {
 			__( 'Sybgo', 'sybgo' ),
 			'manage_options',
 			'sybgo-settings',
-			array( $this, 'render_settings_page' )
+			[ $this, 'render_settings_page' ]
 		);
 	}
 
@@ -81,23 +81,23 @@ class Settings_Page {
 		register_setting(
 			'sybgo_settings_group',
 			self::OPTION_NAME,
-			array(
-				'sanitize_callback' => array( $this, 'sanitize_settings' ),
-			)
+			[
+				'sanitize_callback' => [ $this, 'sanitize_settings' ],
+			]
 		);
 
 		// Email Settings Section.
 		add_settings_section(
 			'sybgo_email_section',
 			__( 'Email Configuration', 'sybgo' ),
-			array( $this, 'render_email_section_description' ),
+			[ $this, 'render_email_section_description' ],
 			'sybgo-settings'
 		);
 
 		add_settings_field(
 			'email_recipients',
 			__( 'Email Recipients', 'sybgo' ),
-			array( $this, 'render_email_recipients_field' ),
+			[ $this, 'render_email_recipients_field' ],
 			'sybgo-settings',
 			'sybgo_email_section'
 		);
@@ -105,7 +105,7 @@ class Settings_Page {
 		add_settings_field(
 			'from_name',
 			__( 'From Name', 'sybgo' ),
-			array( $this, 'render_from_name_field' ),
+			[ $this, 'render_from_name_field' ],
 			'sybgo-settings',
 			'sybgo_email_section'
 		);
@@ -113,7 +113,7 @@ class Settings_Page {
 		add_settings_field(
 			'from_email',
 			__( 'From Email', 'sybgo' ),
-			array( $this, 'render_from_email_field' ),
+			[ $this, 'render_from_email_field' ],
 			'sybgo-settings',
 			'sybgo_email_section'
 		);
@@ -122,14 +122,14 @@ class Settings_Page {
 		add_settings_section(
 			'sybgo_tracking_section',
 			__( 'Event Tracking', 'sybgo' ),
-			array( $this, 'render_tracking_section_description' ),
+			[ $this, 'render_tracking_section_description' ],
 			'sybgo-settings'
 		);
 
 		add_settings_field(
 			'enabled_event_types',
 			__( 'Enabled Event Types', 'sybgo' ),
-			array( $this, 'render_enabled_event_types_field' ),
+			[ $this, 'render_enabled_event_types_field' ],
 			'sybgo-settings',
 			'sybgo_tracking_section'
 		);
@@ -137,7 +137,7 @@ class Settings_Page {
 		add_settings_field(
 			'edit_magnitude_threshold',
 			__( 'Edit Magnitude Threshold', 'sybgo' ),
-			array( $this, 'render_edit_threshold_field' ),
+			[ $this, 'render_edit_threshold_field' ],
 			'sybgo-settings',
 			'sybgo_tracking_section'
 		);
@@ -146,14 +146,14 @@ class Settings_Page {
 		add_settings_section(
 			'sybgo_report_section',
 			__( 'Report Settings', 'sybgo' ),
-			array( $this, 'render_report_section_description' ),
+			[ $this, 'render_report_section_description' ],
 			'sybgo-settings'
 		);
 
 		add_settings_field(
 			'send_empty_reports',
 			__( 'Send Empty Reports', 'sybgo' ),
-			array( $this, 'render_send_empty_reports_field' ),
+			[ $this, 'render_send_empty_reports_field' ],
 			'sybgo-settings',
 			'sybgo_report_section'
 		);
@@ -162,14 +162,14 @@ class Settings_Page {
 		add_settings_section(
 			'sybgo_ai_section',
 			__( 'AI Summary Settings', 'sybgo' ),
-			array( $this, 'render_ai_section_description' ),
+			[ $this, 'render_ai_section_description' ],
 			'sybgo-settings'
 		);
 
 		add_settings_field(
 			'anthropic_api_key',
 			__( 'Anthropic API Key', 'sybgo' ),
-			array( $this, 'render_anthropic_api_key_field' ),
+			[ $this, 'render_anthropic_api_key_field' ],
 			'sybgo-settings',
 			'sybgo_ai_section'
 		);
@@ -182,11 +182,11 @@ class Settings_Page {
 	 * @return array Sanitized data.
 	 */
 	public function sanitize_settings( array $input ): array {
-		$sanitized = array();
+		$sanitized = [];
 
 		// Sanitize email recipients.
 		if ( isset( $input['email_recipients'] ) ) {
-			$recipients = array();
+			$recipients = [];
 			$lines      = explode( "\n", $input['email_recipients'] );
 
 			foreach ( $lines as $line ) {
@@ -207,7 +207,7 @@ class Settings_Page {
 		if ( isset( $input['enabled_event_types'] ) && is_array( $input['enabled_event_types'] ) ) {
 			$sanitized['enabled_event_types'] = array_map( 'sanitize_text_field', $input['enabled_event_types'] );
 		} else {
-			$sanitized['enabled_event_types'] = array();
+			$sanitized['enabled_event_types'] = [];
 		}
 
 		// Sanitize edit threshold.
@@ -378,7 +378,7 @@ class Settings_Page {
 		$enabled  = $settings['enabled_event_types'] ?? $this->get_default_event_types();
 
 		// Build event types dynamically from registry.
-		$event_types = array();
+		$event_types = [];
 		foreach ( $this->event_registry->get_registered_types() as $type ) {
 			$event_types[ $type ] = $this->event_registry->get_stat_label( $type );
 		}
@@ -435,7 +435,7 @@ class Settings_Page {
 	 * @return void
 	 */
 	public function render_send_empty_reports_field(): void {
-		$settings    = $this->get_settings();
+		$settings   = $this->get_settings();
 		$send_empty = $settings['send_empty_reports'] ?? false;
 
 		?>
@@ -460,17 +460,17 @@ class Settings_Page {
 	 * @return array Settings array.
 	 */
 	public function get_settings(): array {
-		$settings = get_option( self::OPTION_NAME, array() );
+		$settings = get_option( self::OPTION_NAME, [] );
 
 		// Set defaults if empty.
-		$defaults = array(
-			'email_recipients'           => get_option( 'admin_email' ),
-			'from_name'                  => get_bloginfo( 'name' ),
-			'from_email'                 => get_option( 'admin_email' ),
-			'enabled_event_types'        => $this->get_default_event_types(),
-			'edit_magnitude_threshold'   => 5,
-			'send_empty_reports'         => false,
-		);
+		$defaults = [
+			'email_recipients'         => get_option( 'admin_email' ),
+			'from_name'                => get_bloginfo( 'name' ),
+			'from_email'               => get_option( 'admin_email' ),
+			'enabled_event_types'      => $this->get_default_event_types(),
+			'edit_magnitude_threshold' => 5,
+			'send_empty_reports'       => false,
+		];
 
 		return wp_parse_args( $settings, $defaults );
 	}
@@ -481,7 +481,7 @@ class Settings_Page {
 	 * @return array Event types.
 	 */
 	private function get_default_event_types(): array {
-		return array(
+		return [
 			'post_published',
 			'post_edited',
 			'post_deleted',
@@ -492,7 +492,7 @@ class Settings_Page {
 			'theme_updated',
 			'comment_posted',
 			'comment_approved',
-		);
+		];
 	}
 
 	/**
@@ -501,14 +501,14 @@ class Settings_Page {
 	 * @return array Email addresses.
 	 */
 	public static function get_recipients(): array {
-		$settings   = get_option( self::OPTION_NAME, array() );
+		$settings   = get_option( self::OPTION_NAME, [] );
 		$recipients = $settings['email_recipients'] ?? get_option( 'admin_email' );
 
 		if ( empty( $recipients ) ) {
-			return array( get_option( 'admin_email' ) );
+			return [ get_option( 'admin_email' ) ];
 		}
 
-		$emails = array();
+		$emails = [];
 		$lines  = explode( "\n", $recipients );
 
 		foreach ( $lines as $line ) {
@@ -518,7 +518,7 @@ class Settings_Page {
 			}
 		}
 
-		return ! empty( $emails ) ? $emails : array( get_option( 'admin_email' ) );
+		return ! empty( $emails ) ? $emails : [ get_option( 'admin_email' ) ];
 	}
 
 	/**
@@ -528,8 +528,8 @@ class Settings_Page {
 	 * @return bool True if enabled, false otherwise.
 	 */
 	public static function is_event_type_enabled( string $event_type ): bool {
-		$settings = get_option( self::OPTION_NAME, array() );
-		$enabled  = $settings['enabled_event_types'] ?? array();
+		$settings = get_option( self::OPTION_NAME, [] );
+		$enabled  = $settings['enabled_event_types'] ?? [];
 
 		// If no settings, assume all enabled.
 		if ( empty( $enabled ) ) {
@@ -545,7 +545,7 @@ class Settings_Page {
 	 * @return int Threshold percentage (0-100).
 	 */
 	public static function get_edit_threshold(): int {
-		$settings = get_option( self::OPTION_NAME, array() );
+		$settings = get_option( self::OPTION_NAME, [] );
 		return $settings['edit_magnitude_threshold'] ?? 5;
 	}
 
@@ -605,7 +605,7 @@ class Settings_Page {
 	 * @return string API key or empty string if not set.
 	 */
 	public static function get_anthropic_api_key(): string {
-		$settings = get_option( self::OPTION_NAME, array() );
+		$settings = get_option( self::OPTION_NAME, [] );
 		return $settings['anthropic_api_key'] ?? '';
 	}
 }

@@ -88,20 +88,20 @@ class AI_Summarizer {
 	 * @return string The prompt.
 	 */
 	private function build_prompt( array $events, array $totals, array $trends ): string {
-		$prompt  = "You are a friendly coworker reviewing WordPress site activity for the week. ";
+		$prompt  = 'You are a friendly coworker reviewing WordPress site activity for the week. ';
 		$prompt .= "Write a conversational summary as if you're telling a colleague what happened on their website. ";
-		$prompt .= "Be warm, encouraging, and focus on the most important changes. ";
+		$prompt .= 'Be warm, encouraging, and focus on the most important changes. ';
 		$prompt .= "Use 'you' to address them directly (e.g., 'You published 3 new posts this week'). ";
 		$prompt .= "Keep it concise (3-5 sentences max). Don't list every event - highlight the main activities.\n\n";
 
 		// Add totals summary.
 		$prompt .= "## Event Summary\n";
-		$prompt .= "Total events this week: " . count( $events ) . "\n\n";
+		$prompt .= 'Total events this week: ' . count( $events ) . "\n\n";
 
 		if ( ! empty( $totals ) ) {
 			$prompt .= "Event breakdown:\n";
 			foreach ( $totals as $type => $count ) {
-				$prompt .= "- " . ucwords( str_replace( '_', ' ', $type ) ) . ": {$count}\n";
+				$prompt .= '- ' . ucwords( str_replace( '_', ' ', $type ) ) . ": {$count}\n";
 			}
 			$prompt .= "\n";
 		}
@@ -113,7 +113,7 @@ class AI_Summarizer {
 				if ( 'same' !== $trend['direction'] ) {
 					$arrow   = 'up' === $trend['direction'] ? '↑' : '↓';
 					$change  = abs( $trend['change_percent'] );
-					$prompt .= "- " . ucwords( str_replace( '_', ' ', $type ) ) . ": {$arrow} {$change}% ";
+					$prompt .= '- ' . ucwords( str_replace( '_', ' ', $type ) ) . ": {$arrow} {$change}% ";
 					$prompt .= "({$trend['previous']} → {$trend['current']})\n";
 				}
 			}
@@ -121,8 +121,8 @@ class AI_Summarizer {
 		}
 
 		// Add key events (max 10 most recent).
-		$prompt         .= "## Recent Events\n";
-		$recent_events   = array_slice( $events, 0, 10 );
+		$prompt       .= "## Recent Events\n";
+		$recent_events = array_slice( $events, 0, 10 );
 		foreach ( $recent_events as $event ) {
 			$event_data = json_decode( $event['event_data'], true );
 			if ( ! $event_data ) {
@@ -130,8 +130,8 @@ class AI_Summarizer {
 			}
 
 			$type        = $event['event_type'];
-			$object      = $event_data['object'] ?? array();
-			$metadata    = $event_data['metadata'] ?? array();
+			$object      = $event_data['object'] ?? [];
+			$metadata    = $event_data['metadata'] ?? [];
 			$description = $this->event_registry->get_ai_description( $type, $object, $metadata );
 
 			if ( $description ) {
@@ -140,8 +140,8 @@ class AI_Summarizer {
 		}
 
 		$prompt .= "\n## Instructions\n";
-		$prompt .= "Write a friendly 3-5 sentence summary highlighting the most important activities. ";
-		$prompt .= "Mention trends if significant. Use a warm, encouraging tone. ";
+		$prompt .= 'Write a friendly 3-5 sentence summary highlighting the most important activities. ';
+		$prompt .= 'Mention trends if significant. Use a warm, encouraging tone. ';
 		$prompt .= "Don't just list numbers - tell a story about what happened on the site this week.";
 
 		return $prompt;
@@ -158,29 +158,29 @@ class AI_Summarizer {
 	private function call_claude_api( string $api_key, string $prompt ): string {
 		$url = 'https://api.anthropic.com/v1/messages';
 
-		$body = array(
+		$body = [
 			'model'      => 'claude-3-5-haiku-20241022',
 			'max_tokens' => 500,
-			'messages'   => array(
-				array(
+			'messages'   => [
+				[
 					'role'    => 'user',
 					'content' => $prompt,
-				),
-			),
-		);
+				],
+			],
+		];
 
 		$response = wp_remote_post(
 			$url,
-			array(
+			[
 				'timeout' => 30,
-				'headers' => array(
-					'Content-Type'         => 'application/json',
-					'x-api-key'            => $api_key,
-					'anthropic-version'    => '2023-06-01',
+				'headers' => [
+					'Content-Type'      => 'application/json',
+					'x-api-key'         => $api_key,
+					'anthropic-version' => '2023-06-01',
 					'anthropic-dangerous-direct-browser-access' => 'true',
-				),
+				],
 				'body'    => wp_json_encode( $body ),
-			)
+			]
 		);
 
 		if ( is_wp_error( $response ) ) {

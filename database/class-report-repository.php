@@ -46,7 +46,7 @@ class Report_Repository {
 	public function create( array $report_data ) {
 		global $wpdb;
 
-		$defaults = array(
+		$defaults = [
 			'report_type'  => 'weekly',
 			'status'       => 'active',
 			'period_start' => current_time( 'mysql' ),
@@ -56,7 +56,7 @@ class Report_Repository {
 			'frozen_at'    => null,
 			'emailed_at'   => null,
 			'created_at'   => current_time( 'mysql' ),
-		);
+		];
 
 		$data = wp_parse_args( $report_data, $defaults );
 
@@ -95,7 +95,7 @@ class Report_Repository {
 		$result = $wpdb->update(
 			$this->table,
 			$data,
-			array( 'id' => $report_id )
+			[ 'id' => $report_id ]
 		);
 
 		if ( false !== $result ) {
@@ -156,6 +156,7 @@ class Report_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$report = $wpdb->get_row(
 			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- No user input; prepare used for consistency.
 				"SELECT * FROM {$this->table} WHERE status IN ('frozen', 'emailed') ORDER BY frozen_at DESC LIMIT 1",
 				''
 			),
@@ -223,7 +224,7 @@ class Report_Repository {
 			ARRAY_A
 		);
 
-		return $reports ? $reports : array();
+		return $reports ? $reports : [];
 	}
 
 	/**
@@ -234,7 +235,7 @@ class Report_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function update_status( int $report_id, string $status ): bool {
-		return $this->update( $report_id, array( 'status' => $status ) );
+		return $this->update( $report_id, [ 'status' => $status ] );
 	}
 
 	/**

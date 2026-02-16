@@ -121,8 +121,8 @@ class Factory {
 	 */
 	public function create_event_repository(): Event_Repository {
 		if ( null === self::$event_repo_instance ) {
-			$db_manager = $this->create_database_manager();
-			$tables     = $db_manager->get_table_names();
+			$db_manager                = $this->create_database_manager();
+			$tables                    = $db_manager->get_table_names();
 			self::$event_repo_instance = new Event_Repository( $tables['events'] );
 		}
 		return self::$event_repo_instance;
@@ -135,8 +135,8 @@ class Factory {
 	 */
 	public function create_report_repository(): Report_Repository {
 		if ( null === self::$report_repo_instance ) {
-			$db_manager = $this->create_database_manager();
-			$tables     = $db_manager->get_table_names();
+			$db_manager                 = $this->create_database_manager();
+			$tables                     = $db_manager->get_table_names();
 			self::$report_repo_instance = new Report_Repository( $tables['reports'] );
 		}
 		return self::$report_repo_instance;

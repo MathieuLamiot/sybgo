@@ -102,9 +102,9 @@ class Reports_Page {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
-		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
-		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
+		add_action( 'admin_menu', [ $this, 'add_reports_page' ] );
+		add_action( 'admin_post_sybgo_freeze_now', [ $this, 'handle_manual_freeze' ] );
+		add_action( 'admin_post_sybgo_resend_email', [ $this, 'handle_resend_email' ] );
 	}
 
 	/**
@@ -118,7 +118,7 @@ class Reports_Page {
 			__( 'Sybgo Reports', 'sybgo' ),
 			'manage_options',
 			'sybgo-reports',
-			array( $this, 'render_reports_page' ),
+			[ $this, 'render_reports_page' ],
 			'dashicons-chart-line',
 			30
 		);
@@ -177,7 +177,7 @@ class Reports_Page {
 		<a
 			href="#"
 			class="page-title-action sybgo-freeze-btn"
-			data-events="<?php echo esc_attr( $events_count ); ?>"
+			data-events="<?php echo esc_attr( (string) $events_count ); ?>"
 		>
 			<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
 		</a>
@@ -192,6 +192,7 @@ class Reports_Page {
 					</p>
 					<ul>
 						<li><?php esc_html_e( 'End the current weekly period early', 'sybgo' ); ?></li>
+						<?php /* translators: %d: number of tracked events to freeze */ ?>
 						<li><?php echo esc_html( sprintf( __( 'Freeze %d tracked events', 'sybgo' ), $events_count ) ); ?></li>
 						<li><?php esc_html_e( 'Send the digest email immediately', 'sybgo' ); ?></li>
 						<li><?php esc_html_e( 'Start a new reporting period', 'sybgo' ); ?></li>
@@ -224,8 +225,8 @@ class Reports_Page {
 
 			$('.sybgo-modal-close, .sybgo-modal-cancel, .sybgo-modal').on('click', function(e) {
 				if ($(e.target).hasClass('sybgo-modal') ||
-				    $(e.target).hasClass('sybgo-modal-close') ||
-				    $(e.target).hasClass('sybgo-modal-cancel')) {
+					$(e.target).hasClass('sybgo-modal-close') ||
+					$(e.target).hasClass('sybgo-modal-cancel')) {
 					$('#sybgo-freeze-modal').fadeOut(200);
 				}
 			});
@@ -381,13 +382,25 @@ class Reports_Page {
 	 * @return void
 	 */
 	private function render_status_badge( string $status ): void {
-		$badges = array(
-			'active'  => array( 'label' => __( 'Active', 'sybgo' ), 'color' => '#2271b1' ),
-			'frozen'  => array( 'label' => __( 'Frozen', 'sybgo' ), 'color' => '#dba617' ),
-			'emailed' => array( 'label' => __( 'Sent', 'sybgo' ), 'color' => '#00a32a' ),
-		);
+		$badges = [
+			'active'  => [
+				'label' => __( 'Active', 'sybgo' ),
+				'color' => '#2271b1',
+			],
+			'frozen'  => [
+				'label' => __( 'Frozen', 'sybgo' ),
+				'color' => '#dba617',
+			],
+			'emailed' => [
+				'label' => __( 'Sent', 'sybgo' ),
+				'color' => '#00a32a',
+			],
+		];
 
-		$badge = $badges[ $status ] ?? array( 'label' => $status, 'color' => '#646970' );
+		$badge = $badges[ $status ] ?? [
+			'label' => $status,
+			'color' => '#646970',
+		];
 
 		?>
 		<span style="display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; color: #fff; background-color: <?php echo esc_attr( $badge['color'] ); ?>;">
@@ -484,7 +497,7 @@ class Reports_Page {
 				</div>
 			<?php endif; ?>
 
-			<h3><?php esc_html_e( 'All Events', 'sybgo' ); ?> (<?php echo esc_html( count( $events ) ); ?>)</h3>
+			<h3><?php esc_html_e( 'All Events', 'sybgo' ); ?> (<?php echo esc_html( (string) count( $events ) ); ?>)</h3>
 
 			<?php if ( empty( $events ) ) : ?>
 				<p><?php esc_html_e( 'No events in this report.', 'sybgo' ); ?></p>
@@ -573,9 +586,12 @@ class Reports_Page {
 	 */
 	private function render_events_table( array $events ): void {
 		// Sort by timestamp descending.
-		usort( $events, function( $a, $b ) {
-			return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
-		} );
+		usort(
+			$events,
+			function( $a, $b ) {
+				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
+			}
+		);
 
 		?>
 		<table class="wp-list-table widefat fixed striped">
@@ -610,6 +626,7 @@ class Reports_Page {
 	/**
 	 * Handle manual freeze request.
 	 *
+	 * @throws \Exception If freeze or email fails.
 	 * @return void
 	 */
 	public function handle_manual_freeze(): void {
@@ -637,10 +654,10 @@ class Reports_Page {
 			// Redirect with success message.
 			wp_safe_redirect(
 				add_query_arg(
-					array(
+					[
 						'page'    => 'sybgo-reports',
 						'message' => 'frozen',
-					),
+					],
 					admin_url( 'admin.php' )
 				)
 			);
@@ -650,10 +667,10 @@ class Reports_Page {
 			// Redirect with error message.
 			wp_safe_redirect(
 				add_query_arg(
-					array(
+					[
 						'page'    => 'sybgo-reports',
 						'message' => 'error',
-					),
+					],
 					admin_url( 'admin.php' )
 				)
 			);
@@ -690,10 +707,10 @@ class Reports_Page {
 
 		wp_safe_redirect(
 			add_query_arg(
-				array(
+				[
 					'page'    => 'sybgo-reports',
 					'message' => $message,
-				),
+				],
 				admin_url( 'admin.php' )
 			)
 		);

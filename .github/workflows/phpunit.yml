@@ -7,14 +7,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        php-versions: ['7.4', '8.0', '8.1']
+        wp-versions: ['latest']
+
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
           extensions: mbstring, xml, bcmath, zip, curl, xdebug
+          coverage: xdebug
 
       - name: Install SVN
         run: sudo apt-get install subversion
@@ -22,11 +29,11 @@ jobs:
       - name: Start mysql service
         run: sudo /etc/init.d/mysql start
 
-      - name: Install tests
-        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wp-versions }}
-
       - name: Mysql8 auth plugin workaround
         run: sudo mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
+
+      - name: Install tests
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wp-versions }}
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-scripts
@@ -34,17 +41,17 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           mkdir -p coverage
-          vendor/bin/phpunit --testsuite unit --colors=always --configuration tests/php/Unit/phpunit.xml.dist --coverage-cobertura=coverage/unit-coverage.xml
+          vendor/bin/phpunit --testsuite Unit --colors=always --coverage-cobertura=coverage/unit-coverage.xml
 
       - name: Run integration tests with coverage
         run: |
           mkdir -p coverage
-          vendor/bin/phpunit --testsuite integration --colors=always --configuration tests/php/Integration/phpunit.xml.dist --coverage-cobertura=coverage/integration-coverage.xml
+          vendor/bin/phpunit --testsuite Integration --colors=always --coverage-cobertura=coverage/integration-coverage.xml
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ github.run_id }}
+          name: coverage-report-${{ matrix.php-versions }}-${{ github.run_id }}
           path: coverage/*.xml
           retention-days: 1
 
@@ -60,7 +67,8 @@ jobs:
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
-          name: coverage-report-${{ github.run_id }}
+          pattern: coverage-report-*
+          merge-multiple: true
           path: coverage
 
       - name: Set up Python
@@ -88,7 +96,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: context.issue.number
             });
-            
+
             for (const comment of comments) {
               if (comment.user.login === 'github-actions[bot]' && comment.body.includes('# Diff Coverage')) {
                 console.log(`Deleting comment with ID: ${comment.id}`);
@@ -100,7 +108,7 @@ jobs:
               }
             }
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Post diff-cover report to PR
         if: github.event_name == 'pull_request'

@@ -35,7 +35,7 @@ class Event_Tracker {
 	 *
 	 * @var array
 	 */
-	private array $trackers = array();
+	private array $trackers = [];
 
 	/**
 	 * Constructor.
@@ -71,12 +71,12 @@ class Event_Tracker {
 	 * @return void
 	 */
 	private function load_trackers(): void {
-		$tracker_files = array(
+		$tracker_files = [
 			'class-post-tracker.php',
 			'class-user-tracker.php',
 			'class-update-tracker.php',
 			'class-comment-tracker.php',
-		);
+		];
 
 		foreach ( $tracker_files as $file ) {
 			$file_path = SYBGO_PLUGIN_DIR . 'events/trackers/' . $file;
@@ -86,12 +86,12 @@ class Event_Tracker {
 		}
 
 		// Instantiate trackers.
-		$this->trackers = array(
+		$this->trackers = [
 			'post'    => new Trackers\Post_Tracker( $this->event_repo ),
 			'user'    => new Trackers\User_Tracker( $this->event_repo ),
 			'update'  => new Trackers\Update_Tracker( $this->event_repo ),
 			'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
-		);
+		];
 	}
 
 	/**
@@ -117,11 +117,11 @@ class Event_Tracker {
 
 		// Create event in database.
 		$event_id = $this->event_repo->create(
-			array(
-				'event_type'   => $event_type,
-				'event_data'   => $event_data,
+			[
+				'event_type'    => $event_type,
+				'event_data'    => $event_data,
 				'source_plugin' => $source_plugin,
-			)
+			]
 		);
 
 		// Fire action after event is recorded.

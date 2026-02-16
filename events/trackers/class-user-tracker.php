@@ -39,7 +39,7 @@ class User_Tracker {
 		$this->event_repo = $event_repo;
 
 		// Register event types via filter.
-		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
+		add_filter( 'sybgo_event_types', [ $this, 'register_event_types' ] );
 	}
 
 	/**
@@ -49,13 +49,13 @@ class User_Tracker {
 	 */
 	public function register_hooks(): void {
 		// Track new user registrations.
-		add_action( 'user_register', array( $this, 'track_user_registration' ), 10, 1 );
+		add_action( 'user_register', [ $this, 'track_user_registration' ], 10, 1 );
 
 		// Track role changes.
-		add_action( 'set_user_role', array( $this, 'track_role_change' ), 10, 3 );
+		add_action( 'set_user_role', [ $this, 'track_role_change' ], 10, 3 );
 
 		// Track user deletion.
-		add_action( 'delete_user', array( $this, 'track_user_deletion' ), 10, 2 );
+		add_action( 'delete_user', [ $this, 'track_user_deletion' ], 10, 2 );
 	}
 
 	/**
@@ -65,21 +65,21 @@ class User_Tracker {
 	 * @return array Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
-		$types['user_registered'] = array(
-			'icon'            => '👤',
-			'stat_label'      => __( 'New Users', 'sybgo' ),
-			'short_title'     => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? array();
+		$types['user_registered'] = [
+			'icon'           => '👤',
+			'stat_label'     => __( 'New Users', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
 				return sprintf( 'New user: %s', $object['username'] ?? 'Unknown' );
 			},
-			'detailed_title'  => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? array();
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
 				return sprintf( 'New user registered: %s (%s)', $object['username'] ?? 'Unknown', $object['email'] ?? '' );
 			},
-			'ai_description'  => function ( array $object, array $metadata ): string {
+			'ai_description' => function ( array $object, array $metadata ): string {
 				return sprintf( 'New user registered: %s', $object['username'] ?? 'Unknown' );
 			},
-			'describe'        => function ( array $event_data ): string {
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Registered\n";
 				$description .= "Description: A new user account was created on the site.\n\n";
 				$description .= "Data Structure:\n";
@@ -90,25 +90,25 @@ class User_Tracker {
 				$description .= "  - metadata.registration_method: How they registered (admin, self-signup, etc.)\n";
 				return $description;
 			},
-		);
+		];
 
-		$types['user_role_changed'] = array(
-			'icon'            => '👥',
-			'stat_label'      => __( 'Role Changes', 'sybgo' ),
-			'short_title'     => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? array();
+		$types['user_role_changed'] = [
+			'icon'           => '👥',
+			'stat_label'     => __( 'Role Changes', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
 				return sprintf( 'User %s role changed to %s', $object['username'] ?? 'Unknown', $event_data['metadata']['new_role'] ?? 'subscriber' );
 			},
-			'detailed_title'  => function ( array $event_data ): string {
-				$object   = $event_data['object'] ?? array();
+			'detailed_title' => function ( array $event_data ): string {
+				$object   = $event_data['object'] ?? [];
 				$old_role = $event_data['metadata']['old_role'] ?? 'subscriber';
 				$new_role = $event_data['metadata']['new_role'] ?? 'subscriber';
 				return sprintf( 'User %s role changed from %s to %s', $object['username'] ?? 'Unknown', $old_role, $new_role );
 			},
-			'ai_description'  => function ( array $object, array $metadata ): string {
+			'ai_description' => function ( array $object, array $metadata ): string {
 				return sprintf( 'User %s role changed from %s to %s', $object['username'] ?? 'Unknown', $metadata['old_role'] ?? 'unknown', $metadata['new_role'] ?? 'unknown' );
 			},
-			'describe'        => function ( array $event_data ): string {
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Role Changed\n";
 				$description .= "Description: A user's role was changed by an administrator.\n\n";
 				$description .= "Data Structure:\n";
@@ -119,23 +119,23 @@ class User_Tracker {
 				$description .= "  - context.changed_by_id: ID of admin who made the change\n";
 				return $description;
 			},
-		);
+		];
 
-		$types['user_deleted'] = array(
-			'icon'            => '🚫',
-			'stat_label'      => __( 'Users Deleted', 'sybgo' ),
-			'short_title'     => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? array();
+		$types['user_deleted'] = [
+			'icon'           => '🚫',
+			'stat_label'     => __( 'Users Deleted', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
 				return sprintf( 'User deleted: %s', $object['username'] ?? 'Unknown' );
 			},
-			'detailed_title'  => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? array();
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
 				return sprintf( 'User "%s" was deleted', $object['username'] ?? 'Unknown' );
 			},
-			'ai_description'  => function ( array $object, array $metadata ): string {
+			'ai_description' => function ( array $object, array $metadata ): string {
 				return sprintf( 'User deleted: %s', $object['username'] ?? 'Unknown' );
 			},
-			'describe'        => function ( array $event_data ): string {
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Deleted\n";
 				$description .= "Description: A user account was permanently deleted.\n\n";
 				$description .= "Data Structure:\n";
@@ -145,7 +145,7 @@ class User_Tracker {
 				$description .= "  - context.deleted_by_id: ID of admin who deleted the account\n";
 				return $description;
 			},
-		);
+		];
 
 		return $types;
 	}
@@ -168,29 +168,29 @@ class User_Tracker {
 		$method          = $current_user_id > 0 ? 'admin_created' : 'self_signup';
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'registered',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'created_by_id' => $current_user_id > 0 ? $current_user_id : null,
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'role'                => ! empty( $user->roles ) ? $user->roles[0] : 'subscriber',
 				'registration_method' => $method,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
+			[
 				'event_type' => 'user_registered',
 				'event_data' => $event_data,
-			)
+			]
 		);
 	}
 
@@ -212,29 +212,29 @@ class User_Tracker {
 		$old_role = ! empty( $old_roles ) ? $old_roles[0] : 'none';
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'role_changed',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'changed_by_id' => get_current_user_id(),
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'old_role' => $old_role,
 				'new_role' => $new_role,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
+			[
 				'event_type' => 'user_role_changed',
 				'event_data' => $event_data,
-			)
+			]
 		);
 	}
 
@@ -253,30 +253,30 @@ class User_Tracker {
 		}
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'deleted',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'deleted_by_id' => get_current_user_id(),
-			),
-			'metadata' => array(
-				'role'              => ! empty( $user->roles ) ? $user->roles[0] : 'none',
-				'posts_reassigned'  => $reassign ? true : false,
-				'reassigned_to_id'  => $reassign,
-			),
-		);
+			],
+			'metadata' => [
+				'role'             => ! empty( $user->roles ) ? $user->roles[0] : 'none',
+				'posts_reassigned' => $reassign ? true : false,
+				'reassigned_to_id' => $reassign,
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
+			[
 				'event_type' => 'user_deleted',
 				'event_data' => $event_data,
-			)
+			]
 		);
 	}
 }

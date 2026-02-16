@@ -266,13 +266,13 @@ wp db query "SELECT * FROM wp_sybgo_reports ORDER BY period_end DESC"
 wp post create --post_title="Test Post" --post_status=publish
 
 # Verify event created
-wp db query "SELECT * FROM wp_sybgo_events WHERE event_type='post_published' ORDER BY event_timestamp DESC LIMIT 1"
+wp db query "SELECT * FROM wp_sybgo_events WHERE event_type='post_published' ORDER BY created_at DESC LIMIT 1"
 
 # Edit the post
 wp post update 1 --post_content="Updated content"
 
 # Check edit event
-wp db query "SELECT event_type, JSON_EXTRACT(event_data, '$.metadata.edit_magnitude') FROM wp_sybgo_events WHERE event_type='post_edited' ORDER BY event_timestamp DESC LIMIT 1"
+wp db query "SELECT event_type, JSON_EXTRACT(event_data, '$.metadata.edit_magnitude') FROM wp_sybgo_events WHERE event_type='post_edited' ORDER BY created_at DESC LIMIT 1"
 ```
 
 ### Test Report Freezing
@@ -295,10 +295,10 @@ wp db query "SELECT COUNT(*) FROM wp_sybgo_events WHERE report_id IS NOT NULL"
 wp cron event run sybgo_send_report_emails
 
 # Check email log
-wp db query "SELECT * FROM wp_sybgo_email_log ORDER BY sent_at DESC LIMIT 5"
+wp db query "SELECT * FROM wp_sybgo_email_log ORDER BY created_at DESC LIMIT 5"
 
 # View email content (from log)
-wp db query "SELECT recipient_email, status, error_message FROM wp_sybgo_email_log WHERE status='failed'"
+wp db query "SELECT recipient, status, error_message FROM wp_sybgo_email_log WHERE status='failed'"
 ```
 
 ## Project Structure
