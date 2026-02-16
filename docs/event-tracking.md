@@ -4,7 +4,7 @@ This guide explains what events Sybgo tracks, how tracking works, and how to con
 
 ## What Events Are Tracked
 
-Sybgo tracks 11 different event types across 4 categories:
+Sybgo tracks 16 different event types across 4 categories:
 
 ### Posts & Pages
 - **`post_published`** - New post or page published
@@ -19,7 +19,12 @@ Sybgo tracks 11 different event types across 4 categories:
 ### WordPress Updates
 - **`core_updated`** - WordPress core version updated
 - **`plugin_updated`** - Plugin updated to new version
+- **`plugin_installed`** - New plugin installed
+- **`plugin_activated`** - Plugin activated
+- **`plugin_deactivated`** - Plugin deactivated
 - **`theme_updated`** - Theme updated to new version
+- **`theme_installed`** - New theme installed
+- **`theme_switched`** - Active theme changed
 
 ### Comments
 - **`comment_posted`** - New comment submitted
@@ -27,7 +32,7 @@ Sybgo tracks 11 different event types across 4 categories:
 
 ## How Event Tracking Works
 
-When you perform an action in WordPress (publish a post, approve a comment, etc.), Sybgo's event trackers listen for the corresponding WordPress hook and create an event record.
+When you perform an action in WordPress (publish a post, approve a comment, etc.), Sybgo's tracker classes listen for the corresponding WordPress hook and create an event record. Each tracker registers its event types via the `sybgo_event_types` filter and hooks into WordPress actions to capture events.
 
 ### Event Data Structure
 
@@ -58,7 +63,7 @@ Each event stores the following information:
 This structured format makes it easy for:
 - Generating human-readable email summaries
 - Filtering events by type or object
-- Future AI integration
+- AI-powered summaries (via Anthropic Claude API)
 
 ## Smart Throttling
 
@@ -98,7 +103,7 @@ When you edit a post, Sybgo calculates what percentage of the content changed:
 
 ### Enable/Disable Event Types
 
-**Admin UI:** Settings → Sybgo → Event Tracking
+**Admin UI:** Settings → Sybgo
 
 Uncheck any event types you don't want to track. This is useful for:
 - Reducing noise (e.g., disable comment events on low-traffic sites)
@@ -106,7 +111,7 @@ Uncheck any event types you don't want to track. This is useful for:
 
 ### Adjust Edit Threshold
 
-**Admin UI:** Settings → Sybgo → Edit Magnitude Threshold
+**Admin UI:** Settings → Sybgo
 
 Set the minimum percentage change to track edit events:
 - Default: 5%
@@ -120,20 +125,27 @@ Set the minimum percentage change to track edit events:
 
 ### Dashboard Widget
 
-**Location:** WP Admin Dashboard → Sybgo widget (sidebar)
+**Location:** WP Admin Dashboard → "Site Activity Digest" widget (sidebar)
 
 **Features:**
-- See this week's event count
+- Last Week's Summary with highlights from the previous frozen report
+- This week's event count
 - Filter events by type (All, Posts, Users, Updates, Comments)
-- Preview what will be in Monday's email
+- Preview this week's digest (with AI summary if configured)
+
+### Reports Page
+
+**Location:** WP Admin → Sybgo Reports (top-level menu)
+
+Shows all reports (active, frozen, emailed) with period dates, event counts, status, and detailed view with summary cards, highlights, and full event list.
 
 ### Database Inspection
 
 ```sql
 -- View recent events
-SELECT event_type, JSON_EXTRACT(event_data, '$.object.title') as title, created_at
+SELECT event_type, JSON_EXTRACT(event_data, '$.object.title') as title, event_timestamp
 FROM wp_sybgo_events
-ORDER BY created_at DESC
+ORDER BY event_timestamp DESC
 LIMIT 10;
 
 -- Count events by type
@@ -146,10 +158,10 @@ GROUP BY event_type;
 SELECT
     JSON_EXTRACT(event_data, '$.object.title') as title,
     JSON_EXTRACT(event_data, '$.metadata.edit_magnitude') as edit_pct,
-    created_at
+    event_timestamp
 FROM wp_sybgo_events
 WHERE event_type = 'post_edited'
-ORDER BY created_at DESC
+ORDER BY event_timestamp DESC
 LIMIT 10;
 ```
 
@@ -158,7 +170,7 @@ LIMIT 10;
 ### Events Not Being Tracked
 
 **Check 1: Is the event type enabled?**
-- Go to Settings → Sybgo → Event Tracking
+- Go to Settings → Sybgo
 - Ensure the checkbox is enabled for that event type
 
 **Check 2: Is throttling preventing the event?**
@@ -168,7 +180,7 @@ LIMIT 10;
 
 **Check 3: Is the edit magnitude too small?**
 - Minor typo fixes may be below the threshold
-- Check Settings → Sybgo → Edit Magnitude Threshold
+- Check the edit magnitude threshold in Settings → Sybgo
 - Lower the threshold or make larger edits
 
 **Check 4: Verify WordPress hooks are firing**

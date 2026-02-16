@@ -3,15 +3,6 @@ name: PHPUnit
 
 on:
   pull_request:
-    branches:
-      - trunk
-      - develop
-      - branch-*
-      - feature/*
-      - enhancement/*
-      - fix/*
-      - dev/*
-      - task/*
 
 jobs:
   phpunit:
