@@ -25,9 +25,7 @@ jobs:
                 run: composer validate
 
             -   name: Install dependencies
-                run: |
-                    composer install --prefer-dist --no-progress --no-suggest
-                    npm install
+                run: composer install --prefer-dist --no-progress --no-suggest
 
             -   name: Run php linter
                 run: composer phpcs

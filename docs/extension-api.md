@@ -391,10 +391,10 @@ if ( function_exists( 'sybgo_track_event' ) ) {
 - Include user information when relevant
 - Store data needed for future analysis
 
-### 4. Register Event Types
-- Always register custom event types
-- Provide clear descriptions
-- Document your data structure
+### 4. Register Event Types via Filter
+- Always register custom event types via `sybgo_event_types` filter
+- Provide all callable fields (short_title, detailed_title, ai_description, describe)
+- Include an icon and stat_label for dashboard display
 
 ### 5. Use Source Plugin Identifier
 ```php
