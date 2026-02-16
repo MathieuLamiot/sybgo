@@ -26,10 +26,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SYBGO_VERSION', '1.0.0' );
-define( 'SYBGO_PLUGIN_FILE', __FILE__ );
-define( 'SYBGO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'SYBGO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+if ( ! defined( 'SYBGO_VERSION' ) ) {
+	define( 'SYBGO_VERSION', '1.0.0' );
+}
+if ( ! defined( 'SYBGO_PLUGIN_FILE' ) ) {
+	define( 'SYBGO_PLUGIN_FILE', __FILE__ );
+}
+if ( ! defined( 'SYBGO_PLUGIN_DIR' ) ) {
+	define( 'SYBGO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'SYBGO_PLUGIN_URL' ) ) {
+	define( 'SYBGO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+}
 
 // Require Composer autoloader if it exists.
 if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
