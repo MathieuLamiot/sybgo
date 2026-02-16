@@ -151,9 +151,6 @@ class Dashboard_Widget {
 		// Get current week's events (unassigned).
 		$current_events = $this->event_repo->get_by_report( null );
 
-		// Get active report for trend comparison.
-		$active_report = $this->report_repo->get_active();
-
 		?>
 		<div class="sybgo-widget">
 			<?php if ( $last_report ) : ?>
