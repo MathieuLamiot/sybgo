@@ -1,0 +1,325 @@
+/**
+ * Sybgo Dashboard Widget Styles
+ *
+ * @package Rocket\Sybgo
+ */
+
+/* Widget Container */
+.sybgo-widget {
+	font-size: 13px;
+}
+
+/* Last Report Section */
+.sybgo-last-report {
+	margin-bottom: 20px;
+	padding-bottom: 15px;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.sybgo-last-report h3 {
+	margin: 0 0 10px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.sybgo-period {
+	font-size: 12px;
+	color: #646970;
+	margin-bottom: 10px;
+}
+
+.sybgo-highlights {
+	margin: 10px 0 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sybgo-highlights li {
+	padding: 5px 0 5px 20px;
+	position: relative;
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.sybgo-highlights li:before {
+	content: "•";
+	position: absolute;
+	left: 5px;
+	color: #2271b1;
+}
+
+/* Current Week Section */
+.sybgo-current-week h3 {
+	margin: 0 0 15px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+/* Filter Buttons */
+.sybgo-filters {
+	display: flex;
+	gap: 5px;
+	margin-bottom: 15px;
+	flex-wrap: wrap;
+}
+
+.sybgo-filter-btn {
+	flex: 1;
+	min-width: 60px;
+	padding: 5px 10px;
+	font-size: 11px;
+	border: 1px solid #c3c4c7;
+	background: #f6f7f7;
+	color: #2c3338;
+	cursor: pointer;
+	border-radius: 3px;
+	transition: all 0.2s;
+}
+
+.sybgo-filter-btn:hover {
+	background: #fff;
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.sybgo-filter-btn.active {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+	font-weight: 600;
+}
+
+/* Event Stats */
+.sybgo-event-stats {
+	margin-bottom: 15px;
+	padding: 10px;
+	background: #f0f6fc;
+	border-radius: 3px;
+	text-align: center;
+}
+
+.sybgo-event-stats strong {
+	font-size: 24px;
+	color: #2271b1;
+	display: block;
+	margin-bottom: 2px;
+}
+
+/* Events List */
+.sybgo-events-list {
+	margin-bottom: 15px;
+	position: relative;
+}
+
+.sybgo-events-list.loading {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.sybgo-event-items {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sybgo-event-item {
+	display: grid;
+	grid-template-columns: 24px 1fr auto;
+	gap: 8px;
+	align-items: center;
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.sybgo-event-item:last-child {
+	border-bottom: none;
+}
+
+.sybgo-event-icon {
+	font-size: 16px;
+	text-align: center;
+}
+
+.sybgo-event-title {
+	font-size: 12px;
+	color: #2c3338;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.sybgo-event-time {
+	font-size: 11px;
+	color: #787c82;
+	white-space: nowrap;
+}
+
+.sybgo-no-events {
+	text-align: center;
+	color: #646970;
+	font-style: italic;
+	margin: 20px 0;
+}
+
+.sybgo-more-events {
+	text-align: center;
+	color: #2271b1;
+	font-size: 12px;
+	margin: 10px 0 0 0;
+	font-weight: 500;
+}
+
+/* Widget Actions */
+.sybgo-widget-actions {
+	margin-top: 15px;
+	text-align: center;
+}
+
+.sybgo-preview-btn {
+	width: 100%;
+}
+
+/* Modal */
+.sybgo-modal {
+	display: none;
+	position: fixed;
+	z-index: 100000;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	overflow: auto;
+	background-color: rgba(0, 0, 0, 0.6);
+}
+
+.sybgo-modal-content {
+	background-color: #fff;
+	margin: 5% auto;
+	padding: 20px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	width: 90%;
+	max-width: 600px;
+	position: relative;
+	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.sybgo-modal-close {
+	color: #787c82;
+	position: absolute;
+	right: 15px;
+	top: 15px;
+	font-size: 28px;
+	font-weight: bold;
+	cursor: pointer;
+	transition: color 0.2s;
+}
+
+.sybgo-modal-close:hover,
+.sybgo-modal-close:focus {
+	color: #2c3338;
+}
+
+.sybgo-modal h2 {
+	margin: 0 0 20px 0;
+	font-size: 20px;
+	color: #1d2327;
+}
+
+.sybgo-modal-body {
+	min-height: 100px;
+}
+
+/* Preview Content */
+.sybgo-preview h3 {
+	margin: 0 0 15px 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.sybgo-preview-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 15px;
+	margin-bottom: 20px;
+}
+
+.sybgo-stat-item {
+	padding: 15px;
+	background: #f6f7f7;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.sybgo-stat-label {
+	font-size: 11px;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 5px;
+}
+
+.sybgo-stat-value {
+	font-size: 24px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.sybgo-trend {
+	font-size: 12px;
+	margin-left: 5px;
+}
+
+.sybgo-trend.up {
+	color: #00a32a;
+}
+
+.sybgo-trend.down {
+	color: #d63638;
+}
+
+.sybgo-preview-note {
+	font-size: 12px;
+	color: #646970;
+	font-style: italic;
+	text-align: center;
+	margin: 20px 0 0 0;
+	padding-top: 15px;
+	border-top: 1px solid #dcdcde;
+}
+
+/* Loading State */
+.loading {
+	text-align: center;
+	color: #646970;
+	padding: 20px;
+}
+
+.error {
+	text-align: center;
+	color: #d63638;
+	padding: 20px;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.sybgo-filters {
+		flex-direction: column;
+	}
+
+	.sybgo-filter-btn {
+		width: 100%;
+	}
+
+	.sybgo-event-item {
+		grid-template-columns: 24px 1fr;
+	}
+
+	.sybgo-event-time {
+		grid-column: 2;
+		text-align: right;
+	}
+}

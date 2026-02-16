@@ -1,0 +1,189 @@
+/**
+ * Sybgo Admin Styles
+ *
+ * @package Rocket\Sybgo
+ * @since 1.0.0
+ */
+
+/* Dashboard Widget Styles */
+#sybgo_activity_digest .sybgo-dashboard-widget {
+	padding: 0;
+}
+
+#sybgo_activity_digest .last-week-section,
+#sybgo_activity_digest .current-week-section {
+	padding: 12px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+#sybgo_activity_digest .current-week-section {
+	border-bottom: none;
+}
+
+#sybgo_activity_digest h3 {
+	margin: 0 0 10px 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+#sybgo_activity_digest .period {
+	color: #646970;
+	font-size: 12px;
+	margin-bottom: 10px;
+}
+
+#sybgo_activity_digest .event-summary,
+#sybgo_activity_digest .recent-events {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+#sybgo_activity_digest .event-summary li,
+#sybgo_activity_digest .recent-events li {
+	padding: 6px 0;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 13px;
+}
+
+#sybgo_activity_digest .event-summary li:last-child,
+#sybgo_activity_digest .recent-events li:last-child {
+	border-bottom: none;
+}
+
+#sybgo_activity_digest .event-count {
+	font-size: 18px;
+	font-weight: 600;
+	color: #1d2327;
+	margin-bottom: 10px;
+}
+
+#sybgo_activity_digest .event-type {
+	font-weight: 500;
+	color: #1d2327;
+}
+
+#sybgo_activity_digest .event-time {
+	color: #646970;
+	font-size: 12px;
+	float: right;
+}
+
+/* Filter Buttons */
+.sybgo-filter-buttons {
+	margin: 12px 0;
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.sybgo-filter-buttons button {
+	padding: 4px 10px;
+	font-size: 12px;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+.sybgo-filter-buttons button:hover {
+	background: #f6f7f7;
+}
+
+.sybgo-filter-buttons button.active {
+	background: #2271b1;
+	color: #fff;
+	border-color: #2271b1;
+}
+
+/* Trend Indicators */
+.sybgo-trend {
+	display: inline-block;
+	margin-left: 6px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.sybgo-trend.up {
+	color: #00a32a;
+}
+
+.sybgo-trend.down {
+	color: #d63638;
+}
+
+.sybgo-trend.same {
+	color: #646970;
+}
+
+/* Reports Page */
+.sybgo-reports-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.sybgo-reports-table th,
+.sybgo-reports-table td {
+	padding: 12px;
+	text-align: left;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.sybgo-reports-table th {
+	font-weight: 600;
+	background: #f6f7f7;
+}
+
+/* Action Buttons */
+.sybgo-action-buttons {
+	display: flex;
+	gap: 8px;
+	margin: 16px 0;
+}
+
+/* Loading State */
+.sybgo-loading {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+/* Modal Preview */
+.sybgo-modal-overlay {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.7);
+	z-index: 100000;
+	align-items: center;
+	justify-content: center;
+}
+
+.sybgo-modal-overlay.active {
+	display: flex;
+}
+
+.sybgo-modal-content {
+	background: #fff;
+	padding: 20px;
+	border-radius: 4px;
+	max-width: 800px;
+	max-height: 90vh;
+	overflow-y: auto;
+	position: relative;
+}
+
+.sybgo-modal-close {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	cursor: pointer;
+	font-size: 24px;
+	color: #646970;
+}
+
+.sybgo-modal-close:hover {
+	color: #1d2327;
+}

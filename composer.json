@@ -25,16 +25,35 @@
 		"php": "^7 || ^8",
 		"brain/monkey": "^2.0",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
+		"mockery/mockery": "^1.3",
 		"phpcompatibility/phpcompatibility-wp": "^2.0",
 		"phpunit/phpunit": "^7 || ^8",
 		"wp-coding-standards/wpcs": "^2",
-		"wp-media/phpunit": "dev-trunk"
+		"yoast/phpunit-polyfills": "^1.0"
 	},
-	"autoload": {},
-	"autoload-dev": {},
+	"autoload": {
+		"classmap": [
+			"database/",
+			"events/",
+			"reports/",
+			"admin/",
+			"email/",
+			"api/",
+			"class-factory.php",
+			"class-sybgo.php"
+		],
+		"files": [
+			"api/functions.php"
+		]
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Rocket\\Sybgo\\Tests\\": "Tests/"
+		}
+	},
 	"scripts": {
-		"test-unit": "\"vendor/bin/wpmedia-phpunit\" unit path=Tests/Unit",
-		"test-integration": "\"vendor/bin/wpmedia-phpunit\" integration path=Tests/Integration/",
+		"test-unit": "phpunit --testsuite=Unit",
+		"test-integration": "phpunit --testsuite=Integration",
 		"run-tests": [
 			"@test-unit",
 			"@test-integration"
@@ -45,6 +64,6 @@
 		"phpcs:fix": "phpcbf"
 	},
 	"require": {
-		"fabpot/goutte": "^4.0"
+		"berlindb/core": "^2.0"
 	}
 }
