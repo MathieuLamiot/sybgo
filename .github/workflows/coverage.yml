@@ -1,0 +1,130 @@
+name: CI with Coverage
+
+on:
+  pull_request:
+    branches:
+      - trunk
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: mbstring, xml, bcmath, zip, curl, xdebug
+
+      - name: Install SVN
+        run: sudo apt-get install subversion
+
+      - name: Start mysql service
+        run: sudo /etc/init.d/mysql start
+
+      - name: Install tests
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 ${{ matrix.wp-versions }}
+
+      - name: Mysql8 auth plugin workaround
+        run: sudo mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
+
+      - name: Install dependencies
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }'
+        run: composer install --prefer-dist --no-interaction --no-scripts
+
+      - name: Run unit tests with coverage
+        run: |
+          mkdir -p coverage
+          vendor/bin/phpunit --testsuite unit --colors=always --configuration tests/php/Unit/phpunit.xml.dist --coverage-cobertura=coverage/unit-coverage.xml
+
+      - name: Run integration tests with coverage
+        run: |
+          mkdir -p coverage
+          vendor/bin/phpunit --testsuite integration --colors=always --configuration tests/php/Integration/phpunit.xml.dist --coverage-cobertura=coverage/integration-coverage.xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_id }}
+          path: coverage/*.xml
+          retention-days: 1
+
+  diff-cover:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_id }}
+          path: coverage
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install diff-cover
+        run: pip install diff-cover
+
+      - name: Run diff-cover to check code coverage of changed lines
+        if: github.event_name == 'pull_request'
+        run: |
+          set +e
+          diff-cover coverage/unit-coverage.xml coverage/integration-coverage.xml --compare-branch=origin/${{ github.base_ref }} --markdown-report diff_coverage.md --exclude test*.py --fail-under=50 --expand-coverage-report
+          echo "DIFF_COVER_EXIT_STATUS=$?" >> $GITHUB_ENV
+          set -e
+        shell: bash
+      - name: Delete previous diff-cover reports
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            for (const comment of comments) {
+              if (comment.user.login === 'github-actions[bot]' && comment.body.includes('# Diff Coverage')) {
+                console.log(`Deleting comment with ID: ${comment.id}`);
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: comment.id
+                });
+              }
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+
+      - name: Post diff-cover report to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('diff_coverage.md', 'utf8');
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment,
+            });
+      - name: Fail job if coverage is below threshold
+        if: github.event_name == 'pull_request'
+        run: |
+          if [[ "${{ env.DIFF_COVER_EXIT_STATUS }}" -ne 0 ]]; then
+            echo "Coverage below threshold; failing the job."
+            exit 1
+          fi
+        shell: bash

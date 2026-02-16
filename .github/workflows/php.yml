@@ -1,0 +1,44 @@
+name: Continuous Integration
+
+on:
+    pull_request:
+        branches:
+            - trunk
+            - develop
+            - branch-*
+            - feature/*
+            - enhancement/*
+            - fix/*
+            - dev/*
+            - task/*
+
+jobs:
+    run:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                php-versions: ['7.4']
+        name: PHP ${{ matrix.php-versions }}
+        steps:
+            -   uses: actions/checkout@v2
+
+            -   name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ matrix.php-versions }}
+                    coverage: none
+                    extensions: zip, mysqli
+                    tools: composer:v2
+
+            -   name: Validate composer.json and composer.lock
+                run: composer validate
+
+            -   name: Install dependencies
+                env:
+                    COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }' # [tl! **]
+                run: |
+                    composer install --prefer-dist --no-progress --no-suggest
+                    npm install
+
+            -   name: Run php linter
+                run: composer phpcs
