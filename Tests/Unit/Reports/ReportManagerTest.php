@@ -113,16 +113,19 @@ class ReportManagerTest extends TestCase {
 			->once()
 			->with( 'sybgo_before_report_freeze', 1 );
 
-		$this->report_generator->shouldReceive( 'generate_summary' )
-			->once()
-			->with( 1 )
-			->andReturn( $summary_data );
-
-		// Note: assign_to_report takes 3 parameters (report_id, start, end).
+		// CRITICAL: Events must be assigned BEFORE summary is generated.
+		// This is the correct order to ensure summary has data to work with.
 		$this->event_repo->shouldReceive( 'assign_to_report' )
 			->once()
 			->with( 1, '2026-02-10 00:00:00', '2026-02-16 23:55:00' )
-			->andReturn( 10 );
+			->andReturn( 10 )
+			->ordered();
+
+		$this->report_generator->shouldReceive( 'generate_summary' )
+			->once()
+			->with( 1 )
+			->andReturn( $summary_data )
+			->ordered();
 
 		$this->report_repo->shouldReceive( 'update' )
 			->once()

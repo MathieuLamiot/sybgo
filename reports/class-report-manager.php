@@ -119,10 +119,7 @@ class Report_Manager {
 		// Fire before freeze hook.
 		do_action( 'sybgo_before_report_freeze', $report_id );
 
-		// Generate summary data.
-		$summary = $this->generator->generate_summary( $report_id );
-
-		// Assign all unassigned events to this report.
+		// Assign all unassigned events to this report FIRST.
 		$period_start = $active['period_start'];
 		$period_end   = current_time( 'mysql' );
 
@@ -131,6 +128,9 @@ class Report_Manager {
 			$period_start,
 			$period_end
 		);
+
+		// Generate summary data AFTER events are assigned.
+		$summary = $this->generator->generate_summary( $report_id );
 
 		// Update report.
 		$this->report_repo->update(
