@@ -563,7 +563,7 @@ class Reports_Page {
 	private function render_events_table( array $events ): void {
 		// Sort by timestamp descending.
 		usort( $events, function( $a, $b ) {
-			return strtotime( $b['timestamp'] ) - strtotime( $a['timestamp'] );
+			return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 		} );
 
 		?>
@@ -581,7 +581,7 @@ class Reports_Page {
 					$event_data = json_decode( $event['event_data'], true );
 					$icon       = $this->get_event_icon( $event['event_type'] );
 					$title      = $this->get_event_title( $event['event_type'], $event_data );
-					$time       = gmdate( 'M j, Y g:i A', strtotime( $event['timestamp'] ) );
+					$time       = gmdate( 'M j, Y g:i A', strtotime( $event['event_timestamp'] ) );
 					?>
 					<tr>
 						<td style="text-align: center; font-size: 20px;">

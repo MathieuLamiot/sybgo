@@ -269,7 +269,7 @@ class Dashboard_Widget {
 
 		// Sort by timestamp descending.
 		usort( $events, function( $a, $b ) {
-			return strtotime( $b['timestamp'] ) - strtotime( $a['timestamp'] );
+			return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 		} );
 
 		// Limit display.
@@ -312,7 +312,7 @@ class Dashboard_Widget {
 
 		$icon  = $this->get_event_icon( $event['event_type'] );
 		$title = $this->get_event_title( $event['event_type'], $event_data );
-		$time  = human_time_diff( strtotime( $event['timestamp'] ), current_time( 'timestamp' ) );
+		$time  = human_time_diff( strtotime( $event['event_timestamp'] ), current_time( 'timestamp' ) );
 
 		?>
 		<li class="sybgo-event-item" data-type="<?php echo esc_attr( $event['event_type'] ); ?>">
@@ -436,31 +436,42 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function ajax_preview_digest(): void {
-		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
+		try {
+			check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
 
-		if ( ! current_user_can( 'read' ) ) {
-			wp_send_json_error( 'Unauthorized' );
+			if ( ! current_user_can( 'read' ) ) {
+				wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+			}
+
+			// Get current week's events.
+			$events = $this->event_repo->get_by_report( null );
+
+			// Generate preview summary.
+			$totals = $this->count_events_by_type( $events );
+
+			// Try to get active report for trends, but don't fail if it doesn't exist.
+			$active_report = $this->report_repo->get_active();
+			$trends        = array();
+
+			if ( $active_report ) {
+				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
+			}
+
+			ob_start();
+			$this->render_preview_content( $totals, $trends, $events );
+			$html = ob_get_clean();
+
+			wp_send_json_success( array( 'html' => $html ) );
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				array(
+					'message' => $e->getMessage(),
+					'file'    => $e->getFile(),
+					'line'    => $e->getLine(),
+					'trace'   => $e->getTraceAsString(),
+				)
+			);
 		}
-
-		// Get current week's events.
-		$events = $this->event_repo->get_by_report( null );
-
-		// Get active report.
-		$active_report = $this->report_repo->get_active();
-
-		if ( ! $active_report ) {
-			wp_send_json_error( 'No active report found' );
-		}
-
-		// Generate preview summary.
-		$totals = $this->count_events_by_type( $events );
-		$trends = $this->report_generator->get_trend_comparison( $active_report['id'], $totals );
-
-		ob_start();
-		$this->render_preview_content( $totals, $trends, $events );
-		$html = ob_get_clean();
-
-		wp_send_json_success( array( 'html' => $html ) );
 	}
 
 	/**

@@ -261,4 +261,13 @@ class Report_Repository {
 
 		return false;
 	}
+
+	/**
+	 * Get the table name.
+	 *
+	 * @return string Table name.
+	 */
+	public function get_table_name(): string {
+		return $this->table;
+	}
 }

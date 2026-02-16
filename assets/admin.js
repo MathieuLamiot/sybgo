@@ -102,11 +102,29 @@
 					if (response.success) {
 						$modalBody.html(response.data.html);
 					} else {
-						$modalBody.html('<p class="error">Failed to generate preview.</p>');
+						var errorHtml = '<p class="error">Failed to generate preview.</p>';
+						if (response.data) {
+							errorHtml += '<pre style="background: #f0f0f0; padding: 10px; overflow: auto; font-size: 11px;">';
+							errorHtml += 'Message: ' + (response.data.message || 'Unknown error') + '\n';
+							if (response.data.file) {
+								errorHtml += 'File: ' + response.data.file + ':' + response.data.line + '\n';
+							}
+							if (response.data.trace) {
+								errorHtml += '\nStack trace:\n' + response.data.trace;
+							}
+							errorHtml += '</pre>';
+						}
+						$modalBody.html(errorHtml);
 					}
 				},
-				error: function() {
-					$modalBody.html('<p class="error">An error occurred. Please try again.</p>');
+				error: function(xhr, status, error) {
+					var errorHtml = '<p class="error">An error occurred. Please try again.</p>';
+					errorHtml += '<pre style="background: #f0f0f0; padding: 10px; overflow: auto; font-size: 11px;">';
+					errorHtml += 'Status: ' + status + '\n';
+					errorHtml += 'Error: ' + error + '\n';
+					errorHtml += 'Response: ' + xhr.responseText;
+					errorHtml += '</pre>';
+					$modalBody.html(errorHtml);
 				}
 			});
 		},
