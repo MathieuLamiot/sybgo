@@ -133,32 +133,6 @@ class Event_Tracker {
 	}
 
 	/**
-	 * Check if event should be throttled.
-	 *
-	 * Checks if the same event type for the same object was recorded within the throttle period.
-	 *
-	 * @param string $event_type Event type.
-	 * @param int    $object_id Object ID.
-	 * @param int    $throttle_seconds Throttle period in seconds (default 3600 = 1 hour).
-	 * @return bool True if should be throttled (skip), false if should record.
-	 */
-	public function should_throttle( string $event_type, int $object_id, int $throttle_seconds = 3600 ): bool {
-		$last_event = $this->event_repo->get_last_event_for_object( $event_type, $object_id );
-
-		if ( ! $last_event ) {
-			return false; // No previous event, don't throttle.
-		}
-
-		// Calculate time since last event.
-		$last_timestamp = strtotime( $last_event['event_timestamp'] );
-		$current_time   = current_time( 'timestamp' );
-		$time_diff      = $current_time - $last_timestamp;
-
-		// Throttle if within the throttle period.
-		return $time_diff < $throttle_seconds;
-	}
-
-	/**
 	 * Get tracker instance.
 	 *
 	 * @param string $tracker_name Tracker name (post, user, update, comment).
