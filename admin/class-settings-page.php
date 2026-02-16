@@ -139,6 +139,22 @@ class Settings_Page {
 			'sybgo-settings',
 			'sybgo_report_section'
 		);
+
+		// AI Settings Section.
+		add_settings_section(
+			'sybgo_ai_section',
+			__( 'AI Summary Settings', 'sybgo' ),
+			array( $this, 'render_ai_section_description' ),
+			'sybgo-settings'
+		);
+
+		add_settings_field(
+			'anthropic_api_key',
+			__( 'Anthropic API Key', 'sybgo' ),
+			array( $this, 'render_anthropic_api_key_field' ),
+			'sybgo-settings',
+			'sybgo_ai_section'
+		);
 	}
 
 	/**
@@ -182,6 +198,9 @@ class Settings_Page {
 
 		// Sanitize boolean settings.
 		$sanitized['send_empty_reports'] = isset( $input['send_empty_reports'] );
+
+		// Sanitize AI API key.
+		$sanitized['anthropic_api_key'] = isset( $input['anthropic_api_key'] ) ? sanitize_text_field( trim( $input['anthropic_api_key'] ) ) : '';
 
 		return $sanitized;
 	}
@@ -517,5 +536,65 @@ class Settings_Page {
 	public static function get_edit_threshold(): int {
 		$settings = get_option( self::OPTION_NAME, array() );
 		return $settings['edit_magnitude_threshold'] ?? 5;
+	}
+
+	/**
+	 * Render AI section description.
+	 *
+	 * @return void
+	 */
+	public function render_ai_section_description(): void {
+		?>
+		<p>
+			<?php
+			echo wp_kses_post(
+				sprintf(
+					/* translators: %s: link to Anthropic console */
+					__( 'Enable AI-powered summaries using Claude. Get your API key from <a href="%s" target="_blank" rel="noopener">Anthropic Console</a>.', 'sybgo' ),
+					'https://console.anthropic.com/settings/keys'
+				)
+			);
+			?>
+		</p>
+		<p>
+			<strong><?php esc_html_e( 'Privacy Note:', 'sybgo' ); ?></strong>
+			<?php esc_html_e( 'Event data (post titles, plugin names, etc.) is sent to Anthropic\'s API to generate summaries.', 'sybgo' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render Anthropic API key field.
+	 *
+	 * @return void
+	 */
+	public function render_anthropic_api_key_field(): void {
+		$settings = $this->get_settings();
+		$api_key  = $settings['anthropic_api_key'] ?? '';
+
+		?>
+		<input
+			type="password"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[anthropic_api_key]"
+			id="sybgo_anthropic_api_key"
+			value="<?php echo esc_attr( $api_key ); ?>"
+			class="regular-text"
+			placeholder="sk-ant-..."
+			autocomplete="off"
+		/>
+		<p class="description">
+			<?php esc_html_e( 'Your Anthropic API key. When configured, AI summaries will appear in email digests and preview.', 'sybgo' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Get Anthropic API key.
+	 *
+	 * @return string API key or empty string if not set.
+	 */
+	public static function get_anthropic_api_key(): string {
+		$settings = get_option( self::OPTION_NAME, array() );
+		return $settings['anthropic_api_key'] ?? '';
 	}
 }

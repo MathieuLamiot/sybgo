@@ -40,16 +40,27 @@ class ReportGeneratorTest extends TestCase {
 	private $report_repo;
 
 	/**
+	 * Mock AI summarizer.
+	 *
+	 * @var Mockery\MockInterface
+	 */
+	private $ai_summarizer;
+
+	/**
 	 * Set up test environment.
 	 */
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->event_repo  = Mockery::mock( 'Rocket\Sybgo\Database\Event_Repository' );
-		$this->report_repo = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
+		$this->event_repo    = Mockery::mock( 'Rocket\Sybgo\Database\Event_Repository' );
+		$this->report_repo   = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
+		$this->ai_summarizer = Mockery::mock( 'Rocket\Sybgo\AI\AI_Summarizer' );
 
-		$this->generator = new Report_Generator( $this->event_repo, $this->report_repo );
+		// Mock AI summarizer to return null (no API key configured).
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( null );
+
+		$this->generator = new Report_Generator( $this->event_repo, $this->report_repo, $this->ai_summarizer );
 
 		// Mock WordPress filters - apply_filters returns the value being filtered.
 		Functions\when( 'apply_filters' )->alias( function( $hook, $value ) {

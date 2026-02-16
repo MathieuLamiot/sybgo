@@ -15,6 +15,7 @@ namespace Rocket\Sybgo\Admin;
 use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Reports\Report_Generator;
+use Rocket\Sybgo\AI\AI_Summarizer;
 
 /**
  * Dashboard Widget class.
@@ -47,20 +48,30 @@ class Dashboard_Widget {
 	private Report_Generator $report_generator;
 
 	/**
+	 * AI summarizer instance.
+	 *
+	 * @var AI_Summarizer
+	 */
+	private AI_Summarizer $ai_summarizer;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Event_Repository  $event_repo Event repository.
 	 * @param Report_Repository $report_repo Report repository.
 	 * @param Report_Generator  $report_generator Report generator.
+	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
-		Report_Generator $report_generator
+		Report_Generator $report_generator,
+		AI_Summarizer $ai_summarizer
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
 		$this->report_generator = $report_generator;
+		$this->ai_summarizer    = $ai_summarizer;
 	}
 
 	/**
@@ -487,8 +498,18 @@ class Dashboard_Widget {
 				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
 			}
 
+			// Generate AI summary if API key is configured.
+			$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
+			$ai_error   = null;
+
+			// Check if API key is configured but summary is null (API error).
+			if ( null === $ai_summary && ! empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
+				// Get the last error from error log.
+				$ai_error = 'The AI summary could not be generated. Check your API key and account status.';
+			}
+
 			ob_start();
-			$this->render_preview_content( $totals, $trends, $events );
+			$this->render_preview_content( $totals, $trends, $events, $ai_summary, $ai_error );
 			$html = ob_get_clean();
 
 			wp_send_json_success( array( 'html' => $html ) );
@@ -507,14 +528,56 @@ class Dashboard_Widget {
 	/**
 	 * Render preview content.
 	 *
-	 * @param array $totals Event totals.
-	 * @param array $trends Trend data.
-	 * @param array $events All events.
+	 * @param array       $totals Event totals.
+	 * @param array       $trends Trend data.
+	 * @param array       $events All events.
+	 * @param string|null $ai_summary AI-generated summary (optional).
+	 * @param string|null $ai_error AI error message (optional).
 	 * @return void
 	 */
-	private function render_preview_content( array $totals, array $trends, array $events ): void {
+	private function render_preview_content( array $totals, array $trends, array $events, ?string $ai_summary = null, ?string $ai_error = null ): void {
 		?>
 		<div class="sybgo-preview">
+			<?php if ( $ai_summary ) : ?>
+				<div class="sybgo-ai-summary" style="background: #f0f6fc; border-left: 4px solid #0073aa; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+						<span class="dashicons dashicons-admin-comments" style="color: #0073aa;"></span>
+						<?php esc_html_e( 'AI Summary', 'sybgo' ); ?>
+					</h3>
+					<p style="margin: 0; line-height: 1.6; color: #23282d;">
+						<?php echo esc_html( $ai_summary ); ?>
+					</p>
+				</div>
+			<?php elseif ( $ai_error ) : ?>
+				<div class="sybgo-ai-summary" style="background: #fef5e7; border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+						<span class="dashicons dashicons-warning" style="color: #e74c3c;"></span>
+						<?php esc_html_e( 'AI Summary Error', 'sybgo' ); ?>
+					</h3>
+					<p style="margin: 0; line-height: 1.6; color: #23282d;">
+						<?php echo esc_html( $ai_error ); ?>
+					</p>
+				</div>
+			<?php elseif ( empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
+				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>
+						<?php esc_html_e( 'AI Summaries Available', 'sybgo' ); ?>
+					</h3>
+					<p style="margin: 0; line-height: 1.6; color: #23282d;">
+						<?php
+						echo wp_kses_post(
+							sprintf(
+								/* translators: %s: settings page URL */
+								__( 'Configure your Anthropic API key in <a href="%s">Settings</a> to enable AI-powered summaries of your weekly activity!', 'sybgo' ),
+								admin_url( 'options-general.php?page=sybgo-settings' )
+							)
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+
 			<h3><?php esc_html_e( 'Activity Summary', 'sybgo' ); ?></h3>
 
 			<div class="sybgo-preview-stats">

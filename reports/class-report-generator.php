@@ -14,6 +14,7 @@ namespace Rocket\Sybgo\Reports;
 
 use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Database\Report_Repository;
+use Rocket\Sybgo\AI\AI_Summarizer;
 
 /**
  * Report Generator class.
@@ -39,14 +40,23 @@ class Report_Generator {
 	private Report_Repository $report_repo;
 
 	/**
+	 * AI summarizer instance.
+	 *
+	 * @var AI_Summarizer
+	 */
+	private AI_Summarizer $ai_summarizer;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Event_Repository  $event_repo Event repository.
 	 * @param Report_Repository $report_repo Report repository.
+	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
 	 */
-	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo ) {
-		$this->event_repo  = $event_repo;
-		$this->report_repo = $report_repo;
+	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo, AI_Summarizer $ai_summarizer ) {
+		$this->event_repo    = $event_repo;
+		$this->report_repo   = $report_repo;
+		$this->ai_summarizer = $ai_summarizer;
 	}
 
 	/**
@@ -71,13 +81,17 @@ class Report_Generator {
 		// Get top authors.
 		$top_authors = $this->get_top_authors( $events );
 
+		// Generate AI summary.
+		$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
+
 		// Build summary data.
 		$summary = array(
-			'totals'      => $totals,
-			'trends'      => $trends,
-			'highlights'  => $highlights,
-			'top_authors' => $top_authors,
+			'totals'       => $totals,
+			'trends'       => $trends,
+			'highlights'   => $highlights,
+			'top_authors'  => $top_authors,
 			'total_events' => count( $events ),
+			'ai_summary'   => $ai_summary,
 		);
 
 		// Allow filtering.

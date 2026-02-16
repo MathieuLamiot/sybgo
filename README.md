@@ -50,13 +50,20 @@ WordPress Events → Event Trackers → Database → Weekly Report → Email Dig
 
 ## Documentation
 
-### For Users
-- **[Event Tracking](docs/event-tracking.md)** - What events are tracked and how
-- **[Report Lifecycle](docs/report-lifecycle.md)** - How weekly reports work
+## For Users
 
-### For Developers
-- **[Extension API](docs/extension-api.md)** - Integrate your plugin with Sybgo
-- **[Development Guide](docs/development.md)** - Setup, testing, and contributing
+- **[Event Tracking](event-tracking.md)** - What events are tracked and how to configure them
+- **[Report Lifecycle](report-lifecycle.md)** - How weekly reports are generated and delivered
+
+## For Developers
+
+- **[Extension API](extension-api.md)** - Integrate your plugin with Sybgo
+- **[Development Guide](development.md)** - Setup, testing, and contributing
+
+## Quick Links
+
+- [Main README](../README.md) - Project overview and quick start
+- [GitHub Issues](https://github.com/your-org/sybgo/issues) - Report bugs or request features
 
 ## Plugin Integration Example
 

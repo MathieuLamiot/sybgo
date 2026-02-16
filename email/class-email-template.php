@@ -252,6 +252,7 @@ class Email_Template {
 					<?php if ( empty( $summary['total_events'] ) ) : ?>
 						<?php $this->render_empty_state(); ?>
 					<?php else : ?>
+						<?php $this->render_ai_summary( $summary ); ?>
 						<?php $this->render_statistics( $summary ); ?>
 						<?php $this->render_highlights( $summary ); ?>
 						<?php $this->render_top_authors( $summary ); ?>
@@ -446,5 +447,29 @@ class Email_Template {
 		);
 
 		return $labels[ $type ] ?? ucwords( str_replace( '_', ' ', $type ) );
+	}
+
+	/**
+	 * Render AI summary section.
+	 *
+	 * @param array $summary Summary data.
+	 * @return void
+	 */
+	private function render_ai_summary( array $summary ): void {
+		if ( empty( $summary['ai_summary'] ) ) {
+			return;
+		}
+
+		?>
+		<div class="section" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); padding: 25px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+			<h2 style="margin-top: 0; color: #667eea; display: flex; align-items: center; gap: 8px;">
+				<span style="font-size: 24px;">💬</span>
+				<?php esc_html_e( 'Week in Review', 'sybgo' ); ?>
+			</h2>
+			<p style="margin: 0; font-size: 15px; line-height: 1.8; color: #2c3e50;">
+				<?php echo esc_html( $summary['ai_summary'] ); ?>
+			</p>
+		</div>
+		<?php
 	}
 }

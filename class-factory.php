@@ -161,12 +161,14 @@ class Factory {
 		if ( null === self::$report_manager_instance ) {
 			require_once SYBGO_PLUGIN_DIR . 'reports/class-report-generator.php';
 			require_once SYBGO_PLUGIN_DIR . 'reports/class-report-manager.php';
+			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
 
-			$event_repo  = $this->create_event_repository();
-			$report_repo = $this->create_report_repository();
+			$event_repo    = $this->create_event_repository();
+			$report_repo   = $this->create_report_repository();
+			$ai_summarizer = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo );
 
 			// Create generator.
-			$generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo );
+			$generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 
 			// Create manager.
 			self::$report_manager_instance = new \Rocket\Sybgo\Reports\Report_Manager(
@@ -187,16 +189,20 @@ class Factory {
 	public function create_dashboard_widget(): object {
 		if ( null === self::$dashboard_widget_instance ) {
 			require_once SYBGO_PLUGIN_DIR . 'admin/class-dashboard-widget.php';
+			require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
+			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
 
-			$event_repo       = $this->create_event_repository();
-			$report_repo      = $this->create_report_repository();
+			$event_repo    = $this->create_event_repository();
+			$report_repo   = $this->create_report_repository();
 			$report_manager   = $this->create_report_manager();
-			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo );
+			$ai_summarizer = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo );
+			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 
 			self::$dashboard_widget_instance = new \Rocket\Sybgo\Admin\Dashboard_Widget(
 				$event_repo,
 				$report_repo,
-				$report_generator
+				$report_generator,
+				$ai_summarizer
 			);
 		}
 
@@ -226,11 +232,13 @@ class Factory {
 	public function create_reports_page(): object {
 		if ( null === self::$reports_page_instance ) {
 			require_once SYBGO_PLUGIN_DIR . 'admin/class-reports-page.php';
+			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
 
 			$event_repo       = $this->create_event_repository();
 			$report_repo      = $this->create_report_repository();
 			$report_manager   = $this->create_report_manager();
-			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo );
+			$ai_summarizer    = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo );
+			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 			$email_manager    = $this->create_email_manager();
 
 			self::$reports_page_instance = new \Rocket\Sybgo\Admin\Reports_Page(
