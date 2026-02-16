@@ -2,85 +2,113 @@
 
 **Since You've Been Gone** - Stay informed about what's happening on your WordPress site with automated weekly digests.
 
-## 📧 What is Sybgo?
+## What is Sybgo?
 
-Sybgo automatically tracks meaningful changes on your WordPress site and sends you weekly email digests.
+Sybgo automatically tracks meaningful changes on your WordPress site and sends weekly email digests.
 
 **Track:**
-- 📝 Posts and pages (published, edited with % changed, deleted)
-- 👥 Users (registrations, role changes, deletions)
+- 📝 Posts and pages (published, edited, deleted)
+- 👥 Users (registrations, role changes)
 - 🔄 Updates (WordPress core, plugins, themes)
-- 💬 Comments (new, approved, spam, trashed)
+- 💬 Comments (new, approved, moderation)
 
 **Features:**
-- ⚡ Smart Throttling (max 1 event/hour per object)
-- 📊 Trend Indicators (↑↓ % vs last week)
-- 🎯 Edit Magnitude (% of content changed)
-- 🤖 AI-Ready (structured JSON data)
-- 🔌 Extensible (public API for other plugins)
+- ⚡ Smart throttling (max 1 event/hour per object)
+- 📊 Trend indicators (↑↓ % vs last week)
+- 🎯 Edit magnitude tracking (% of content changed)
+- 🤖 AI-ready (structured JSON data for future integration)
+- 🔌 Extensible API for other plugins
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Install
+# 1. Install
 cd wp-content/plugins
 git clone <repo-url> sybgo
 cd sybgo
 composer install
 
-# Activate in WordPress admin
-# Configure: Settings → Sybgo
+# 2. Activate in WordPress admin
+# WP Admin → Plugins → Activate "Sybgo"
+
+# 3. Configure
+# WP Admin → Settings → Sybgo
+# - Add email recipients (one per line)
+# - Choose which event types to track
 ```
 
-## 📚 Documentation
-
-**Start here:** [docs/](docs/)
-
-- **[Architecture](docs/ARCHITECTURE.md)** - System design and data flow
-- **[Implementation](docs/IMPLEMENTATION.md)** - Code patterns and development
-- **[API](docs/README.md)** - Documentation index
-
-## 🛠️ Development
-
-```bash
-composer phpcs              # Check code standards
-composer run-tests          # Run all tests
-wp cron event run sybgo_freeze_weekly_report  # Manual freeze
-```
-
-## 🏗️ Architecture
+## How It Works
 
 ```
-WordPress Events → Trackers → Database → Report Manager → Email/Dashboard
+WordPress Events → Event Trackers → Database → Weekly Report → Email Digest
 ```
 
-**11 Event Types:** post_published, post_edited, user_registered, core_updated, comment_posted, etc.
+**Weekly Cycle:**
+- Monday-Sunday: Events are collected
+- Sunday 23:55: Report is frozen with trends calculated
+- Monday 00:05: Email digest sent to configured recipients
 
-**Weekly Cycle:** Monday-Sunday collect → Sunday freeze → Monday email
+## Documentation
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+### For Users
+- **[Event Tracking](docs/event-tracking.md)** - What events are tracked and how
+- **[Report Lifecycle](docs/report-lifecycle.md)** - How weekly reports work
 
-## 🔌 Plugin Integration
+### For Developers
+- **[Extension API](docs/extension-api.md)** - Integrate your plugin with Sybgo
+- **[Development Guide](docs/development.md)** - Setup, testing, and contributing
+
+## Plugin Integration Example
 
 ```php
-// Track custom events
+// Track custom events from your plugin
 $tracker = \Rocket\Sybgo\Factory::get_instance()->get_event_tracker();
-$tracker->track_custom_event('your_event', $data, 'your-plugin');
+$tracker->track_custom_event('woocommerce_order', [
+    'action' => 'created',
+    'object' => [
+        'type' => 'order',
+        'id' => $order_id,
+        'total' => $order->get_total()
+    ]
+], 'woocommerce');
 
-// Add email sections
+// Add custom sections to email digest
 add_action('sybgo_email_custom_section', function($report_id) {
-    echo '<div>Custom content</div>';
+    echo '<div class="custom-section">Your plugin content</div>';
 });
 ```
 
-## 🚧 Roadmap
+See [Extension API documentation](docs/extension-api.md) for more details.
 
-- [ ] BerlinDB Migration (in progress)
-- [ ] AI Integration (OpenAI/Claude)
-- [ ] Export Reports (PDF/CSV)
-- [ ] Slack Integration
+## Development
 
-## 📝 License
+```bash
+# Code standards
+composer phpcs              # Check code standards
+composer phpcs:fix          # Auto-fix issues
+
+# Testing
+composer run-tests          # Run all tests
+composer test-unit          # Unit tests only
+composer test-integration   # Integration tests only
+
+# Manual testing
+wp cron event run sybgo_freeze_weekly_report  # Trigger report freeze
+wp cron event run sybgo_send_report_emails    # Trigger email send
+```
+
+## Requirements
+
+- WordPress 5.0+
+- PHP 7.4+
+- Composer
+
+## License
 
 GPL-2.0-or-later
 
+## Support
+
+- **Documentation:** [docs/](docs/)
+- **Issues:** [GitHub Issues](https://github.com/your-org/sybgo/issues)
+- **Standards:** Follows [GroupOne WordPress Standards](https://gopen.groupone.dev/technical_standards/php/wordpress/)
