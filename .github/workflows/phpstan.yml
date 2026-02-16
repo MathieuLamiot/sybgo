@@ -26,8 +26,6 @@ jobs:
         tools: composer:v2
 
     - name: Install dependencies
-      env:
-        COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }' # [tl! **]
       run: composer install --prefer-dist --no-interaction --no-scripts
 
     - name: Lint with PHP Stan

@@ -41,8 +41,6 @@ jobs:
       run: sudo mysql -u root -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root';"
 
     - name: Install dependencies
-      env:
-        COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }' # [tl! **]
       run: composer install --prefer-dist --no-interaction --no-scripts
 
     - name: Unit tests

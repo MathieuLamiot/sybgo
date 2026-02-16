@@ -25,8 +25,6 @@ jobs:
                 run: composer validate
 
             -   name: Install dependencies
-                env:
-                    COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }' # [tl! **]
                 run: |
                     composer install --prefer-dist --no-progress --no-suggest
                     npm install

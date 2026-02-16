@@ -76,24 +76,39 @@ All events must follow this structure:
 
 ## Event Type Registration
 
-Register your event types for better reporting and AI integration:
+Register your event types via the `sybgo_event_types` filter for proper reporting, dashboard display, and AI integration:
 
 ```php
-sybgo_register_event_type( 'woocommerce_order', function( $event_data ) {
-    return "Event Type: WooCommerce Order\n" .
-           "Description: A new order was placed in the store.\n" .
-           "Data Structure:\n" .
-           "  - object.id: Order ID\n" .
-           "  - object.total: Order total amount\n" .
-           "  - metadata.status: Order status\n" .
-           "  - metadata.items: Number of items\n";
+add_filter( 'sybgo_event_types', function( array $types ): array {
+    $types['woocommerce_order'] = array(
+        'icon'            => '🛒',
+        'stat_label'      => __( 'Orders', 'my-plugin' ),
+        'short_title'     => function ( array $event_data ): string {
+            return 'Order #' . $event_data['object']['id'];
+        },
+        'detailed_title'  => function ( array $event_data ): string {
+            return 'New order #' . $event_data['object']['id'] . ' (' . $event_data['metadata']['total'] . ')';
+        },
+        'ai_description'  => function ( array $object, array $metadata ): string {
+            return "WooCommerce order #{$object['id']}, total: {$metadata['total']}";
+        },
+        'describe'        => function ( array $event_data ): string {
+            return "Event Type: WooCommerce Order\n" .
+                   "Description: A new order was placed.\n" .
+                   "Data: Order total, status, items, customer info";
+        },
+    );
+    return $types;
 } );
 ```
 
-**Benefits:**
-- Provides context for future AI summaries
-- Documents your event structure
-- Improves email digest descriptions
+**Registration keys:**
+- `icon` - Emoji displayed in dashboard and emails
+- `stat_label` - Human-readable label for statistics
+- `short_title` - Callable returning a short display title
+- `detailed_title` - Callable returning a detailed display title
+- `ai_description` - Callable providing context for AI summaries
+- `describe` - Callable returning a full schema description
 
 ## Hooks & Filters
 
@@ -116,16 +131,6 @@ add_filter( 'sybgo_report_summary', function( $summary, $report_id ) {
         'conversions' => 42
     ];
     return $summary;
-}, 10, 2 );
-```
-
-### Modify Email Recipients
-
-```php
-add_filter( 'sybgo_email_recipients', function( $recipients, $report ) {
-    // Add extra recipient for important reports
-    $recipients[] = 'manager@example.com';
-    return $recipients;
 }, 10, 2 );
 ```
 
@@ -193,6 +198,7 @@ add_action( 'sybgo_email_failed', function( $report_id, $recipient, $error_messa
 ### WooCommerce Orders
 
 ```php
+// Track order events
 add_action( 'woocommerce_new_order', function( $order_id ) {
     if ( ! function_exists( 'sybgo_track_event' ) ) {
         return;
@@ -220,11 +226,25 @@ add_action( 'woocommerce_new_order', function( $order_id ) {
     ], 'woocommerce' );
 } );
 
-// Register event type
-sybgo_register_event_type( 'woocommerce_order', function( $event_data ) {
-    return "Event Type: WooCommerce Order\n" .
-           "Description: A new order was placed.\n" .
-           "Data: Order total, status, items, customer info";
+// Register event type via filter
+add_filter( 'sybgo_event_types', function( array $types ): array {
+    $types['woocommerce_order'] = array(
+        'icon'            => '🛒',
+        'stat_label'      => __( 'Orders', 'my-plugin' ),
+        'short_title'     => function ( array $event_data ): string {
+            return 'Order #' . $event_data['object']['id'];
+        },
+        'detailed_title'  => function ( array $event_data ): string {
+            return 'New order #' . $event_data['object']['name'];
+        },
+        'ai_description'  => function ( array $object, array $metadata ): string {
+            return "WooCommerce order #{$object['id']}, total: {$metadata['total']}";
+        },
+        'describe'        => function ( array $event_data ): string {
+            return "Event Type: WooCommerce Order\nData: Order total, status, items, customer info";
+        },
+    );
+    return $types;
 } );
 ```
 
@@ -285,15 +305,25 @@ class My_Booking_Plugin {
     }
 }
 
-// Register event type
-add_action( 'init', function() {
-    if ( function_exists( 'sybgo_register_event_type' ) ) {
-        sybgo_register_event_type( 'booking_created', function( $event_data ) {
-            return "Event Type: Booking Created\n" .
-                   "Description: A new booking was made.\n" .
-                   "Data: Service, date, duration, customer, price";
-        } );
-    }
+// Register event type via filter
+add_filter( 'sybgo_event_types', function( array $types ): array {
+    $types['booking_created'] = array(
+        'icon'            => '📅',
+        'stat_label'      => __( 'Bookings', 'my-booking-plugin' ),
+        'short_title'     => function ( array $event_data ): string {
+            return $event_data['object']['name'];
+        },
+        'detailed_title'  => function ( array $event_data ): string {
+            return 'Booking: ' . $event_data['object']['name'] . ' on ' . $event_data['metadata']['date'];
+        },
+        'ai_description'  => function ( array $object, array $metadata ): string {
+            return "Booking for {$metadata['service']} on {$metadata['date']}";
+        },
+        'describe'        => function ( array $event_data ): string {
+            return "Event Type: Booking Created\nData: Service, date, duration, customer, price";
+        },
+    );
+    return $types;
 } );
 ```
 
@@ -389,24 +419,26 @@ if ( false === $event_id ) {
 
 ### Global Functions
 - `sybgo_track_event( $type, $data, $source )` - Track an event
-- `sybgo_register_event_type( $type, $callback )` - Register event type
 - `sybgo_is_active()` - Check if Sybgo is available
 - `sybgo_get_version()` - Get Sybgo version
 
 ### Available Filters
-- `sybgo_before_track_event` - Modify event data before saving
+- `sybgo_event_types` - Register custom event types (array of type definitions)
+- `sybgo_before_track_event` - Modify event data before saving (via API function)
+- `sybgo_event_data` - Modify event data before creation (via core trackers)
+- `sybgo_should_track_event` - Control whether an event is recorded
 - `sybgo_report_summary` - Add custom data to report summary
-- `sybgo_email_recipients` - Modify email recipient list
 - `sybgo_email_subject` - Customize email subject
 - `sybgo_email_body` - Customize email HTML
 - `sybgo_email_headers` - Modify email headers
 
 ### Available Actions
-- `sybgo_event_tracked` - After event is saved
+- `sybgo_event_recorded` - After a core tracker creates an event
+- `sybgo_event_tracked` - After an event is saved via the API function
 - `sybgo_before_report_freeze` - Before freezing report
 - `sybgo_after_report_freeze` - After freezing report
+- `sybgo_report_created` - After a new report is created
 - `sybgo_email_custom_section` - Add custom section to email
-- `sybgo_event_type_registered` - After event type registration
 - `sybgo_email_sent` - After successful email delivery
 - `sybgo_email_failed` - After failed email delivery
 

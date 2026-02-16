@@ -279,4 +279,4 @@ wp db query "SELECT JSON_PRETTY(event_data) FROM wp_sybgo_events WHERE id = 123"
 
 - [Report Lifecycle](report-lifecycle.md) - How events become weekly reports
 - [Extension API](extension-api.md) - Track custom events from other plugins
-- [Development Guide](development.md) - Creating new event trackers
+- [Development Guide](development.md) - Creating new event trackers and project structure
