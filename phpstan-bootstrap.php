@@ -5,5 +5,9 @@
  * Defines constants that are normally set at runtime by WordPress.
  */
 
-define( 'SYBGO_PLUGIN_DIR', __DIR__ . '/' );
-define( 'SYBGO_VERSION', '1.0.0' );
+if ( ! defined( 'SYBGO_PLUGIN_DIR' ) ) {
+	define( 'SYBGO_PLUGIN_DIR', __DIR__ . '/' );
+}
+if ( ! defined( 'SYBGO_VERSION' ) ) {
+	define( 'SYBGO_VERSION', '1.0.0' );
+}
