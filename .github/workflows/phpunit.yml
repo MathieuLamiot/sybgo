@@ -46,7 +46,7 @@ jobs:
       - name: Run integration tests with coverage
         run: |
           mkdir -p coverage
-          vendor/bin/phpunit --testsuite Integration --colors=always --coverage-clover=coverage/integration-coverage.xml
+          vendor/bin/phpunit --testsuite Integration --bootstrap Tests/bootstrap.php --colors=always --coverage-clover=coverage/integration-coverage.xml
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
