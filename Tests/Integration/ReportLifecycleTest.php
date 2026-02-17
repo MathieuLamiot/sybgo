@@ -78,6 +78,11 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 
 		// Get report manager.
 		$this->report_manager = $this->factory_instance->create_report_manager();
+
+		// Clean up any events/reports from plugin initialization or previous tests.
+		global $wpdb;
+		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}sybgo_events" );
+		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}sybgo_reports" );
 	}
 
 	/**
