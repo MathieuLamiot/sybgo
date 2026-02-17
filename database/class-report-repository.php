@@ -46,7 +46,7 @@ class Report_Repository {
 	public function create( array $report_data ) {
 		global $wpdb;
 
-		$defaults = [
+		$defaults = array(
 			'report_type'  => 'weekly',
 			'status'       => 'active',
 			'period_start' => current_time( 'mysql' ),
@@ -56,7 +56,7 @@ class Report_Repository {
 			'frozen_at'    => null,
 			'emailed_at'   => null,
 			'created_at'   => current_time( 'mysql' ),
-		];
+		);
 
 		$data = wp_parse_args( $report_data, $defaults );
 
@@ -65,7 +65,6 @@ class Report_Repository {
 			$data['summary_data'] = wp_json_encode( $data['summary_data'] );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->insert( $this->table, $data );
 
 		if ( $result ) {
@@ -91,11 +90,10 @@ class Report_Repository {
 			$data['summary_data'] = wp_json_encode( $data['summary_data'] );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
 			$this->table,
 			$data,
-			[ 'id' => $report_id ]
+			array( 'id' => $report_id )
 		);
 
 		if ( false !== $result ) {
@@ -122,7 +120,6 @@ class Report_Repository {
 
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$report = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE status = %s ORDER BY created_at DESC LIMIT 1",
@@ -153,7 +150,6 @@ class Report_Repository {
 
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$report = $wpdb->get_row(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- No user input; prepare used for consistency.
@@ -187,7 +183,6 @@ class Report_Repository {
 
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$report = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE id = %d",
@@ -214,7 +209,6 @@ class Report_Repository {
 	public function get_all_frozen( int $limit = 20, int $offset = 0 ): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$reports = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE status IN ('frozen', 'emailed') ORDER BY frozen_at DESC LIMIT %d OFFSET %d",
@@ -224,7 +218,7 @@ class Report_Repository {
 			ARRAY_A
 		);
 
-		return $reports ? $reports : [];
+		return $reports ? $reports : array();
 	}
 
 	/**
@@ -235,7 +229,7 @@ class Report_Repository {
 	 * @return bool True on success, false on failure.
 	 */
 	public function update_status( int $report_id, string $status ): bool {
-		return $this->update( $report_id, [ 'status' => $status ] );
+		return $this->update( $report_id, array( 'status' => $status ) );
 	}
 
 	/**
@@ -247,7 +241,6 @@ class Report_Repository {
 	public function increment_event_count( int $report_id ): bool {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$this->table} SET event_count = event_count + 1 WHERE id = %d",

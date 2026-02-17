@@ -39,7 +39,7 @@ class Comment_Tracker {
 		$this->event_repo = $event_repo;
 
 		// Register event types via filter.
-		add_filter( 'sybgo_event_types', [ $this, 'register_event_types' ] );
+		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
 	}
 
 	/**
@@ -49,10 +49,10 @@ class Comment_Tracker {
 	 */
 	public function register_hooks(): void {
 		// Track new comments.
-		add_action( 'comment_post', [ $this, 'track_new_comment' ], 10, 3 );
+		add_action( 'comment_post', array( $this, 'track_new_comment' ), 10, 3 );
 
 		// Track comment status changes.
-		add_action( 'wp_set_comment_status', [ $this, 'track_comment_status_change' ], 10, 2 );
+		add_action( 'wp_set_comment_status', array( $this, 'track_comment_status_change' ), 10, 2 );
 	}
 
 	/**
@@ -62,15 +62,15 @@ class Comment_Tracker {
 	 * @return array Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
-		$types['comment_posted'] = [
+		$types['comment_posted'] = array(
 			'icon'           => '💬',
 			'stat_label'     => __( 'New Comments', 'sybgo' ),
 			'short_title'    => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'New comment on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'detailed_title' => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'New comment on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'ai_description' => function ( array $object, array $metadata ): string {
@@ -89,17 +89,17 @@ class Comment_Tracker {
 				$description .= "  - metadata.word_count: Length of the comment\n";
 				return $description;
 			},
-		];
+		);
 
-		$types['comment_approved'] = [
+		$types['comment_approved'] = array(
 			'icon'           => '✅',
 			'stat_label'     => __( 'Comments Approved', 'sybgo' ),
 			'short_title'    => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'Comment approved on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'detailed_title' => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'Comment approved on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'ai_description' => function ( array $object, array $metadata ): string {
@@ -115,16 +115,16 @@ class Comment_Tracker {
 				$description .= "  - context.approved_by_id: ID of moderator who approved\n";
 				return $description;
 			},
-		];
+		);
 
-		$types['comment_spam'] = [
+		$types['comment_spam'] = array(
 			'icon'           => '🚫',
 			'stat_label'     => __( 'Comments Spam', 'sybgo' ),
 			'short_title'    => function ( array $event_data ): string {
 				return __( 'Comment marked as spam', 'sybgo' );
 			},
 			'detailed_title' => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'Comment marked as spam on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'ai_description' => function ( array $object, array $metadata ): string {
@@ -139,16 +139,16 @@ class Comment_Tracker {
 				$description .= "  - context.marked_by_id: ID of moderator who marked as spam\n";
 				return $description;
 			},
-		];
+		);
 
-		$types['comment_trashed'] = [
+		$types['comment_trashed'] = array(
 			'icon'           => '🗑️',
 			'stat_label'     => __( 'Comments Trashed', 'sybgo' ),
 			'short_title'    => function ( array $event_data ): string {
 				return __( 'Comment trashed', 'sybgo' );
 			},
 			'detailed_title' => function ( array $event_data ): string {
-				$object = $event_data['object'] ?? [];
+				$object = $event_data['object'] ?? array();
 				return sprintf( 'Comment trashed on: %s', $object['post_title'] ?? 'Unknown post' );
 			},
 			'ai_description' => function ( array $object, array $metadata ): string {
@@ -163,7 +163,7 @@ class Comment_Tracker {
 				$description .= "  - context.trashed_by_id: ID of moderator who trashed it\n";
 				return $description;
 			},
-		];
+		);
 
 		return $types;
 	}
@@ -193,32 +193,32 @@ class Comment_Tracker {
 		$status = '1' === $comment_approved ? 'approved' : ( '0' === $comment_approved ? 'pending' : 'spam' );
 
 		// Build event data.
-		$event_data = [
+		$event_data = array(
 			'action'   => 'posted',
-			'object'   => [
+			'object'   => array(
 				'type'       => 'comment',
 				'id'         => $comment_id,
 				'post_id'    => $comment->comment_post_ID,
 				'post_title' => $post->post_title,
-			],
-			'context'  => [
+			),
+			'context'  => array(
 				'comment_type' => $comment->comment_type,
-			],
-			'metadata' => [
+			),
+			'metadata' => array(
 				'author_name'  => $comment->comment_author,
 				'author_email' => $comment->comment_author_email,
 				'author_url'   => $comment->comment_author_url,
 				'status'       => $status,
 				'word_count'   => str_word_count( wp_strip_all_tags( $comment->comment_content ) ),
-			],
-		];
+			),
+		);
 
 		// Create event.
 		$this->event_repo->create(
-			[
+			array(
 				'event_type' => 'comment_posted',
 				'event_data' => $event_data,
-			]
+			)
 		);
 	}
 
@@ -237,17 +237,17 @@ class Comment_Tracker {
 		}
 
 		// Only track specific status changes.
-		$tracked_statuses = [ 'approve', 'spam', 'trash' ];
+		$tracked_statuses = array( 'approve', 'spam', 'trash' );
 		if ( ! in_array( $comment_status, $tracked_statuses, true ) ) {
 			return;
 		}
 
 		// Map status to event type.
-		$event_type_map = [
+		$event_type_map = array(
 			'approve' => 'comment_approved',
 			'spam'    => 'comment_spam',
 			'trash'   => 'comment_trashed',
-		];
+		);
 
 		$event_type = $event_type_map[ $comment_status ];
 
@@ -255,29 +255,29 @@ class Comment_Tracker {
 		$post = get_post( (int) $comment->comment_post_ID );
 
 		// Build event data.
-		$event_data = [
+		$event_data = array(
 			'action'   => str_replace( 'comment_', '', $event_type ),
-			'object'   => [
+			'object'   => array(
 				'type'       => 'comment',
 				'id'         => $comment_id,
 				'post_id'    => $comment->comment_post_ID,
 				'post_title' => $post ? $post->post_title : '',
-			],
-			'context'  => [
+			),
+			'context'  => array(
 				'modified_by_id' => get_current_user_id(),
-			],
-			'metadata' => [
+			),
+			'metadata' => array(
 				'author_name' => $comment->comment_author,
 				'new_status'  => $comment_status,
-			],
-		];
+			),
+		);
 
 		// Create event.
 		$this->event_repo->create(
-			[
+			array(
 				'event_type' => $event_type,
 				'event_data' => $event_data,
-			]
+			)
 		);
 	}
 }

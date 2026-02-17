@@ -46,13 +46,13 @@ class Event_Repository {
 	public function create( array $event_data ) {
 		global $wpdb;
 
-		$defaults = [
+		$defaults = array(
 			'event_type'      => '',
 			'event_data'      => null,
 			'event_timestamp' => current_time( 'mysql' ),
 			'report_id'       => null,
 			'source_plugin'   => 'core',
-		];
+		);
 
 		$data = wp_parse_args( $event_data, $defaults );
 
@@ -61,7 +61,6 @@ class Event_Repository {
 			$data['event_data'] = wp_json_encode( $data['event_data'] );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$result = $wpdb->insert( $this->table, $data );
 
 		if ( $result ) {
@@ -85,7 +84,6 @@ class Event_Repository {
 		global $wpdb;
 
 		if ( null === $report_id ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$events = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT * FROM {$this->table} WHERE report_id IS NULL ORDER BY event_timestamp DESC LIMIT %d OFFSET %d",
@@ -95,7 +93,6 @@ class Event_Repository {
 				ARRAY_A
 			);
 		} else {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$events = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT * FROM {$this->table} WHERE report_id = %d ORDER BY event_timestamp DESC LIMIT %d OFFSET %d",
@@ -107,7 +104,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : [];
+		return $events ? $events : array();
 	}
 
 	/**
@@ -126,7 +123,6 @@ class Event_Repository {
 
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$events = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE report_id IS NULL ORDER BY event_timestamp DESC LIMIT %d",
@@ -135,7 +131,7 @@ class Event_Repository {
 			ARRAY_A
 		);
 
-		$events = $events ? $events : [];
+		$events = $events ? $events : array();
 
 		wp_cache_set( $cache_key, $events, 'sybgo_cache', 300 ); // Cache for 5 minutes.
 
@@ -154,7 +150,6 @@ class Event_Repository {
 		global $wpdb;
 
 		if ( null === $report_id ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$events = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT * FROM {$this->table} WHERE event_type LIKE %s AND report_id IS NULL ORDER BY event_timestamp DESC LIMIT %d",
@@ -164,7 +159,6 @@ class Event_Repository {
 				ARRAY_A
 			);
 		} else {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$events = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT * FROM {$this->table} WHERE event_type LIKE %s AND report_id = %d ORDER BY event_timestamp DESC LIMIT %d",
@@ -176,7 +170,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : [];
+		return $events ? $events : array();
 	}
 
 	/**
@@ -190,7 +184,6 @@ class Event_Repository {
 	public function assign_to_report( int $report_id, string $period_start, string $period_end ): int {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$updated = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$this->table} SET report_id = %d WHERE report_id IS NULL AND event_timestamp >= %s AND event_timestamp <= %s",
@@ -218,7 +211,6 @@ class Event_Repository {
 	public function get_last_event_for_object( string $event_type, int $object_id ): ?array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$event = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE event_type = %s AND JSON_EXTRACT(event_data, '$.object.id') = %d ORDER BY event_timestamp DESC LIMIT 1",
@@ -241,13 +233,11 @@ class Event_Repository {
 		global $wpdb;
 
 		if ( null === $report_id ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$counts = $wpdb->get_results(
 				"SELECT event_type, COUNT(*) as count FROM {$this->table} WHERE report_id IS NULL GROUP BY event_type",
 				ARRAY_A
 			);
 		} else {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$counts = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT event_type, COUNT(*) as count FROM {$this->table} WHERE report_id = %d GROUP BY event_type",
@@ -257,7 +247,7 @@ class Event_Repository {
 			);
 		}
 
-		$result = [];
+		$result = array();
 		if ( $counts ) {
 			foreach ( $counts as $row ) {
 				$result[ $row['event_type'] ] = (int) $row['count'];

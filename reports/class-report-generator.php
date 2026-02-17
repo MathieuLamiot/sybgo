@@ -85,14 +85,14 @@ class Report_Generator {
 		$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
 
 		// Build summary data.
-		$summary = [
+		$summary = array(
 			'totals'       => $totals,
 			'trends'       => $trends,
 			'highlights'   => $highlights,
 			'top_authors'  => $top_authors,
 			'total_events' => count( $events ),
 			'ai_summary'   => $ai_summary,
-		];
+		);
 
 		// Allow filtering.
 		return apply_filters( 'sybgo_report_summary', $summary, $report_id );
@@ -105,7 +105,7 @@ class Report_Generator {
 	 * @return array Counts by event type.
 	 */
 	private function count_events_by_type( array $events ): array {
-		$counts = [];
+		$counts = array();
 
 		foreach ( $events as $event ) {
 			$type = $event['event_type'];
@@ -143,14 +143,14 @@ class Report_Generator {
 		}
 
 		if ( ! $previous_report ) {
-			return []; // First report, no comparison.
+			return array(); // First report, no comparison.
 		}
 
 		// Get previous totals from summary_data.
 		$previous_summary = json_decode( $previous_report['summary_data'], true );
-		$previous_totals  = $previous_summary['totals'] ?? [];
+		$previous_totals  = $previous_summary['totals'] ?? array();
 
-		$trends = [];
+		$trends = array();
 
 		// Calculate trends for each event type.
 		foreach ( $current_totals as $type => $current_count ) {
@@ -172,12 +172,12 @@ class Report_Generator {
 				$direction = 'same';
 			}
 
-			$trends[ $type ] = [
+			$trends[ $type ] = array(
 				'current'        => $current_count,
 				'previous'       => $previous_count,
 				'change_percent' => round( $change, 1 ),
 				'direction'      => $direction,
-			];
+			);
 		}
 
 		return $trends;
@@ -191,10 +191,10 @@ class Report_Generator {
 	 * @return array Array of highlight strings.
 	 */
 	private function generate_highlights( array $totals, array $trends ): array {
-		$highlights = [];
+		$highlights = array();
 
 		// Event type labels (user-friendly).
-		$labels = [
+		$labels = array(
 			'post_published'    => 'new posts published',
 			'post_edited'       => 'posts edited',
 			'page_published'    => 'new pages published',
@@ -206,7 +206,7 @@ class Report_Generator {
 			'comment_posted'    => 'new comments',
 			'comment_approved'  => 'comments approved',
 			'comment_spam'      => 'comments marked as spam',
-		];
+		);
 
 		foreach ( $totals as $type => $count ) {
 			if ( 0 === $count ) {
@@ -240,11 +240,11 @@ class Report_Generator {
 	 * @return array Top authors with post counts.
 	 */
 	private function get_top_authors( array $events ): array {
-		$author_counts = [];
+		$author_counts = array();
 
 		foreach ( $events as $event ) {
 			// Only count post/page publish events.
-			if ( ! in_array( $event['event_type'], [ 'post_published', 'page_published' ], true ) ) {
+			if ( ! in_array( $event['event_type'], array( 'post_published', 'page_published' ), true ) ) {
 				continue;
 			}
 
@@ -267,14 +267,14 @@ class Report_Generator {
 		arsort( $author_counts );
 
 		// Format as array of objects.
-		$top_authors = [];
+		$top_authors = array();
 		$count       = 0;
 
 		foreach ( $author_counts as $author => $posts ) {
-			$top_authors[] = [
+			$top_authors[] = array(
 				'name'  => $author,
 				'count' => $posts,
-			];
+			);
 
 			++$count;
 			if ( $count >= 5 ) { // Top 5 authors.
