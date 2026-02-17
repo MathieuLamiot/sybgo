@@ -144,12 +144,10 @@ class DatabaseManager {
 		$old_table = $wpdb->prefix . 'crawling_results';
 
 		// Check if old table exists.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $old_table ) );
 
 		if ( $table_exists === $old_table ) {
 			// Drop old table.
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query( "DROP TABLE IF EXISTS $old_table" );
 		}
 	}
@@ -161,11 +159,11 @@ class DatabaseManager {
 	 * @since 1.0.0
 	 */
 	public function get_table_names(): array {
-		return [
+		return array(
 			'events'    => $this->events_table,
 			'reports'   => $this->reports_table,
 			'email_log' => $this->email_log_table,
-		];
+		);
 	}
 
 	/**
@@ -181,7 +179,6 @@ class DatabaseManager {
 
 		$one_year_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-1 year' ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$this->events_table} WHERE event_timestamp < %s",

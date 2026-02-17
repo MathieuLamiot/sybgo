@@ -43,6 +43,7 @@
 			"ai/",
 			"api/",
 			"class-factory.php",
+			"class-logger.php",
 			"class-sybgo.php"
 		],
 		"files": [

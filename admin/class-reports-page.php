@@ -102,9 +102,9 @@ class Reports_Page {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'admin_menu', [ $this, 'add_reports_page' ] );
-		add_action( 'admin_post_sybgo_freeze_now', [ $this, 'handle_manual_freeze' ] );
-		add_action( 'admin_post_sybgo_resend_email', [ $this, 'handle_resend_email' ] );
+		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
+		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
+		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
 	}
 
 	/**
@@ -118,7 +118,7 @@ class Reports_Page {
 			__( 'Sybgo Reports', 'sybgo' ),
 			'manage_options',
 			'sybgo-reports',
-			[ $this, 'render_reports_page' ],
+			array( $this, 'render_reports_page' ),
 			'dashicons-chart-line',
 			30
 		);
@@ -135,8 +135,14 @@ class Reports_Page {
 		}
 
 		// Handle view parameter.
-		$view      = isset( $_GET['view'] ) ? sanitize_text_field( wp_unslash( $_GET['view'] ) ) : 'list'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$report_id = isset( $_GET['report_id'] ) ? absint( $_GET['report_id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$view      = 'list';
+		$report_id = 0;
+
+		if ( isset( $_GET['view'] ) ) {
+			check_admin_referer( 'sybgo_view_report' );
+			$view      = sanitize_text_field( wp_unslash( $_GET['view'] ) );
+			$report_id = isset( $_GET['report_id'] ) ? absint( $_GET['report_id'] ) : 0;
+		}
 
 		?>
 		<div class="wrap">
@@ -245,11 +251,12 @@ class Reports_Page {
 	 * @return void
 	 */
 	private function render_notices(): void {
-		if ( ! isset( $_GET['message'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['message'] ) ) {
 			return;
 		}
 
-		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		check_admin_referer( 'sybgo_report_message' );
+		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) );
 
 		switch ( $message ) {
 			case 'frozen':
@@ -289,8 +296,10 @@ class Reports_Page {
 		$table_name = $this->report_repo->get_table_name();
 
 		// Get all reports ordered by date.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
 		$reports = $wpdb->get_results(
 			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
 				"SELECT * FROM {$table_name} WHERE status != %s ORDER BY period_end DESC LIMIT 50",
 				'active'
 			),
@@ -336,7 +345,7 @@ class Reports_Page {
 		$event_count  = $summary['total_events'] ?? 0;
 		$period_start = gmdate( 'M j, Y', strtotime( $report['period_start'] ) );
 		$period_end   = gmdate( 'M j, Y', strtotime( $report['period_end'] ) );
-		$created      = human_time_diff( strtotime( $report['period_end'] ), current_time( 'timestamp' ) ) . ' ago';
+		$created      = human_time_diff( strtotime( $report['period_end'] ), time() ) . ' ago';
 
 		?>
 		<tr>
@@ -354,7 +363,7 @@ class Reports_Page {
 			</td>
 			<td>
 				<a
-					href="<?php echo esc_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . $report['id'] ) ); ?>"
+					href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . $report['id'] ), 'sybgo_view_report' ) ); ?>"
 					class="button button-small"
 				>
 					<?php esc_html_e( 'View Details', 'sybgo' ); ?>
@@ -382,25 +391,25 @@ class Reports_Page {
 	 * @return void
 	 */
 	private function render_status_badge( string $status ): void {
-		$badges = [
-			'active'  => [
+		$badges = array(
+			'active'  => array(
 				'label' => __( 'Active', 'sybgo' ),
 				'color' => '#2271b1',
-			],
-			'frozen'  => [
+			),
+			'frozen'  => array(
 				'label' => __( 'Frozen', 'sybgo' ),
 				'color' => '#dba617',
-			],
-			'emailed' => [
+			),
+			'emailed' => array(
 				'label' => __( 'Sent', 'sybgo' ),
 				'color' => '#00a32a',
-			],
-		];
+			),
+		);
 
-		$badge = $badges[ $status ] ?? [
+		$badge = $badges[ $status ] ?? array(
 			'label' => $status,
 			'color' => '#646970',
-		];
+		);
 
 		?>
 		<span style="display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; color: #fff; background-color: <?php echo esc_attr( $badge['color'] ); ?>;">
@@ -653,12 +662,15 @@ class Reports_Page {
 
 			// Redirect with success message.
 			wp_safe_redirect(
-				add_query_arg(
-					[
-						'page'    => 'sybgo-reports',
-						'message' => 'frozen',
-					],
-					admin_url( 'admin.php' )
+				wp_nonce_url(
+					add_query_arg(
+						array(
+							'page'    => 'sybgo-reports',
+							'message' => 'frozen',
+						),
+						admin_url( 'admin.php' )
+					),
+					'sybgo_report_message'
 				)
 			);
 			exit;
@@ -666,12 +678,15 @@ class Reports_Page {
 		} catch ( \Exception $e ) {
 			// Redirect with error message.
 			wp_safe_redirect(
-				add_query_arg(
-					[
-						'page'    => 'sybgo-reports',
-						'message' => 'error',
-					],
-					admin_url( 'admin.php' )
+				wp_nonce_url(
+					add_query_arg(
+						array(
+							'page'    => 'sybgo-reports',
+							'message' => 'error',
+						),
+						admin_url( 'admin.php' )
+					),
+					'sybgo_report_message'
 				)
 			);
 			exit;
@@ -706,12 +721,15 @@ class Reports_Page {
 		$message = $sent ? 'resent' : 'error';
 
 		wp_safe_redirect(
-			add_query_arg(
-				[
-					'page'    => 'sybgo-reports',
-					'message' => $message,
-				],
-				admin_url( 'admin.php' )
+			wp_nonce_url(
+				add_query_arg(
+					array(
+						'page'    => 'sybgo-reports',
+						'message' => $message,
+					),
+					admin_url( 'admin.php' )
+				),
+				'sybgo_report_message'
 			)
 		);
 		exit;

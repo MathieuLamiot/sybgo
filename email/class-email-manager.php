@@ -120,7 +120,7 @@ class Email_Manager {
 
 		if ( 0 === $total_events ) {
 			// Check settings for empty reports.
-			$settings   = get_option( Settings_Page::OPTION_NAME, [] );
+			$settings   = get_option( Settings_Page::OPTION_NAME, array() );
 			$send_empty = $settings['send_empty_reports'] ?? false;
 
 			return $send_empty;
@@ -135,15 +135,15 @@ class Email_Manager {
 	 * @return array Email headers.
 	 */
 	private function get_email_headers(): array {
-		$settings = get_option( Settings_Page::OPTION_NAME, [] );
+		$settings = get_option( Settings_Page::OPTION_NAME, array() );
 
 		$from_name  = $settings['from_name'] ?? get_bloginfo( 'name' );
 		$from_email = $settings['from_email'] ?? get_option( 'admin_email' );
 
-		$headers = [
+		$headers = array(
 			'Content-Type: text/html; charset=UTF-8',
 			sprintf( 'From: %s <%s>', $from_name, $from_email ),
-		];
+		);
 
 		/**
 		 * Filter email headers.
@@ -165,16 +165,17 @@ class Email_Manager {
 
 		$table_name = $wpdb->prefix . 'sybgo_email_log';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Email log insert; no repository for email_log table.
 		$wpdb->insert(
 			$table_name,
-			[
+			array(
 				'report_id'     => $report_id,
 				'recipient'     => $recipient,
 				'status'        => 'sent',
 				'sent_at'       => current_time( 'mysql' ),
 				'error_message' => null,
-			],
-			[ '%d', '%s', '%s', '%s', '%s' ]
+			),
+			array( '%d', '%s', '%s', '%s', '%s' )
 		);
 
 		/**
@@ -201,17 +202,18 @@ class Email_Manager {
 		$error         = error_get_last();
 		$error_message = $error ? $error['message'] : 'Unknown error';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Email log insert; no repository for email_log table.
 		$wpdb->insert(
 			$table_name,
-			[
+			array(
 				'report_id'     => $report_id,
 				'recipient'     => $recipient,
 				'status'        => 'failed',
 				'sent_at'       => current_time( 'mysql' ),
 				'error_message' => $error_message,
 				'retry_count'   => 0,
-			],
-			[ '%d', '%s', '%s', '%s', '%s', '%d' ]
+			),
+			array( '%d', '%s', '%s', '%s', '%s', '%d' )
 		);
 
 		/**
@@ -235,8 +237,10 @@ class Email_Manager {
 		$table_name = $wpdb->prefix . 'sybgo_email_log';
 
 		// Get failed emails with retry count < 3.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Email log query; no repository for email_log table.
 		$failed_emails = $wpdb->get_results(
 			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
 				"SELECT * FROM {$table_name} WHERE status = %s AND retry_count < %d ORDER BY sent_at DESC LIMIT 10",
 				'failed',
 				3
@@ -267,29 +271,31 @@ class Email_Manager {
 
 			if ( $sent ) {
 				// Update to successful.
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Email log update; no repository for email_log table.
 				$wpdb->update(
 					$table_name,
-					[
+					array(
 						'status'  => 'sent',
 						'sent_at' => current_time( 'mysql' ),
-					],
-					[ 'id' => $log['id'] ],
-					[ '%s', '%s' ],
-					[ '%d' ]
+					),
+					array( 'id' => $log['id'] ),
+					array( '%s', '%s' ),
+					array( '%d' )
 				);
 
 				++$retried;
 			} else {
 				// Increment retry count.
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Email log update; no repository for email_log table.
 				$wpdb->update(
 					$table_name,
-					[
+					array(
 						'retry_count' => $log['retry_count'] + 1,
 						'sent_at'     => current_time( 'mysql' ),
-					],
-					[ 'id' => $log['id'] ],
-					[ '%d', '%s' ],
-					[ '%d' ]
+					),
+					array( 'id' => $log['id'] ),
+					array( '%d', '%s' ),
+					array( '%d' )
 				);
 			}
 		}
@@ -308,8 +314,10 @@ class Email_Manager {
 
 		$table_name = $wpdb->prefix . 'sybgo_email_log';
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Email log query; no repository for email_log table.
 		return $wpdb->get_results(
 			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
 				"SELECT * FROM {$table_name} WHERE report_id = %d ORDER BY sent_at DESC",
 				$report_id
 			),

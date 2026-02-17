@@ -14,6 +14,7 @@ namespace Rocket\Sybgo\AI;
 
 use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Events\Event_Registry;
+use Rocket\Sybgo\Logger;
 
 /**
  * AI Summarizer class.
@@ -74,7 +75,7 @@ class AI_Summarizer {
 			return $response;
 		} catch ( \Exception $e ) {
 			// Log error but don't fail the whole process.
-			error_log( 'Sybgo AI Summarizer error: ' . $e->getMessage() );
+			Logger::error( 'AI Summarizer: ' . $e->getMessage() );
 			return null;
 		}
 	}
@@ -130,8 +131,8 @@ class AI_Summarizer {
 			}
 
 			$type        = $event['event_type'];
-			$object      = $event_data['object'] ?? [];
-			$metadata    = $event_data['metadata'] ?? [];
+			$object      = $event_data['object'] ?? array();
+			$metadata    = $event_data['metadata'] ?? array();
 			$description = $this->event_registry->get_ai_description( $type, $object, $metadata );
 
 			if ( $description ) {
@@ -158,29 +159,29 @@ class AI_Summarizer {
 	private function call_claude_api( string $api_key, string $prompt ): string {
 		$url = 'https://api.anthropic.com/v1/messages';
 
-		$body = [
+		$body = array(
 			'model'      => 'claude-3-5-haiku-20241022',
 			'max_tokens' => 500,
-			'messages'   => [
-				[
+			'messages'   => array(
+				array(
 					'role'    => 'user',
 					'content' => $prompt,
-				],
-			],
-		];
+				),
+			),
+		);
 
 		$response = wp_remote_post(
 			$url,
-			[
+			array(
 				'timeout' => 30,
-				'headers' => [
+				'headers' => array(
 					'Content-Type'      => 'application/json',
 					'x-api-key'         => $api_key,
 					'anthropic-version' => '2023-06-01',
 					'anthropic-dangerous-direct-browser-access' => 'true',
-				],
+				),
 				'body'    => wp_json_encode( $body ),
-			]
+			)
 		);
 
 		if ( is_wp_error( $response ) ) {

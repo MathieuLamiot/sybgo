@@ -90,10 +90,10 @@ function sybgo_track_event( string $event_type, array $event_data, string $sourc
 	$event_data = apply_filters( 'sybgo_before_track_event', $event_data, $event_type );
 
 	// Build create args.
-	$create_args = [
+	$create_args = array(
 		'event_type' => $event_type,
 		'event_data' => $event_data,
-	];
+	);
 
 	if ( ! empty( $source_plugin ) ) {
 		$create_args['source_plugin'] = $source_plugin;
