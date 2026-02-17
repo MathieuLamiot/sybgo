@@ -88,9 +88,6 @@ class UserTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'user_registered'
-					&& $data['event_subtype'] === 'user'
-					&& $data['object_id'] === 5
-					&& $data['user_id'] === 1
 					&& $event_data['action'] === 'registered'
 					&& $event_data['object']['type'] === 'user'
 					&& $event_data['object']['id'] === 5
@@ -132,9 +129,6 @@ class UserTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'user_registered'
-					&& $data['event_subtype'] === 'user'
-					&& $data['object_id'] === 5
-					&& $data['user_id'] === null
 					&& $event_data['metadata']['registration_method'] === 'self_signup'
 					&& $event_data['context']['created_by_id'] === null;
 			} ) )
@@ -174,9 +168,6 @@ class UserTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) use ( $old_roles, $new_role ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'user_role_changed'
-					&& $data['event_subtype'] === 'user'
-					&& $data['object_id'] === 5
-					&& $data['user_id'] === 1
 					&& $event_data['action'] === 'role_changed'
 					&& $event_data['object']['type'] === 'user'
 					&& $event_data['object']['id'] === 5
@@ -216,9 +207,6 @@ class UserTrackerTest extends TestCase {
 			->with( Mockery::on( function( $data ) {
 				$event_data = $data['event_data'];
 				return $data['event_type'] === 'user_deleted'
-					&& $data['event_subtype'] === 'user'
-					&& $data['object_id'] === 5
-					&& $data['user_id'] === 1
 					&& $event_data['action'] === 'deleted'
 					&& $event_data['object']['type'] === 'user'
 					&& $event_data['object']['id'] === 5;

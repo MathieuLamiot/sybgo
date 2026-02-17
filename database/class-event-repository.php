@@ -46,16 +46,13 @@ class Event_Repository {
 	public function create( array $event_data ) {
 		global $wpdb;
 
-		$defaults = array(
+		$defaults = [
 			'event_type'      => '',
-			'event_subtype'   => null,
-			'object_id'       => null,
-			'user_id'         => null,
 			'event_data'      => null,
 			'event_timestamp' => current_time( 'mysql' ),
 			'report_id'       => null,
 			'source_plugin'   => 'core',
-		);
+		];
 
 		$data = wp_parse_args( $event_data, $defaults );
 
@@ -110,7 +107,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : array();
+		return $events ? $events : [];
 	}
 
 	/**
@@ -138,7 +135,7 @@ class Event_Repository {
 			ARRAY_A
 		);
 
-		$events = $events ? $events : array();
+		$events = $events ? $events : [];
 
 		wp_cache_set( $cache_key, $events, 'sybgo_cache', 300 ); // Cache for 5 minutes.
 
@@ -179,7 +176,7 @@ class Event_Repository {
 			);
 		}
 
-		return $events ? $events : array();
+		return $events ? $events : [];
 	}
 
 	/**
@@ -212,6 +209,8 @@ class Event_Repository {
 	/**
 	 * Get last event for a specific object (for throttling).
 	 *
+	 * Uses JSON_EXTRACT to query the object ID from event_data JSON.
+	 *
 	 * @param string $event_type Event type.
 	 * @param int    $object_id Object ID.
 	 * @return array|null Last event or null if none found.
@@ -222,7 +221,7 @@ class Event_Repository {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$event = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$this->table} WHERE event_type = %s AND object_id = %d ORDER BY event_timestamp DESC LIMIT 1",
+				"SELECT * FROM {$this->table} WHERE event_type = %s AND JSON_EXTRACT(event_data, '$.object.id') = %d ORDER BY event_timestamp DESC LIMIT 1",
 				$event_type,
 				$object_id
 			),
@@ -258,7 +257,7 @@ class Event_Repository {
 			);
 		}
 
-		$result = array();
+		$result = [];
 		if ( $counts ) {
 			foreach ( $counts as $row ) {
 				$result[ $row['event_type'] ] = (int) $row['count'];

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Tests\Unit\Admin;
 
 use Rocket\Sybgo\Admin\Settings_Page;
+use Rocket\Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -27,6 +28,13 @@ class SettingsPageTest extends TestCase {
 	private Settings_Page $settings_page;
 
 	/**
+	 * Event registry mock.
+	 *
+	 * @var Event_Registry
+	 */
+	private $event_registry;
+
+	/**
 	 * Set up test environment.
 	 *
 	 * @return void
@@ -35,7 +43,8 @@ class SettingsPageTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->settings_page = new Settings_Page();
+		$this->event_registry = Mockery::mock( Event_Registry::class );
+		$this->settings_page  = new Settings_Page( $this->event_registry );
 
 		// Mock WordPress functions.
 		Functions\when( 'esc_html' )->returnArg();

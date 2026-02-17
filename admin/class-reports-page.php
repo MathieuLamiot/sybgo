@@ -17,6 +17,7 @@ use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Reports\Report_Manager;
 use Rocket\Sybgo\Reports\Report_Generator;
 use Rocket\Sybgo\Email\Email_Manager;
+use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * Reports Page class.
@@ -63,6 +64,13 @@ class Reports_Page {
 	private Email_Manager $email_manager;
 
 	/**
+	 * Event registry instance.
+	 *
+	 * @var Event_Registry
+	 */
+	private Event_Registry $event_registry;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Event_Repository  $event_repo Event repository.
@@ -70,19 +78,22 @@ class Reports_Page {
 	 * @param Report_Manager    $report_manager Report manager.
 	 * @param Report_Generator  $report_generator Report generator.
 	 * @param Email_Manager     $email_manager Email manager.
+	 * @param Event_Registry    $event_registry Event registry.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
 		Report_Manager $report_manager,
 		Report_Generator $report_generator,
-		Email_Manager $email_manager
+		Email_Manager $email_manager,
+		Event_Registry $event_registry
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
 		$this->report_manager   = $report_manager;
 		$this->report_generator = $report_generator;
 		$this->email_manager    = $email_manager;
+		$this->event_registry   = $event_registry;
 	}
 
 	/**
@@ -91,9 +102,9 @@ class Reports_Page {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
-		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
-		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
+		add_action( 'admin_menu', [ $this, 'add_reports_page' ] );
+		add_action( 'admin_post_sybgo_freeze_now', [ $this, 'handle_manual_freeze' ] );
+		add_action( 'admin_post_sybgo_resend_email', [ $this, 'handle_resend_email' ] );
 	}
 
 	/**
@@ -107,7 +118,7 @@ class Reports_Page {
 			__( 'Sybgo Reports', 'sybgo' ),
 			'manage_options',
 			'sybgo-reports',
-			array( $this, 'render_reports_page' ),
+			[ $this, 'render_reports_page' ],
 			'dashicons-chart-line',
 			30
 		);
@@ -166,7 +177,7 @@ class Reports_Page {
 		<a
 			href="#"
 			class="page-title-action sybgo-freeze-btn"
-			data-events="<?php echo esc_attr( $events_count ); ?>"
+			data-events="<?php echo esc_attr( (string) $events_count ); ?>"
 		>
 			<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
 		</a>
@@ -181,6 +192,7 @@ class Reports_Page {
 					</p>
 					<ul>
 						<li><?php esc_html_e( 'End the current weekly period early', 'sybgo' ); ?></li>
+						<?php /* translators: %d: number of tracked events to freeze */ ?>
 						<li><?php echo esc_html( sprintf( __( 'Freeze %d tracked events', 'sybgo' ), $events_count ) ); ?></li>
 						<li><?php esc_html_e( 'Send the digest email immediately', 'sybgo' ); ?></li>
 						<li><?php esc_html_e( 'Start a new reporting period', 'sybgo' ); ?></li>
@@ -213,8 +225,8 @@ class Reports_Page {
 
 			$('.sybgo-modal-close, .sybgo-modal-cancel, .sybgo-modal').on('click', function(e) {
 				if ($(e.target).hasClass('sybgo-modal') ||
-				    $(e.target).hasClass('sybgo-modal-close') ||
-				    $(e.target).hasClass('sybgo-modal-cancel')) {
+					$(e.target).hasClass('sybgo-modal-close') ||
+					$(e.target).hasClass('sybgo-modal-cancel')) {
 					$('#sybgo-freeze-modal').fadeOut(200);
 				}
 			});
@@ -370,13 +382,25 @@ class Reports_Page {
 	 * @return void
 	 */
 	private function render_status_badge( string $status ): void {
-		$badges = array(
-			'active'  => array( 'label' => __( 'Active', 'sybgo' ), 'color' => '#2271b1' ),
-			'frozen'  => array( 'label' => __( 'Frozen', 'sybgo' ), 'color' => '#dba617' ),
-			'emailed' => array( 'label' => __( 'Sent', 'sybgo' ), 'color' => '#00a32a' ),
-		);
+		$badges = [
+			'active'  => [
+				'label' => __( 'Active', 'sybgo' ),
+				'color' => '#2271b1',
+			],
+			'frozen'  => [
+				'label' => __( 'Frozen', 'sybgo' ),
+				'color' => '#dba617',
+			],
+			'emailed' => [
+				'label' => __( 'Sent', 'sybgo' ),
+				'color' => '#00a32a',
+			],
+		];
 
-		$badge = $badges[ $status ] ?? array( 'label' => $status, 'color' => '#646970' );
+		$badge = $badges[ $status ] ?? [
+			'label' => $status,
+			'color' => '#646970',
+		];
 
 		?>
 		<span style="display: inline-block; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; color: #fff; background-color: <?php echo esc_attr( $badge['color'] ); ?>;">
@@ -473,7 +497,7 @@ class Reports_Page {
 				</div>
 			<?php endif; ?>
 
-			<h3><?php esc_html_e( 'All Events', 'sybgo' ); ?> (<?php echo esc_html( count( $events ) ); ?>)</h3>
+			<h3><?php esc_html_e( 'All Events', 'sybgo' ); ?> (<?php echo esc_html( (string) count( $events ) ); ?>)</h3>
 
 			<?php if ( empty( $events ) ) : ?>
 				<p><?php esc_html_e( 'No events in this report.', 'sybgo' ); ?></p>
@@ -562,9 +586,12 @@ class Reports_Page {
 	 */
 	private function render_events_table( array $events ): void {
 		// Sort by timestamp descending.
-		usort( $events, function( $a, $b ) {
-			return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
-		} );
+		usort(
+			$events,
+			function( $a, $b ) {
+				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
+			}
+		);
 
 		?>
 		<table class="wp-list-table widefat fixed striped">
@@ -579,8 +606,8 @@ class Reports_Page {
 				<?php foreach ( $events as $event ) : ?>
 					<?php
 					$event_data = json_decode( $event['event_data'], true );
-					$icon       = $this->get_event_icon( $event['event_type'] );
-					$title      = $this->get_event_title( $event['event_type'], $event_data );
+					$icon       = $this->event_registry->get_icon( $event['event_type'] );
+					$title      = $this->event_registry->get_detailed_title( $event['event_type'], $event_data );
 					$time       = gmdate( 'M j, Y g:i A', strtotime( $event['event_timestamp'] ) );
 					?>
 					<tr>
@@ -597,109 +624,9 @@ class Reports_Page {
 	}
 
 	/**
-	 * Get icon for event type.
-	 *
-	 * @param string $event_type Event type.
-	 * @return string Icon character.
-	 */
-	private function get_event_icon( string $event_type ): string {
-		$icons = array(
-			'post_published'     => '📝',
-			'post_edited'        => '✏️',
-			'post_deleted'       => '🗑️',
-			'user_registered'    => '👤',
-			'user_role_changed'  => '👥',
-			'core_updated'       => '🔄',
-			'plugin_installed'   => '➕',
-			'plugin_activated'   => '✅',
-			'plugin_deactivated' => '⏸️',
-			'plugin_updated'     => '🔌',
-			'theme_installed'    => '🎨',
-			'theme_updated'      => '🎨',
-			'theme_switched'     => '🔄',
-			'comment_new'        => '💬',
-			'comment_approved'   => '✅',
-		);
-
-		return $icons[ $event_type ] ?? '•';
-	}
-
-	/**
-	 * Get human-readable title for event.
-	 *
-	 * @param string $event_type Event type.
-	 * @param array  $event_data Event data.
-	 * @return string Event title.
-	 */
-	private function get_event_title( string $event_type, array $event_data ): string {
-		$object = $event_data['object'] ?? array();
-
-		switch ( $event_type ) {
-			case 'post_published':
-				return sprintf( 'New %s published: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
-
-			case 'post_edited':
-				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
-				return sprintf( '%s edited (%d%% of content changed)', $object['title'] ?? 'Post', $magnitude );
-
-			case 'post_deleted':
-				return sprintf( '%s "%s" was deleted', ucfirst( $object['type'] ?? 'Post' ), $object['title'] ?? 'Untitled' );
-
-			case 'user_registered':
-				return sprintf( 'New user registered: %s (%s)', $object['username'] ?? 'Unknown', $object['email'] ?? '' );
-
-			case 'user_role_changed':
-				$prev_role = $event_data['metadata']['previous_role'] ?? 'subscriber';
-				$new_role  = $event_data['metadata']['role'] ?? 'subscriber';
-				return sprintf( 'User %s role changed from %s to %s', $object['username'] ?? 'Unknown', $prev_role, $new_role );
-
-			case 'core_updated':
-				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
-				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
-				return sprintf( 'WordPress updated from %s to %s', $old_ver, $new_ver );
-
-			case 'plugin_installed':
-				$version = $event_data['metadata']['version'] ?? 'unknown';
-				return sprintf( 'Plugin "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
-
-			case 'plugin_activated':
-				return sprintf( 'Plugin "%s" activated', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_deactivated':
-				return sprintf( 'Plugin "%s" deactivated', $object['name'] ?? 'Unknown' );
-
-			case 'plugin_updated':
-				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
-				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
-				return sprintf( 'Plugin "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
-
-			case 'theme_installed':
-				$version = $event_data['metadata']['version'] ?? 'unknown';
-				return sprintf( 'Theme "%s" installed (v%s)', $object['name'] ?? 'Unknown', $version );
-
-			case 'theme_updated':
-				$old_ver = $event_data['metadata']['old_version'] ?? 'unknown';
-				$new_ver = $event_data['metadata']['new_version'] ?? 'latest';
-				return sprintf( 'Theme "%s" updated from %s to %s', $object['name'] ?? 'Unknown', $old_ver, $new_ver );
-
-			case 'theme_switched':
-				$old_theme = $event_data['metadata']['old_theme'] ?? 'Unknown';
-				return sprintf( 'Theme switched from "%s" to "%s"', $old_theme, $object['name'] ?? 'Unknown' );
-
-			case 'comment_new':
-				return sprintf( 'New comment on: %s', $event_data['metadata']['post_title'] ?? 'Unknown post' );
-
-			case 'comment_approved':
-				return sprintf( 'Comment approved on: %s', $event_data['metadata']['post_title'] ?? 'Unknown post' );
-
-			default:
-				return ucwords( str_replace( '_', ' ', $event_type ) );
-		}
-	}
-
-	/**
 	 * Handle manual freeze request.
 	 *
+	 * @throws \Exception If freeze or email fails.
 	 * @return void
 	 */
 	public function handle_manual_freeze(): void {
@@ -727,10 +654,10 @@ class Reports_Page {
 			// Redirect with success message.
 			wp_safe_redirect(
 				add_query_arg(
-					array(
+					[
 						'page'    => 'sybgo-reports',
 						'message' => 'frozen',
-					),
+					],
 					admin_url( 'admin.php' )
 				)
 			);
@@ -740,10 +667,10 @@ class Reports_Page {
 			// Redirect with error message.
 			wp_safe_redirect(
 				add_query_arg(
-					array(
+					[
 						'page'    => 'sybgo-reports',
 						'message' => 'error',
-					),
+					],
 					admin_url( 'admin.php' )
 				)
 			);
@@ -780,10 +707,10 @@ class Reports_Page {
 
 		wp_safe_redirect(
 			add_query_arg(
-				array(
+				[
 					'page'    => 'sybgo-reports',
 					'message' => $message,
-				),
+				],
 				admin_url( 'admin.php' )
 			)
 		);

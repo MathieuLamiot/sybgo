@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Tests\Unit\Email;
 
 use Rocket\Sybgo\Email\Email_Template;
+use Rocket\Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -27,6 +28,13 @@ class EmailTemplateTest extends TestCase {
 	private Email_Template $email_template;
 
 	/**
+	 * Event registry mock.
+	 *
+	 * @var Event_Registry
+	 */
+	private $event_registry;
+
+	/**
 	 * Set up test environment.
 	 *
 	 * @return void
@@ -35,7 +43,17 @@ class EmailTemplateTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->email_template = new Email_Template();
+		$this->event_registry = Mockery::mock( Event_Registry::class );
+		$this->event_registry->shouldReceive( 'get_stat_label' )->andReturnUsing( function( $type ) {
+			$labels = array(
+				'post_published'  => 'Posts Published',
+				'post_edited'     => 'Posts Edited',
+				'user_registered' => 'New Users',
+				'comment_posted'  => 'New Comments',
+			);
+			return $labels[ $type ] ?? ucwords( str_replace( '_', ' ', $type ) );
+		} );
+		$this->email_template = new Email_Template( $this->event_registry );
 
 		// Mock WordPress functions.
 		Functions\when( 'esc_html' )->returnArg();

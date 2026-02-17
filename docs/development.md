@@ -143,6 +143,7 @@ use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
+use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Events\Trackers\Post_Tracker;
 
 class PostTrackerTest extends TestCase {
@@ -165,13 +166,13 @@ class PostTrackerTest extends TestCase {
     }
 
     public function test_track_post_publish() {
-        $event_tracker = Mockery::mock( Event_Tracker::class );
-        $event_tracker->shouldReceive( 'track_event' )
+        $event_repo = Mockery::mock( Event_Repository::class );
+        $event_repo->shouldReceive( 'create' )
             ->once()
-            ->with( 'post_published', Mockery::type( 'array' ) )
+            ->with( Mockery::type( 'array' ) )
             ->andReturn( 123 );
 
-        $tracker = new Post_Tracker( $event_tracker );
+        $tracker = new Post_Tracker( $event_repo );
 
         // Test logic here
         $this->assertTrue( true );
@@ -244,7 +245,7 @@ tail -f wp-content/debug.log
 
 ```bash
 # View recent events
-wp db query "SELECT * FROM wp_sybgo_events ORDER BY created_at DESC LIMIT 10"
+wp db query "SELECT * FROM wp_sybgo_events ORDER BY event_timestamp DESC LIMIT 10"
 
 # Pretty print JSON
 wp db query "SELECT id, event_type, JSON_PRETTY(event_data) FROM wp_sybgo_events LIMIT 1"
@@ -335,8 +336,10 @@ sybgo/
 │   ├── class-email-manager.php
 │   └── class-email-template.php
 │
+├── ai/                           # AI integration
+│   └── class-ai-summarizer.php
+│
 ├── api/                          # Extensibility
-│   ├── class-extensibility-api.php
 │   └── functions.php
 │
 ├── docs/                         # Documentation
@@ -363,27 +366,38 @@ Create `events/trackers/class-media-tracker.php`:
 ```php
 namespace Rocket\Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Events\Event_Registry;
+use Rocket\Sybgo\Database\Event_Repository;
 
 class Media_Tracker {
-    private object $event_tracker;
+    private Event_Repository $event_repo;
 
-    public function __construct( object $event_tracker ) {
-        $this->event_tracker = $event_tracker;
-        $this->register_hooks();
-        $this->register_event_types();
+    public function __construct( Event_Repository $event_repo ) {
+        $this->event_repo = $event_repo;
+        add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
     }
 
-    private function register_hooks(): void {
-        add_action( 'add_attachment', [ $this, 'on_media_upload' ] );
+    public function register_hooks(): void {
+        add_action( 'add_attachment', array( $this, 'on_media_upload' ) );
     }
 
-    private function register_event_types(): void {
-        Event_Registry::register_event_type( 'media_uploaded', function( $event_data ) {
-            return "Event Type: Media Uploaded\n" .
-                   "Description: A new file was uploaded.\n" .
-                   "Data: Filename, size, MIME type";
-        } );
+    public function register_event_types( array $types ): array {
+        $types['media_uploaded'] = array(
+            'icon'            => '📎',
+            'stat_label'      => __( 'Media Uploads', 'sybgo' ),
+            'short_title'     => function ( array $event_data ): string {
+                return $event_data['object']['filename'];
+            },
+            'detailed_title'  => function ( array $event_data ): string {
+                return 'Uploaded: ' . $event_data['object']['filename'];
+            },
+            'ai_description'  => function ( array $object, array $metadata ): string {
+                return "File uploaded: {$object['filename']} ({$metadata['mime_type']})";
+            },
+            'describe'        => function ( array $event_data ): string {
+                return "Event Type: Media Uploaded\nData: Filename, size, MIME type";
+            },
+        );
+        return $types;
     }
 
     public function on_media_upload( int $attachment_id ): void {
@@ -394,56 +408,41 @@ class Media_Tracker {
                 'id' => $attachment_id,
                 'filename' => basename( get_attached_file( $attachment_id ) )
             ],
+            'context' => [
+                'user_id' => get_current_user_id(),
+                'user_name' => wp_get_current_user()->display_name,
+            ],
             'metadata' => [
                 'file_size' => filesize( get_attached_file( $attachment_id ) ),
                 'mime_type' => get_post_mime_type( $attachment_id )
             ]
         ];
 
-        $this->event_tracker->track_event( 'media_uploaded', $event_data );
+        $this->event_repo->create( array(
+            'event_type' => 'media_uploaded',
+            'event_data' => $event_data,
+        ) );
     }
 }
 ```
 
-### 2. Wire Up in Main Plugin
+### 2. Wire Up in Event_Tracker
 
-Add to `class-sybgo.php`:
-
-```php
-private function init_event_tracking(): void {
-    // ... existing trackers ...
-
-    require_once SYBGO_PLUGIN_DIR . 'events/trackers/class-media-tracker.php';
-    $media_tracker = new \Rocket\Sybgo\Events\Trackers\Media_Tracker( $event_tracker );
-}
-```
-
-### 3. Update Report Generator
-
-Add to `reports/class-report-generator.php`:
+Add to `events/class-event-tracker.php` in the `load_trackers()` method:
 
 ```php
-private function calculate_totals( array $events ): array {
-    $totals = [
-        'posts_published' => 0,
-        // ... existing ...
-        'media_uploaded' => 0,
-    ];
-
-    foreach ( $events as $event ) {
-        switch ( $event['event_type'] ) {
-            // ... existing cases ...
-            case 'media_uploaded':
-                $totals['media_uploaded']++;
-                break;
-        }
-    }
-
-    return $totals;
-}
+$this->trackers = array(
+    'post'    => new Trackers\Post_Tracker( $this->event_repo ),
+    'user'    => new Trackers\User_Tracker( $this->event_repo ),
+    'update'  => new Trackers\Update_Tracker( $this->event_repo ),
+    'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
+    'media'   => new Trackers\Media_Tracker( $this->event_repo ),
+);
 ```
 
-### 4. Write Tests
+Event types registered via the `sybgo_event_types` filter are automatically picked up by the Report_Generator for totals and trends — no manual updates needed.
+
+### 3. Write Tests
 
 Create `Tests/Unit/Events/MediaTrackerTest.php`:
 

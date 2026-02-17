@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
-	bootstrap="Tests/bootstrap.php"
+	bootstrap="Tests/bootstrap-unit.php"
 	backupGlobals="false"
 	colors="true"
 	convertErrorsToExceptions="true"
@@ -20,13 +20,13 @@
 
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="true">
-			<directory suffix=".php">./</directory>
-			<exclude>
-				<directory>./Tests</directory>
-				<directory>./vendor</directory>
-				<directory>./assets</directory>
-				<directory>./docs</directory>
-			</exclude>
+			<directory suffix=".php">./database</directory>
+			<directory suffix=".php">./events</directory>
+			<directory suffix=".php">./reports</directory>
+			<directory suffix=".php">./admin</directory>
+			<directory suffix=".php">./email</directory>
+			<directory suffix=".php">./ai</directory>
+			<directory suffix=".php">./api</directory>
 		</whitelist>
 	</filter>
 

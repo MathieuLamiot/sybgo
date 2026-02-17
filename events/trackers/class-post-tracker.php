@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Events\Trackers;
 
 use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * Post Tracker class.
@@ -46,8 +45,8 @@ class Post_Tracker {
 	public function __construct( Event_Repository $event_repo ) {
 		$this->event_repo = $event_repo;
 
-		// Register event types with descriptions.
-		$this->register_event_types();
+		// Register event types via filter.
+		add_filter( 'sybgo_event_types', [ $this, 'register_event_types' ] );
 	}
 
 	/**
@@ -57,25 +56,37 @@ class Post_Tracker {
 	 */
 	public function register_hooks(): void {
 		// Track when posts/pages are published.
-		add_action( 'transition_post_status', array( $this, 'track_post_status_change' ), 10, 3 );
+		add_action( 'transition_post_status', [ $this, 'track_post_status_change' ], 10, 3 );
 
 		// Track when published posts/pages are edited.
-		add_action( 'post_updated', array( $this, 'track_post_edit' ), 10, 3 );
+		add_action( 'post_updated', [ $this, 'track_post_edit' ], 10, 3 );
 
 		// Track when posts/pages are deleted.
-		add_action( 'before_delete_post', array( $this, 'track_post_delete' ), 10, 2 );
+		add_action( 'before_delete_post', [ $this, 'track_post_delete' ], 10, 2 );
 	}
 
 	/**
-	 * Register event types with AI-friendly descriptions.
+	 * Register post event types via filter.
 	 *
-	 * @return void
+	 * @param array $types Existing event types.
+	 * @return array Modified event types.
 	 */
-	private function register_event_types(): void {
-		// Post Published event.
-		Event_Registry::register_event_type(
-			'post_published',
-			function ( array $event_data ): string {
+	public function register_event_types( array $types ): array {
+		$types['post_published'] = [
+			'icon'           => '📝',
+			'stat_label'     => __( 'Posts Published', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'New %s: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'New %s published: %s', $object['type'] ?? 'post', $object['title'] ?? 'Untitled' );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				return sprintf( 'Published post: "%s"', $object['title'] ?? 'Untitled' );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: Post Published\n";
 				$description .= "Description: A new post or page was published on the site.\n\n";
 				$description .= "Data Structure:\n";
@@ -89,15 +100,28 @@ class Post_Tracker {
 				$description .= "  - metadata.tags: Array of tag names\n";
 				$description .= "  - metadata.word_count: Total word count\n";
 				$description .= "  - metadata.edit_magnitude: Always 100 for new publishes\n";
-
 				return $description;
-			}
-		);
+			},
+		];
 
-		// Post Edited event.
-		Event_Registry::register_event_type(
-			'post_edited',
-			function ( array $event_data ): string {
+		$types['post_edited'] = [
+			'icon'           => '✏️',
+			'stat_label'     => __( 'Posts Edited', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object    = $event_data['object'] ?? [];
+				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
+				return sprintf( '%s edited (%d%% changed)', $object['title'] ?? 'Post', $magnitude );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object    = $event_data['object'] ?? [];
+				$magnitude = $event_data['metadata']['edit_magnitude'] ?? 0;
+				return sprintf( '%s edited (%d%% of content changed)', $object['title'] ?? 'Post', $magnitude );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				$magnitude = $metadata['edit_magnitude'] ?? 0;
+				return sprintf( 'Edited post "%s" (%d%% changed)', $object['title'] ?? 'Untitled', $magnitude );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: Post Edited\n";
 				$description .= "Description: An existing published post or page was updated.\n\n";
 				$description .= "Data Structure:\n";
@@ -106,21 +130,26 @@ class Post_Tracker {
 				$description .= "  - object.title: The post title\n";
 				$description .= "  - object.url: The permalink URL\n";
 				$description .= "  - metadata.edit_magnitude: Percentage of content changed (0-100)\n";
-				$description .= "    * 0-5%: Minimal changes (typos, formatting)\n";
-				$description .= "    * 5-25%: Minor updates (small additions/corrections)\n";
-				$description .= "    * 25-50%: Moderate updates (significant revisions)\n";
-				$description .= "    * 50-75%: Major updates (substantial rewrite)\n";
-				$description .= "    * 75-100%: Complete rewrite\n";
 				$description .= "  - metadata.word_count: New word count after edit\n";
-
 				return $description;
-			}
-		);
+			},
+		];
 
-		// Post Deleted event.
-		Event_Registry::register_event_type(
-			'post_deleted',
-			function ( array $event_data ): string {
+		$types['post_deleted'] = [
+			'icon'           => '🗑️',
+			'stat_label'     => __( 'Posts Deleted', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( '%s deleted', $object['title'] ?? 'Post' );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( '%s "%s" was deleted', ucfirst( $object['type'] ?? 'Post' ), $object['title'] ?? 'Untitled' );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				return sprintf( 'Deleted post: "%s"', $object['title'] ?? 'Untitled' );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: Post Deleted\n";
 				$description .= "Description: A post or page was permanently deleted.\n\n";
 				$description .= "Data Structure:\n";
@@ -128,10 +157,11 @@ class Post_Tracker {
 				$description .= "  - object.id: The post ID\n";
 				$description .= "  - object.title: The post title (before deletion)\n";
 				$description .= "  - context.user_id: ID of the user who deleted it\n";
-
 				return $description;
-			}
-		);
+			},
+		];
+
+		return $types;
 	}
 
 	/**
@@ -144,7 +174,7 @@ class Post_Tracker {
 	 */
 	public function track_post_status_change( string $new_status, string $old_status, \WP_Post $post ): void {
 		// Only track posts and pages.
-		if ( ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
 			return;
 		}
 
@@ -168,35 +198,32 @@ class Post_Tracker {
 		}
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'published',
-			'object'   => array(
+			'object'   => [
 				'type'  => $post->post_type,
 				'id'    => $post->ID,
 				'title' => $post->post_title,
 				'url'   => get_permalink( $post->ID ),
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'user_id'   => get_current_user_id(),
 				'user_name' => wp_get_current_user()->display_name,
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'categories'     => $this->get_categories( $post->ID ),
 				'tags'           => $this->get_tags( $post->ID ),
 				'word_count'     => str_word_count( wp_strip_all_tags( $post->post_content ) ),
 				'edit_magnitude' => 100, // New publish is always 100%.
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'post_published',
-				'event_subtype' => $post->post_type,
-				'object_id'    => $post->ID,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'post_published',
+				'event_data' => $event_data,
+			]
 		);
 	}
 
@@ -210,7 +237,7 @@ class Post_Tracker {
 	 */
 	public function track_post_edit( int $post_id, \WP_Post $post_after, \WP_Post $post_before ): void {
 		// Only track posts and pages.
-		if ( ! in_array( $post_after->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! in_array( $post_after->post_type, [ 'post', 'page' ], true ) ) {
 			return;
 		}
 
@@ -245,35 +272,32 @@ class Post_Tracker {
 		}
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'edited',
-			'object'   => array(
+			'object'   => [
 				'type'  => $post_after->post_type,
 				'id'    => $post_id,
 				'title' => $post_after->post_title,
 				'url'   => get_permalink( $post_id ),
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'user_id'   => get_current_user_id(),
 				'user_name' => wp_get_current_user()->display_name,
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'categories'     => $this->get_categories( $post_id ),
 				'tags'           => $this->get_tags( $post_id ),
 				'word_count'     => str_word_count( wp_strip_all_tags( $post_after->post_content ) ),
 				'edit_magnitude' => $edit_magnitude,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'post_edited',
-				'event_subtype' => $post_after->post_type,
-				'object_id'    => $post_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'post_edited',
+				'event_data' => $event_data,
+			]
 		);
 	}
 
@@ -286,33 +310,30 @@ class Post_Tracker {
 	 */
 	public function track_post_delete( int $post_id, \WP_Post $post ): void {
 		// Only track posts and pages.
-		if ( ! in_array( $post->post_type, array( 'post', 'page' ), true ) ) {
+		if ( ! in_array( $post->post_type, [ 'post', 'page' ], true ) ) {
 			return;
 		}
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'  => 'deleted',
-			'object'  => array(
+			'object'  => [
 				'type'  => $post->post_type,
 				'id'    => $post_id,
 				'title' => $post->post_title,
-			),
-			'context' => array(
+			],
+			'context' => [
 				'user_id'   => get_current_user_id(),
 				'user_name' => wp_get_current_user()->display_name,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'post_deleted',
-				'event_subtype' => $post->post_type,
-				'object_id'    => $post_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'post_deleted',
+				'event_data' => $event_data,
+			]
 		);
 	}
 
@@ -360,7 +381,7 @@ class Post_Tracker {
 		$categories = get_the_category( $post_id );
 
 		if ( ! $categories ) {
-			return array();
+			return [];
 		}
 
 		return array_map(
@@ -381,7 +402,7 @@ class Post_Tracker {
 		$tags = get_the_tags( $post_id );
 
 		if ( ! $tags ) {
-			return array();
+			return [];
 		}
 
 		return array_map(

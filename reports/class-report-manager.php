@@ -87,10 +87,10 @@ class Report_Manager {
 	 */
 	public function create_new_active_report(): int {
 		$report_id = $this->report_repo->create(
-			array(
+			[
 				'status'       => 'active',
 				'period_start' => current_time( 'mysql' ),
-			)
+			]
 		);
 
 		// Allow plugins to hook in.
@@ -135,13 +135,13 @@ class Report_Manager {
 		// Update report.
 		$this->report_repo->update(
 			$report_id,
-			array(
+			[
 				'status'       => 'frozen',
 				'period_end'   => $period_end,
 				'frozen_at'    => current_time( 'mysql' ),
 				'summary_data' => $summary,
 				'event_count'  => $assigned_count,
-			)
+			]
 		);
 
 		// Fire after freeze hook.
@@ -223,10 +223,10 @@ class Report_Manager {
 	public function mark_report_emailed( int $report_id ): bool {
 		return $this->report_repo->update(
 			$report_id,
-			array(
+			[
 				'status'     => 'emailed',
 				'emailed_at' => current_time( 'mysql' ),
-			)
+			]
 		);
 	}
 }

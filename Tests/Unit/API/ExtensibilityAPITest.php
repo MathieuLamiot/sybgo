@@ -1,6 +1,6 @@
 <?php
 /**
- * Extensibility API Test
+ * API Functions Test
  *
  * @package Rocket\Sybgo\Tests\Unit\API
  */
@@ -9,14 +9,13 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Tests\Unit\API;
 
-use Rocket\Sybgo\API\Extensibility_API;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Test Extensibility_API class.
+ * Test standalone API functions (sybgo_track_event, etc.).
  */
 class ExtensibilityAPITest extends TestCase {
 	/**
@@ -35,10 +34,13 @@ class ExtensibilityAPITest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->event_repo = Mockery::mock( 'stdClass' );
+		// Load the API functions file.
+		require_once dirname( __DIR__, 3 ) . '/api/functions.php';
+
+		$this->event_repo = Mockery::mock( 'Rocket\Sybgo\Database\Event_Repository' );
 
 		// Initialize API with mock repo.
-		Extensibility_API::init( $this->event_repo );
+		sybgo_init_api( $this->event_repo );
 
 		// Mock WordPress functions.
 		Functions\when( 'esc_html' )->returnArg();
@@ -51,13 +53,17 @@ class ExtensibilityAPITest extends TestCase {
 	 * @return void
 	 */
 	protected function tearDown(): void {
+		// Reset the API.
+		global $sybgo_api_event_repo;
+		$sybgo_api_event_repo = null;
+
 		Monkey\tearDown();
 		Mockery::close();
 		parent::tearDown();
 	}
 
 	/**
-	 * Test track_event() successfully tracks valid event.
+	 * Test sybgo_track_event() successfully tracks valid event.
 	 *
 	 * @return void
 	 */
@@ -97,13 +103,13 @@ class ExtensibilityAPITest extends TestCase {
 			->once()
 			->with( 'sybgo_event_tracked', 1, $event_type, $event_data );
 
-		$result = Extensibility_API::track_event( $event_type, $event_data );
+		$result = sybgo_track_event( $event_type, $event_data );
 
 		$this->assertEquals( 1, $result );
 	}
 
 	/**
-	 * Test track_event() with source plugin.
+	 * Test sybgo_track_event() with source plugin.
 	 *
 	 * @return void
 	 */
@@ -123,19 +129,19 @@ class ExtensibilityAPITest extends TestCase {
 		$this->event_repo->shouldReceive( 'create' )
 			->once()
 			->with( Mockery::on( function( $data ) {
-				return $data['event_data']['source_plugin'] === 'woocommerce';
+				return $data['source_plugin'] === 'woocommerce';
 			} ) )
 			->andReturn( 1 );
 
 		Functions\expect( 'do_action' );
 
-		$result = Extensibility_API::track_event( $event_type, $event_data, 'woocommerce' );
+		$result = sybgo_track_event( $event_type, $event_data, 'woocommerce' );
 
 		$this->assertEquals( 1, $result );
 	}
 
 	/**
-	 * Test track_event() returns false when missing action.
+	 * Test sybgo_track_event() returns false when missing action.
 	 *
 	 * @return void
 	 */
@@ -144,13 +150,13 @@ class ExtensibilityAPITest extends TestCase {
 			'object' => [ 'type' => 'order', 'id' => 123 ],
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test track_event() returns false when missing object.
+	 * Test sybgo_track_event() returns false when missing object.
 	 *
 	 * @return void
 	 */
@@ -159,13 +165,13 @@ class ExtensibilityAPITest extends TestCase {
 			'action' => 'created',
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test track_event() returns false when missing object type.
+	 * Test sybgo_track_event() returns false when missing object type.
 	 *
 	 * @return void
 	 */
@@ -175,13 +181,13 @@ class ExtensibilityAPITest extends TestCase {
 			'object' => [ 'id' => 123 ],
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test track_event() returns false when object not array.
+	 * Test sybgo_track_event() returns false when object not array.
 	 *
 	 * @return void
 	 */
@@ -191,13 +197,13 @@ class ExtensibilityAPITest extends TestCase {
 			'object' => 'not an array',
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test track_event() returns false when context not array.
+	 * Test sybgo_track_event() returns false when context not array.
 	 *
 	 * @return void
 	 */
@@ -208,13 +214,13 @@ class ExtensibilityAPITest extends TestCase {
 			'context' => 'not an array',
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test track_event() returns false when metadata not array.
+	 * Test sybgo_track_event() returns false when metadata not array.
 	 *
 	 * @return void
 	 */
@@ -225,143 +231,53 @@ class ExtensibilityAPITest extends TestCase {
 			'metadata' => 'not an array',
 		];
 
-		$result = Extensibility_API::track_event( 'test_event', $event_data );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test register_event_type() registers successfully.
+	 * Test sybgo_track_event() returns false when API not initialized.
 	 *
 	 * @return void
 	 */
-	public function test_register_event_type() {
-		$callback = function( $event_data ) {
-			return 'Event description';
-		};
+	public function test_track_event_not_initialized() {
+		global $sybgo_api_event_repo;
+		$sybgo_api_event_repo = null;
 
-		Functions\expect( 'do_action' )
-			->once()
-			->with( 'sybgo_event_type_registered', 'custom_event', $callback );
+		$event_data = [
+			'action' => 'created',
+			'object' => [ 'type' => 'order', 'id' => 123 ],
+		];
 
-		Extensibility_API::register_event_type( 'custom_event', $callback );
+		$result = sybgo_track_event( 'test_event', $event_data );
 
-		// Verify registration via Event_Registry.
-		$this->assertTrue( Extensibility_API::is_event_type_registered( 'custom_event' ) );
+		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test is_event_type_registered() returns correct status.
+	 * Test sybgo_is_active() returns true when plugin is active.
 	 *
 	 * @return void
 	 */
-	public function test_is_event_type_registered() {
-		$callback = function( $event_data ) {
-			return 'Description';
-		};
+	public function test_sybgo_is_active() {
+		// SYBGO_VERSION is defined in bootstrap.
+		if ( ! defined( 'SYBGO_VERSION' ) ) {
+			define( 'SYBGO_VERSION', '1.0.0' );
+		}
 
-		Functions\expect( 'do_action' );
-
-		Extensibility_API::register_event_type( 'test_event', $callback );
-
-		$this->assertTrue( Extensibility_API::is_event_type_registered( 'test_event' ) );
-		$this->assertFalse( Extensibility_API::is_event_type_registered( 'nonexistent_event' ) );
+		$this->assertTrue( sybgo_is_active() );
 	}
 
 	/**
-	 * Test get_registered_event_types() returns all types.
+	 * Test sybgo_get_version() returns version string.
 	 *
 	 * @return void
 	 */
-	public function test_get_registered_event_types() {
-		Functions\expect( 'do_action' );
+	public function test_sybgo_get_version() {
+		$version = sybgo_get_version();
 
-		Extensibility_API::register_event_type( 'event1', function() {
-			return 'Desc1';
-		} );
-		Extensibility_API::register_event_type( 'event2', function() {
-			return 'Desc2';
-		} );
-
-		$types = Extensibility_API::get_registered_event_types();
-
-		$this->assertContains( 'event1', $types );
-		$this->assertContains( 'event2', $types );
-	}
-
-	/**
-	 * Test add_event_filter() helper method.
-	 *
-	 * @return void
-	 */
-	public function test_add_event_filter() {
-		$callback = function( $data, $type ) {
-			return $data;
-		};
-
-		Functions\expect( 'add_filter' )
-			->once()
-			->with( 'sybgo_before_track_event', $callback, 10, 2 );
-
-		Extensibility_API::add_event_filter( $callback );
-
-		$this->assertTrue( true ); // Assertion to avoid risky test.
-	}
-
-	/**
-	 * Test add_event_action() helper method.
-	 *
-	 * @return void
-	 */
-	public function test_add_event_action() {
-		$callback = function( $event_id, $type, $data ) {
-			// Do something.
-		};
-
-		Functions\expect( 'add_action' )
-			->once()
-			->with( 'sybgo_event_tracked', $callback, 10, 3 );
-
-		Extensibility_API::add_event_action( $callback );
-
-		$this->assertTrue( true ); // Assertion to avoid risky test.
-	}
-
-	/**
-	 * Test add_report_summary_filter() helper method.
-	 *
-	 * @return void
-	 */
-	public function test_add_report_summary_filter() {
-		$callback = function( $summary, $report_id ) {
-			return $summary;
-		};
-
-		Functions\expect( 'add_filter' )
-			->once()
-			->with( 'sybgo_report_summary', $callback, 10, 2 );
-
-		Extensibility_API::add_report_summary_filter( $callback );
-
-		$this->assertTrue( true ); // Assertion to avoid risky test.
-	}
-
-	/**
-	 * Test add_email_recipients_filter() helper method.
-	 *
-	 * @return void
-	 */
-	public function test_add_email_recipients_filter() {
-		$callback = function( $recipients, $report ) {
-			return $recipients;
-		};
-
-		Functions\expect( 'add_filter' )
-			->once()
-			->with( 'sybgo_email_recipients', $callback, 10, 2 );
-
-		Extensibility_API::add_email_recipients_filter( $callback );
-
-		$this->assertTrue( true ); // Assertion to avoid risky test.
+		$this->assertIsString( $version );
+		$this->assertNotEmpty( $version );
 	}
 }

@@ -53,11 +53,11 @@ ORDER BY created_at ASC;
 ### Step 2: Calculate Statistics
 ```php
 $totals = [
-    'posts_published' => 12,
-    'posts_edited' => 45,
-    'users_registered' => 3,
-    'comments_posted' => 28,
-    // ... other event types
+    'post_published' => 12,
+    'post_edited' => 45,
+    'user_registered' => 3,
+    'comment_posted' => 28,
+    // ... all enabled event types
 ];
 ```
 
@@ -66,26 +66,28 @@ Compare current week to previous week:
 
 ```php
 $trends = [
-    'posts_published' => [
+    'post_published' => [
         'current' => 12,
         'previous' => 10,
-        'change_percent' => 20,
+        'change_percent' => 20.0,
         'direction' => 'up'
     ],
-    'users_registered' => [
+    'user_registered' => [
         'current' => 3,
         'previous' => 5,
-        'change_percent' => -40,
+        'change_percent' => -40.0,
         'direction' => 'down'
     ]
 ];
 ```
 
-### Step 4: Generate Highlights
+### Step 4: Generate Highlights & AI Summary
 Automatically create human-readable highlights:
 - "12 new posts published ↑ 20%"
 - "WordPress updated to 6.5"
 - "3 new users registered ↓ 40%"
+
+If an Anthropic API key is configured in settings, an AI-generated summary is also produced via the Claude API and stored in `summary_data.ai_summary`.
 
 ### Step 5: Assign Events to Report
 ```sql
@@ -101,12 +103,14 @@ WHERE report_id IS NULL;
     "status": "frozen",
     "period_start": "2026-02-10 00:00:00",
     "period_end": "2026-02-16 23:59:59",
+    "event_count": 88,
     "summary_data": {
         "total_events": 88,
         "totals": { ... },
         "trends": { ... },
         "highlights": [ ... ],
-        "top_authors": [ ... ]
+        "top_authors": [ ... ],
+        "ai_summary": "A busy week with 12 new posts..."
     }
 }
 ```
@@ -151,7 +155,7 @@ wp_mail(
 ```sql
 INSERT INTO wp_sybgo_email_log (
     report_id,
-    recipient,
+    recipient_email,
     status,
     sent_at
 ) VALUES (123, 'admin@example.com', 'sent', NOW());
@@ -203,7 +207,7 @@ change_percent = ((current - previous) / previous) * 100
 ### Manual Freeze & Send
 You can manually trigger a freeze at any time:
 
-**Admin UI:** Tools → Reports → "Freeze & Send Now" button
+**Admin UI:** Sybgo Reports → "Freeze & Send Now" button
 
 This will:
 1. End the current week early
@@ -219,15 +223,15 @@ This will:
 ### Resend Email
 If email delivery failed or you need to send to additional recipients:
 
-**Admin UI:** Tools → Reports → [View Report] → "Resend Email" button
+**Admin UI:** Sybgo Reports → [View Report] → "Resend Email" button
 
 ### View Past Reports
-**Admin UI:** Tools → Reports
+**Admin UI:** Sybgo Reports (top-level admin menu)
 
 Table shows all frozen/emailed reports:
 - Date range
 - Total events
-- Status (frozen, emailed)
+- Status (active, frozen, emailed)
 - Actions (View, Resend)
 
 ## Empty Reports
@@ -248,6 +252,7 @@ If no events occurred during the week, Sybgo handles it gracefully:
 - Useful for confirming monitoring is working
 
 **Configure:** Settings → Sybgo → "Send email even if no events"
+
 
 ### Empty Report Email Content
 ```
@@ -295,7 +300,7 @@ wp cron event run sybgo_freeze_weekly_report
 ```sql
 SELECT * FROM wp_sybgo_email_log
 WHERE status = 'failed'
-ORDER BY created_at DESC;
+ORDER BY sent_at DESC;
 ```
 
 **Check recipients configured:**
@@ -333,32 +338,34 @@ Must be >= 2 reports for trends to work.
 ### Reports Table
 ```sql
 CREATE TABLE wp_sybgo_reports (
-    id bigint(20) NOT NULL AUTO_INCREMENT,
-    status varchar(20) NOT NULL,           -- 'active', 'frozen', 'emailed'
+    id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+    report_type varchar(20) DEFAULT 'weekly',
+    status varchar(20) DEFAULT 'active',   -- 'active', 'frozen', 'emailed'
     period_start datetime NOT NULL,
-    period_end datetime NOT NULL,
-    summary_data LONGTEXT NOT NULL,        -- JSON with totals, trends, highlights
+    period_end datetime,
+    event_count int UNSIGNED DEFAULT 0,
+    summary_data LONGTEXT,                 -- JSON with totals, trends, highlights, ai_summary
+    frozen_at datetime,
+    emailed_at datetime,
     created_at datetime NOT NULL,
-    emailed_at datetime DEFAULT NULL,
     PRIMARY KEY (id),
-    KEY status (status),
-    KEY period_end (period_end)
+    KEY idx_status (status),
+    KEY idx_period (period_start, period_end)
 );
 ```
 
 ### Email Log Table
 ```sql
 CREATE TABLE wp_sybgo_email_log (
-    id bigint(20) NOT NULL AUTO_INCREMENT,
-    report_id bigint(20) NOT NULL,
-    recipient varchar(255) NOT NULL,
+    id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+    report_id bigint(20) UNSIGNED NOT NULL,
+    recipient_email varchar(255) NOT NULL,
+    sent_at datetime NOT NULL,
     status varchar(20) NOT NULL,           -- 'sent', 'failed', 'pending'
-    error_message TEXT DEFAULT NULL,
-    created_at datetime NOT NULL,
-    sent_at datetime DEFAULT NULL,
+    error_message TEXT,
     PRIMARY KEY (id),
-    KEY report_id (report_id),
-    KEY status (status)
+    KEY idx_report_id (report_id),
+    KEY idx_status (status)
 );
 ```
 

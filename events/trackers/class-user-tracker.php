@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Events\Trackers;
 
 use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
 
 /**
  * User Tracker class.
@@ -39,8 +38,8 @@ class User_Tracker {
 	public function __construct( Event_Repository $event_repo ) {
 		$this->event_repo = $event_repo;
 
-		// Register event types with descriptions.
-		$this->register_event_types();
+		// Register event types via filter.
+		add_filter( 'sybgo_event_types', [ $this, 'register_event_types' ] );
 	}
 
 	/**
@@ -50,25 +49,37 @@ class User_Tracker {
 	 */
 	public function register_hooks(): void {
 		// Track new user registrations.
-		add_action( 'user_register', array( $this, 'track_user_registration' ), 10, 1 );
+		add_action( 'user_register', [ $this, 'track_user_registration' ], 10, 1 );
 
 		// Track role changes.
-		add_action( 'set_user_role', array( $this, 'track_role_change' ), 10, 3 );
+		add_action( 'set_user_role', [ $this, 'track_role_change' ], 10, 3 );
 
 		// Track user deletion.
-		add_action( 'delete_user', array( $this, 'track_user_deletion' ), 10, 2 );
+		add_action( 'delete_user', [ $this, 'track_user_deletion' ], 10, 2 );
 	}
 
 	/**
-	 * Register event types with AI-friendly descriptions.
+	 * Register user event types via filter.
 	 *
-	 * @return void
+	 * @param array $types Existing event types.
+	 * @return array Modified event types.
 	 */
-	private function register_event_types(): void {
-		// User Registration event.
-		Event_Registry::register_event_type(
-			'user_registered',
-			function ( array $event_data ): string {
+	public function register_event_types( array $types ): array {
+		$types['user_registered'] = [
+			'icon'           => '👤',
+			'stat_label'     => __( 'New Users', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'New user: %s', $object['username'] ?? 'Unknown' );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'New user registered: %s (%s)', $object['username'] ?? 'Unknown', $object['email'] ?? '' );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				return sprintf( 'New user registered: %s', $object['username'] ?? 'Unknown' );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Registered\n";
 				$description .= "Description: A new user account was created on the site.\n\n";
 				$description .= "Data Structure:\n";
@@ -77,15 +88,27 @@ class User_Tracker {
 				$description .= "  - object.email: The user's email address\n";
 				$description .= "  - metadata.role: The assigned user role (subscriber, editor, etc.)\n";
 				$description .= "  - metadata.registration_method: How they registered (admin, self-signup, etc.)\n";
-
 				return $description;
-			}
-		);
+			},
+		];
 
-		// User Role Changed event.
-		Event_Registry::register_event_type(
-			'user_role_changed',
-			function ( array $event_data ): string {
+		$types['user_role_changed'] = [
+			'icon'           => '👥',
+			'stat_label'     => __( 'Role Changes', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'User %s role changed to %s', $object['username'] ?? 'Unknown', $event_data['metadata']['new_role'] ?? 'subscriber' );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object   = $event_data['object'] ?? [];
+				$old_role = $event_data['metadata']['old_role'] ?? 'subscriber';
+				$new_role = $event_data['metadata']['new_role'] ?? 'subscriber';
+				return sprintf( 'User %s role changed from %s to %s', $object['username'] ?? 'Unknown', $old_role, $new_role );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				return sprintf( 'User %s role changed from %s to %s', $object['username'] ?? 'Unknown', $metadata['old_role'] ?? 'unknown', $metadata['new_role'] ?? 'unknown' );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Role Changed\n";
 				$description .= "Description: A user's role was changed by an administrator.\n\n";
 				$description .= "Data Structure:\n";
@@ -94,15 +117,25 @@ class User_Tracker {
 				$description .= "  - metadata.old_role: The previous role\n";
 				$description .= "  - metadata.new_role: The new role assigned\n";
 				$description .= "  - context.changed_by_id: ID of admin who made the change\n";
-
 				return $description;
-			}
-		);
+			},
+		];
 
-		// User Deleted event.
-		Event_Registry::register_event_type(
-			'user_deleted',
-			function ( array $event_data ): string {
+		$types['user_deleted'] = [
+			'icon'           => '🚫',
+			'stat_label'     => __( 'Users Deleted', 'sybgo' ),
+			'short_title'    => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'User deleted: %s', $object['username'] ?? 'Unknown' );
+			},
+			'detailed_title' => function ( array $event_data ): string {
+				$object = $event_data['object'] ?? [];
+				return sprintf( 'User "%s" was deleted', $object['username'] ?? 'Unknown' );
+			},
+			'ai_description' => function ( array $object, array $metadata ): string {
+				return sprintf( 'User deleted: %s', $object['username'] ?? 'Unknown' );
+			},
+			'describe'       => function ( array $event_data ): string {
 				$description  = "Event Type: User Deleted\n";
 				$description .= "Description: A user account was permanently deleted.\n\n";
 				$description .= "Data Structure:\n";
@@ -110,10 +143,11 @@ class User_Tracker {
 				$description .= "  - object.username: The username (before deletion)\n";
 				$description .= "  - metadata.role: The user's role at time of deletion\n";
 				$description .= "  - context.deleted_by_id: ID of admin who deleted the account\n";
-
 				return $description;
-			}
-		);
+			},
+		];
+
+		return $types;
 	}
 
 	/**
@@ -134,32 +168,29 @@ class User_Tracker {
 		$method          = $current_user_id > 0 ? 'admin_created' : 'self_signup';
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'registered',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'created_by_id' => $current_user_id > 0 ? $current_user_id : null,
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'role'                => ! empty( $user->roles ) ? $user->roles[0] : 'subscriber',
 				'registration_method' => $method,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'user_registered',
-				'event_subtype' => 'user',
-				'object_id'    => $user_id,
-				'user_id'      => $current_user_id > 0 ? $current_user_id : null,
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'user_registered',
+				'event_data' => $event_data,
+			]
 		);
 	}
 
@@ -181,32 +212,29 @@ class User_Tracker {
 		$old_role = ! empty( $old_roles ) ? $old_roles[0] : 'none';
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'role_changed',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'changed_by_id' => get_current_user_id(),
-			),
-			'metadata' => array(
+			],
+			'metadata' => [
 				'old_role' => $old_role,
 				'new_role' => $new_role,
-			),
-		);
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'user_role_changed',
-				'event_subtype' => 'user',
-				'object_id'    => $user_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'user_role_changed',
+				'event_data' => $event_data,
+			]
 		);
 	}
 
@@ -225,33 +253,30 @@ class User_Tracker {
 		}
 
 		// Build event data.
-		$event_data = array(
+		$event_data = [
 			'action'   => 'deleted',
-			'object'   => array(
+			'object'   => [
 				'type'     => 'user',
 				'id'       => $user_id,
 				'username' => $user->user_login,
 				'email'    => $user->user_email,
-			),
-			'context'  => array(
+			],
+			'context'  => [
 				'deleted_by_id' => get_current_user_id(),
-			),
-			'metadata' => array(
-				'role'              => ! empty( $user->roles ) ? $user->roles[0] : 'none',
-				'posts_reassigned'  => $reassign ? true : false,
-				'reassigned_to_id'  => $reassign,
-			),
-		);
+			],
+			'metadata' => [
+				'role'             => ! empty( $user->roles ) ? $user->roles[0] : 'none',
+				'posts_reassigned' => $reassign ? true : false,
+				'reassigned_to_id' => $reassign,
+			],
+		];
 
 		// Create event.
 		$this->event_repo->create(
-			array(
-				'event_type'   => 'user_deleted',
-				'event_subtype' => 'user',
-				'object_id'    => $user_id,
-				'user_id'      => get_current_user_id(),
-				'event_data'   => $event_data,
-			)
+			[
+				'event_type' => 'user_deleted',
+				'event_data' => $event_data,
+			]
 		);
 	}
 }

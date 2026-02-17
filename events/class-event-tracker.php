@@ -35,7 +35,7 @@ class Event_Tracker {
 	 *
 	 * @var array
 	 */
-	private array $trackers = array();
+	private array $trackers = [];
 
 	/**
 	 * Constructor.
@@ -71,12 +71,12 @@ class Event_Tracker {
 	 * @return void
 	 */
 	private function load_trackers(): void {
-		$tracker_files = array(
+		$tracker_files = [
 			'class-post-tracker.php',
 			'class-user-tracker.php',
 			'class-update-tracker.php',
 			'class-comment-tracker.php',
-		);
+		];
 
 		foreach ( $tracker_files as $file ) {
 			$file_path = SYBGO_PLUGIN_DIR . 'events/trackers/' . $file;
@@ -86,12 +86,12 @@ class Event_Tracker {
 		}
 
 		// Instantiate trackers.
-		$this->trackers = array(
+		$this->trackers = [
 			'post'    => new Trackers\Post_Tracker( $this->event_repo ),
 			'user'    => new Trackers\User_Tracker( $this->event_repo ),
 			'update'  => new Trackers\Update_Tracker( $this->event_repo ),
 			'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
-		);
+		];
 	}
 
 	/**
@@ -117,11 +117,11 @@ class Event_Tracker {
 
 		// Create event in database.
 		$event_id = $this->event_repo->create(
-			array(
-				'event_type'   => $event_type,
-				'event_data'   => $event_data,
+			[
+				'event_type'    => $event_type,
+				'event_data'    => $event_data,
 				'source_plugin' => $source_plugin,
-			)
+			]
 		);
 
 		// Fire action after event is recorded.
@@ -130,32 +130,6 @@ class Event_Tracker {
 		}
 
 		return $event_id;
-	}
-
-	/**
-	 * Check if event should be throttled.
-	 *
-	 * Checks if the same event type for the same object was recorded within the throttle period.
-	 *
-	 * @param string $event_type Event type.
-	 * @param int    $object_id Object ID.
-	 * @param int    $throttle_seconds Throttle period in seconds (default 3600 = 1 hour).
-	 * @return bool True if should be throttled (skip), false if should record.
-	 */
-	public function should_throttle( string $event_type, int $object_id, int $throttle_seconds = 3600 ): bool {
-		$last_event = $this->event_repo->get_last_event_for_object( $event_type, $object_id );
-
-		if ( ! $last_event ) {
-			return false; // No previous event, don't throttle.
-		}
-
-		// Calculate time since last event.
-		$last_timestamp = strtotime( $last_event['event_timestamp'] );
-		$current_time   = current_time( 'timestamp' );
-		$time_diff      = $current_time - $last_timestamp;
-
-		// Throttle if within the throttle period.
-		return $time_diff < $throttle_seconds;
 	}
 
 	/**

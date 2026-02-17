@@ -78,6 +78,11 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 
 		// Get report manager.
 		$this->report_manager = $this->factory_instance->create_report_manager();
+
+		// Clean up any events/reports from plugin initialization or previous tests.
+		global $wpdb;
+		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}sybgo_events" );
+		$wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}sybgo_reports" );
 	}
 
 	/**
@@ -96,19 +101,17 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 		// Step 2: Create some events (unassigned to report).
 		$event1_id = $this->event_repo->create( array(
 			'event_type' => 'post_published',
-			'object_id'  => 123,
 			'event_data' => array(
 				'action' => 'published',
-				'object' => array( 'title' => 'Test Post' ),
+				'object' => array( 'type' => 'post', 'id' => 123, 'title' => 'Test Post' ),
 			),
 		) );
 
 		$event2_id = $this->event_repo->create( array(
 			'event_type' => 'user_registered',
-			'object_id'  => 456,
 			'event_data' => array(
 				'action' => 'registered',
-				'object' => array( 'username' => 'testuser' ),
+				'object' => array( 'type' => 'user', 'id' => 456, 'username' => 'testuser' ),
 			),
 		) );
 
@@ -213,8 +216,7 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 		for ( $i = 1; $i <= 10; $i++ ) {
 			$this->event_repo->create( array(
 				'event_type' => 'post_published',
-				'object_id'  => $i,
-				'event_data' => array( 'action' => 'published' ),
+				'event_data' => array( 'action' => 'published', 'object' => array( 'type' => 'post', 'id' => $i ) ),
 			) );
 		}
 

@@ -120,7 +120,7 @@ class Email_Manager {
 
 		if ( 0 === $total_events ) {
 			// Check settings for empty reports.
-			$settings   = get_option( Settings_Page::OPTION_NAME, array() );
+			$settings   = get_option( Settings_Page::OPTION_NAME, [] );
 			$send_empty = $settings['send_empty_reports'] ?? false;
 
 			return $send_empty;
@@ -135,15 +135,15 @@ class Email_Manager {
 	 * @return array Email headers.
 	 */
 	private function get_email_headers(): array {
-		$settings = get_option( Settings_Page::OPTION_NAME, array() );
+		$settings = get_option( Settings_Page::OPTION_NAME, [] );
 
 		$from_name  = $settings['from_name'] ?? get_bloginfo( 'name' );
 		$from_email = $settings['from_email'] ?? get_option( 'admin_email' );
 
-		$headers = array(
+		$headers = [
 			'Content-Type: text/html; charset=UTF-8',
 			sprintf( 'From: %s <%s>', $from_name, $from_email ),
-		);
+		];
 
 		/**
 		 * Filter email headers.
@@ -167,14 +167,14 @@ class Email_Manager {
 
 		$wpdb->insert(
 			$table_name,
-			array(
-				'report_id'  => $report_id,
-				'recipient'  => $recipient,
-				'status'     => 'sent',
-				'sent_at'    => current_time( 'mysql' ),
+			[
+				'report_id'     => $report_id,
+				'recipient'     => $recipient,
+				'status'        => 'sent',
+				'sent_at'       => current_time( 'mysql' ),
 				'error_message' => null,
-			),
-			array( '%d', '%s', '%s', '%s', '%s' )
+			],
+			[ '%d', '%s', '%s', '%s', '%s' ]
 		);
 
 		/**
@@ -198,20 +198,20 @@ class Email_Manager {
 
 		$table_name = $wpdb->prefix . 'sybgo_email_log';
 
-		$error = error_get_last();
+		$error         = error_get_last();
 		$error_message = $error ? $error['message'] : 'Unknown error';
 
 		$wpdb->insert(
 			$table_name,
-			array(
+			[
 				'report_id'     => $report_id,
 				'recipient'     => $recipient,
 				'status'        => 'failed',
 				'sent_at'       => current_time( 'mysql' ),
 				'error_message' => $error_message,
 				'retry_count'   => 0,
-			),
-			array( '%d', '%s', '%s', '%s', '%s', '%d' )
+			],
+			[ '%d', '%s', '%s', '%s', '%s', '%d' ]
 		);
 
 		/**
@@ -269,13 +269,13 @@ class Email_Manager {
 				// Update to successful.
 				$wpdb->update(
 					$table_name,
-					array(
+					[
 						'status'  => 'sent',
 						'sent_at' => current_time( 'mysql' ),
-					),
-					array( 'id' => $log['id'] ),
-					array( '%s', '%s' ),
-					array( '%d' )
+					],
+					[ 'id' => $log['id'] ],
+					[ '%s', '%s' ],
+					[ '%d' ]
 				);
 
 				++$retried;
@@ -283,13 +283,13 @@ class Email_Manager {
 				// Increment retry count.
 				$wpdb->update(
 					$table_name,
-					array(
+					[
 						'retry_count' => $log['retry_count'] + 1,
 						'sent_at'     => current_time( 'mysql' ),
-					),
-					array( 'id' => $log['id'] ),
-					array( '%d', '%s' ),
-					array( '%d' )
+					],
+					[ 'id' => $log['id'] ],
+					[ '%d', '%s' ],
+					[ '%d' ]
 				);
 			}
 		}
