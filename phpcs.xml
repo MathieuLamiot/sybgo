@@ -11,7 +11,6 @@
 	<!-- Ignoring Files and Folders: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Advanced-Usage#ignoring-files-and-folders -->
 	<exclude-pattern>/Tests/*</exclude-pattern>
 	<exclude-pattern>/vendor/*</exclude-pattern>
-	<exclude-pattern>/lib/*</exclude-pattern>
 
 	<!-- ** HOW TO SCAN ** -->
 
@@ -32,22 +31,6 @@
 	<!-- Allow namespaced code (Rocket\Sybgo) without prefix rule violations -->
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<exclude name="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound" />
-	</rule>
-
-	<!-- Allow direct database queries ONLY in database layer -->
-	<rule ref="WordPress.DB.DirectDatabaseQuery.DirectQuery">
-		<exclude-pattern>lib/database/*</exclude-pattern>
-	</rule>
-	<rule ref="WordPress.DB.DirectDatabaseQuery.NoCaching">
-		<exclude-pattern>lib/database/*</exclude-pattern>
-	</rule>
-	<rule ref="WordPress.DB.DirectDatabaseQuery.SchemaChange">
-		<exclude-pattern>lib/database/*</exclude-pattern>
-	</rule>
-
-	<!-- Allow table name interpolation ONLY in database layer -->
-	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
-		<exclude-pattern>lib/database/*</exclude-pattern>
 	</rule>
 
     <rule ref="WordPress.WP.I18n">

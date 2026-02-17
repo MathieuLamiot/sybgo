@@ -10,7 +10,6 @@ parameters:
 		- Tests
 		- bin
 		- docs
-		- lib
 	bootstrapFiles:
 		- phpstan-bootstrap.php
 	ignoreErrors:
