@@ -2,25 +2,20 @@
 <ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="WP Media" xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
 	<description>The custom ruleset for WP Media projects</description>
 
-	<!-- For help in understanding this file: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Annotated-ruleset.xml -->
-	<!-- For help in using PHPCS: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Usage -->
-
 	<!-- ** WHAT TO SCAN ** -->
 
 	<file>.</file>
-	<!-- Ignoring Files and Folders: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Advanced-Usage#ignoring-files-and-folders -->
 	<exclude-pattern>/Tests/*</exclude-pattern>
 	<exclude-pattern>/vendor/*</exclude-pattern>
-	<exclude-pattern>/lib/*</exclude-pattern>
 
 	<!-- ** HOW TO SCAN ** -->
 
-	<arg value="sp"/><!-- Show sniff and progress -->
-	<arg name="colors"/><!-- Show results with colors -->
-	<arg name="parallel" value="50"/><!-- Enables parallel processing when available for faster results. -->
-	<arg name="extensions" value="php"/><!-- Limit to PHP files -->
+	<arg value="sp"/>
+	<arg name="colors"/>
+	<arg name="parallel" value="50"/>
+	<arg name="extensions" value="php"/>
 
-	<!-- Rules: Check PHP version compatibility - see https://github.com/PHPCompatibility/PHPCompatibilityWP -->
+	<!-- Rules: Check PHP version compatibility -->
 	<rule ref="PHPCompatibility"/>
 	<config name="testVersion" value="7.4-"/>
 	<config name="minimum_supported_wp_version" value="5.0"/>
@@ -36,18 +31,18 @@
 
 	<!-- Allow direct database queries ONLY in database layer -->
 	<rule ref="WordPress.DB.DirectDatabaseQuery.DirectQuery">
-		<exclude-pattern>lib/database/*</exclude-pattern>
+		<exclude-pattern>database/*</exclude-pattern>
 	</rule>
 	<rule ref="WordPress.DB.DirectDatabaseQuery.NoCaching">
-		<exclude-pattern>lib/database/*</exclude-pattern>
+		<exclude-pattern>database/*</exclude-pattern>
 	</rule>
 	<rule ref="WordPress.DB.DirectDatabaseQuery.SchemaChange">
-		<exclude-pattern>lib/database/*</exclude-pattern>
+		<exclude-pattern>database/*</exclude-pattern>
 	</rule>
 
 	<!-- Allow table name interpolation ONLY in database layer -->
 	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
-		<exclude-pattern>lib/database/*</exclude-pattern>
+		<exclude-pattern>database/*</exclude-pattern>
 	</rule>
 
     <rule ref="WordPress.WP.I18n">
@@ -71,8 +66,5 @@
     </rule>
 	<rule ref="WordPress-Docs" />
 
-	<!-- Rules: WordPress Coding Standards - see
-		https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards
-		WordPress-Extra includes WordPress-Core -->
 	<rule ref="WordPress-Extra" />
 </ruleset>

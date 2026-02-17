@@ -44,14 +44,15 @@ if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 	require_once SYBGO_PLUGIN_DIR . 'vendor/autoload.php';
 }
 
-// Require Factory.
-require_once SYBGO_PLUGIN_DIR . 'class-logger.php';
-require_once SYBGO_PLUGIN_DIR . 'class-factory.php';
+// Require library core files.
+require_once SYBGO_PLUGIN_DIR . 'lib/class-logger.php';
+require_once SYBGO_PLUGIN_DIR . 'lib/class-factory.php';
 
 /**
  * Main Sybgo Plugin Class.
  *
  * Initializes the Sybgo plugin and coordinates all subsystems.
+ * This is the standalone plugin wrapper around the Sybgo library.
  *
  * @package Rocket\Sybgo
  * @since   1.0.0
@@ -87,7 +88,7 @@ class Sybgo {
 	 * Constructor - private to enforce singleton.
 	 */
 	private function __construct() {
-		$this->factory = new Factory();
+		$this->factory = new Factory( $this->get_library_config() );
 
 		// Activation and Deactivation Hooks.
 		register_activation_hook( SYBGO_PLUGIN_FILE, array( $this, 'activate' ) );
@@ -95,6 +96,30 @@ class Sybgo {
 
 		// Initialize plugin.
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
+	}
+
+	/**
+	 * Get configuration for the library Factory.
+	 *
+	 * Bridges plugin settings (Settings_Page) to the library's config interface.
+	 *
+	 * @return array Configuration array.
+	 */
+	private function get_library_config(): array {
+		return array(
+			'api_key_provider'        => function () {
+				return Admin\Settings_Page::get_anthropic_api_key();
+			},
+			'email_settings_provider' => function () {
+				$settings = get_option( Admin\Settings_Page::OPTION_NAME, array() );
+				return array(
+					'recipients'         => Admin\Settings_Page::get_recipients(),
+					'from_name'          => $settings['from_name'] ?? get_bloginfo( 'name' ),
+					'from_email'         => $settings['from_email'] ?? get_option( 'admin_email' ),
+					'send_empty_reports' => $settings['send_empty_reports'] ?? false,
+				);
+			},
+		);
 	}
 
 	/**
@@ -131,7 +156,7 @@ class Sybgo {
 	 */
 	private function init_event_tracking(): void {
 		// Load Event Tracker.
-		require_once SYBGO_PLUGIN_DIR . 'events/class-event-tracker.php';
+		require_once SYBGO_PLUGIN_DIR . 'lib/events/class-event-tracker.php';
 
 		// Initialize event tracker.
 		$event_repo    = $this->factory->create_event_repository();
@@ -149,11 +174,11 @@ class Sybgo {
 	 */
 	private function init_extensibility_api(): void {
 		// Load API functions.
-		require_once SYBGO_PLUGIN_DIR . 'api/functions.php';
+		require_once SYBGO_PLUGIN_DIR . 'lib/api/functions.php';
 
 		// Initialize API with event repository.
 		$event_repo = $this->factory->create_event_repository();
-		sybgo_init_api( $event_repo );
+		\sybgo_init_api( $event_repo );
 	}
 
 	/**
@@ -163,19 +188,82 @@ class Sybgo {
 	 */
 	private function init_admin(): void {
 		// Initialize dashboard widget.
-		$dashboard_widget = $this->factory->create_dashboard_widget();
+		$dashboard_widget = $this->create_dashboard_widget();
 		$dashboard_widget->init();
 
 		// Initialize settings page.
-		$settings_page = $this->factory->create_settings_page();
+		$settings_page = $this->create_settings_page();
 		$settings_page->init();
 
 		// Initialize reports page.
-		$reports_page = $this->factory->create_reports_page();
+		$reports_page = $this->create_reports_page();
 		$reports_page->init();
 
 		// Enqueue admin assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+	}
+
+	/**
+	 * Create dashboard widget instance.
+	 *
+	 * @return Admin\Dashboard_Widget Dashboard widget instance.
+	 */
+	private function create_dashboard_widget(): Admin\Dashboard_Widget {
+		require_once SYBGO_PLUGIN_DIR . 'admin/class-dashboard-widget.php';
+		require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
+
+		$event_repo       = $this->factory->create_event_repository();
+		$report_repo      = $this->factory->create_report_repository();
+		$event_registry   = $this->factory->create_event_registry();
+		$ai_summarizer    = $this->factory->create_ai_summarizer();
+		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+
+		return new Admin\Dashboard_Widget(
+			$event_repo,
+			$report_repo,
+			$report_generator,
+			$ai_summarizer,
+			$event_registry
+		);
+	}
+
+	/**
+	 * Create settings page instance.
+	 *
+	 * @return Admin\Settings_Page Settings page instance.
+	 */
+	private function create_settings_page(): Admin\Settings_Page {
+		require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
+
+		$event_registry = $this->factory->create_event_registry();
+
+		return new Admin\Settings_Page( $event_registry );
+	}
+
+	/**
+	 * Create reports page instance.
+	 *
+	 * @return Admin\Reports_Page Reports page instance.
+	 */
+	private function create_reports_page(): Admin\Reports_Page {
+		require_once SYBGO_PLUGIN_DIR . 'admin/class-reports-page.php';
+
+		$event_repo       = $this->factory->create_event_repository();
+		$report_repo      = $this->factory->create_report_repository();
+		$event_registry   = $this->factory->create_event_registry();
+		$report_manager   = $this->factory->create_report_manager();
+		$ai_summarizer    = $this->factory->create_ai_summarizer();
+		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+		$email_manager    = $this->factory->create_email_manager();
+
+		return new Admin\Reports_Page(
+			$event_repo,
+			$report_repo,
+			$report_manager,
+			$report_generator,
+			$email_manager,
+			$event_registry
+		);
 	}
 
 	/**

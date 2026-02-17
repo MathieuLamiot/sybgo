@@ -40,14 +40,23 @@ class AI_Summarizer {
 	private Event_Registry $event_registry;
 
 	/**
+	 * Callable that returns the Anthropic API key.
+	 *
+	 * @var callable
+	 */
+	private $api_key_provider;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Report_Repository $report_repo Report repository.
 	 * @param Event_Registry    $event_registry Event registry.
+	 * @param callable          $api_key_provider Callable returning the Anthropic API key string.
 	 */
-	public function __construct( Report_Repository $report_repo, Event_Registry $event_registry ) {
-		$this->report_repo    = $report_repo;
-		$this->event_registry = $event_registry;
+	public function __construct( Report_Repository $report_repo, Event_Registry $event_registry, callable $api_key_provider ) {
+		$this->report_repo      = $report_repo;
+		$this->event_registry   = $event_registry;
+		$this->api_key_provider = $api_key_provider;
 	}
 
 	/**
@@ -59,8 +68,8 @@ class AI_Summarizer {
 	 * @return string|null AI-generated summary or null if API key not configured.
 	 */
 	public function generate_summary( array $events, array $totals, array $trends ): ?string {
-		// Get API key from settings.
-		$api_key = \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key();
+		// Get API key from provider.
+		$api_key = ( $this->api_key_provider )();
 
 		if ( empty( $api_key ) ) {
 			return null;

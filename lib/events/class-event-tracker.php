@@ -24,6 +24,15 @@ use Rocket\Sybgo\Database\Event_Repository;
  */
 class Event_Tracker {
 	/**
+	 * Whether trackers have already been initialized.
+	 *
+	 * Prevents duplicate hook registration when multiple plugins embed the library.
+	 *
+	 * @var bool
+	 */
+	private static bool $initialized = false;
+
+	/**
 	 * Event repository instance.
 	 *
 	 * @var Event_Repository
@@ -50,10 +59,17 @@ class Event_Tracker {
 	 * Initialize event tracking.
 	 *
 	 * Loads all tracker classes and initializes them.
+	 * Guarded by a static flag to prevent duplicate hook registration
+	 * when multiple plugins embed the library.
 	 *
 	 * @return void
 	 */
 	public function init(): void {
+		if ( self::$initialized ) {
+			return;
+		}
+		self::$initialized = true;
+
 		// Load tracker classes.
 		$this->load_trackers();
 
@@ -79,7 +95,7 @@ class Event_Tracker {
 		);
 
 		foreach ( $tracker_files as $file ) {
-			$file_path = SYBGO_PLUGIN_DIR . 'events/trackers/' . $file;
+			$file_path = __DIR__ . '/trackers/' . $file;
 			if ( file_exists( $file_path ) ) {
 				require_once $file_path;
 			}

@@ -1,7 +1,7 @@
 {
-	"name": "wp-media/package-template",
-	"description": "Repository template for our packages",
-	"homepage": "https://github.com/wp-media/package-template",
+	"name": "wp-media/sybgo",
+	"description": "Sybgo - Activity Digest WordPress Plugin",
+	"homepage": "https://github.com/wp-media/sybgo",
 	"license": "GPL-2.0+",
 	"authors": [
 		{
@@ -10,16 +10,21 @@
 			"homepage": "https://wp-media.me"
 		}
 	],
-	"type": "library",
+	"type": "wordpress-plugin",
 	"config": {
 		"sort-packages": true,
 		"allow-plugins": {
 			"dealerdirect/phpcodesniffer-composer-installer": true
 		}
 	},
-	"support": {
-		"issues": "https://github.com/wp-media/package-template/issues",
-		"source": "https://github.com/wp-media/package-template"
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/mathieulamiot/sybgo-lib"
+		}
+	],
+	"require": {
+		"wp-media/sybgo-lib": "dev-main"
 	},
 	"require-dev": {
 		"php": "^7 || ^8",
@@ -35,19 +40,8 @@
 	},
 	"autoload": {
 		"classmap": [
-			"database/",
-			"events/",
-			"reports/",
 			"admin/",
-			"email/",
-			"ai/",
-			"api/",
-			"class-factory.php",
-			"class-logger.php",
 			"class-sybgo.php"
-		],
-		"files": [
-			"api/functions.php"
 		]
 	},
 	"autoload-dev": {
@@ -67,9 +61,5 @@
 		"phpcs-changed": "./bin/phpcs-changed.sh",
 		"phpcs:fix": "phpcbf",
 		"phpstan": "phpstan analyse --memory-limit=2G"
-	},
-	"require": {
-		"berlindb/core": "^2.0",
-		"wp-media/apply-filters-typed": "^1.2"
 	}
 }

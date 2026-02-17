@@ -256,28 +256,23 @@ class ExtensibilityAPITest extends TestCase {
 	}
 
 	/**
-	 * Test sybgo_is_active() returns true when plugin is active.
+	 * Test sybgo_is_active() returns true when API is initialized.
 	 *
 	 * @return void
 	 */
 	public function test_sybgo_is_active() {
-		// SYBGO_VERSION is defined in bootstrap.
-		if ( ! defined( 'SYBGO_VERSION' ) ) {
-			define( 'SYBGO_VERSION', '1.0.0' );
-		}
-
 		$this->assertTrue( sybgo_is_active() );
 	}
 
 	/**
-	 * Test sybgo_get_version() returns version string.
+	 * Test sybgo_is_active() returns false when API is not initialized.
 	 *
 	 * @return void
 	 */
-	public function test_sybgo_get_version() {
-		$version = sybgo_get_version();
+	public function test_sybgo_is_not_active_when_not_initialized() {
+		global $sybgo_api_event_repo;
+		$sybgo_api_event_repo = null;
 
-		$this->assertIsString( $version );
-		$this->assertNotEmpty( $version );
+		$this->assertFalse( sybgo_is_active() );
 	}
 }

@@ -36,6 +36,13 @@ class EmailManagerTest extends TestCase {
 	private $email_template;
 
 	/**
+	 * Email settings returned by the provider.
+	 *
+	 * @var array
+	 */
+	private array $email_settings;
+
+	/**
 	 * Email manager instance.
 	 *
 	 * @var Email_Manager
@@ -54,7 +61,21 @@ class EmailManagerTest extends TestCase {
 		$this->report_repo    = Mockery::mock( Report_Repository::class );
 		$this->email_template = Mockery::mock( Email_Template::class );
 
-		$this->email_manager = new Email_Manager( $this->report_repo, $this->email_template );
+		// Default email settings.
+		$this->email_settings = array(
+			'recipients'         => array( 'admin@example.com' ),
+			'from_name'          => 'Test Site',
+			'from_email'         => 'admin@example.com',
+			'send_empty_reports' => false,
+		);
+
+		$this->email_manager = new Email_Manager(
+			$this->report_repo,
+			$this->email_template,
+			function () {
+				return $this->email_settings;
+			}
+		);
 
 		// Mock WordPress functions.
 		Functions\when( 'esc_html' )->returnArg();
@@ -106,16 +127,6 @@ class EmailManagerTest extends TestCase {
 			->once()
 			->with( $report_id )
 			->andReturn( $report );
-
-		Functions\expect( 'get_option' )
-			->once()
-			->with( 'sybgo_settings', [] )
-			->andReturn( [ 'email_recipients' => 'admin@example.com' ] );
-
-		Functions\expect( 'is_email' )
-			->once()
-			->with( 'admin@example.com' )
-			->andReturn( true );
 
 		$this->email_template->shouldReceive( 'get_subject' )
 			->once()
@@ -178,18 +189,11 @@ class EmailManagerTest extends TestCase {
 			] ),
 		];
 
+		$this->email_settings['recipients'] = array( 'admin@example.com', 'user@example.com' );
+
 		$this->report_repo->shouldReceive( 'get_by_id' )
 			->once()
 			->andReturn( $report );
-
-		Functions\expect( 'get_option' )
-			->once()
-			->with( 'sybgo_settings', [] )
-			->andReturn( [ 'email_recipients' => "admin@example.com\nuser@example.com" ] );
-
-		Functions\expect( 'is_email' )
-			->times( 2 )
-			->andReturn( true );
 
 		$this->email_template->shouldReceive( 'get_subject' )
 			->once()
@@ -263,22 +267,11 @@ class EmailManagerTest extends TestCase {
 			] ),
 		];
 
+		$this->email_settings['send_empty_reports'] = false;
+
 		$this->report_repo->shouldReceive( 'get_by_id' )
 			->once()
 			->andReturn( $report );
-
-		Functions\when( 'get_option' )->alias( function( $key, $default = [] ) {
-			if ( $key === 'sybgo_settings' ) {
-				return [
-					'email_recipients'   => 'admin@example.com',
-					'send_empty_reports' => false,
-				];
-			}
-			return $default;
-		} );
-
-		Functions\expect( 'is_email' )
-			->andReturn( true );
 
 		$this->report_repo->shouldReceive( 'update_status' )
 			->once()
@@ -304,25 +297,11 @@ class EmailManagerTest extends TestCase {
 			] ),
 		];
 
+		$this->email_settings['send_empty_reports'] = true;
+
 		$this->report_repo->shouldReceive( 'get_by_id' )
 			->once()
 			->andReturn( $report );
-
-		Functions\when( 'get_option' )->alias( function( $key, $default = [] ) {
-			if ( $key === 'sybgo_settings' ) {
-				return [
-					'email_recipients'   => 'admin@example.com',
-					'send_empty_reports' => true,
-				];
-			}
-			if ( $key === 'admin_email' ) {
-				return 'admin@example.com';
-			}
-			return $default;
-		} );
-
-		Functions\expect( 'is_email' )
-			->andReturn( true );
 
 		$this->email_template->shouldReceive( 'get_subject' )
 			->once()
@@ -331,6 +310,10 @@ class EmailManagerTest extends TestCase {
 		$this->email_template->shouldReceive( 'get_body' )
 			->once()
 			->andReturn( '<html>Empty report</html>' );
+
+		Functions\expect( 'get_option' )
+			->with( 'admin_email' )
+			->andReturn( 'admin@example.com' );
 
 		Functions\expect( 'apply_filters' )
 			->andReturnUsing( function( $hook, $value ) {

@@ -8,9 +8,7 @@ parameters:
 	excludePaths:
 		- vendor
 		- Tests
-		- bin
 		- docs
-		- lib
 	bootstrapFiles:
 		- phpstan-bootstrap.php
 	ignoreErrors:

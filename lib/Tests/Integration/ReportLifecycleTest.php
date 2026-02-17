@@ -53,18 +53,14 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 	public function setUp(): void {
 		parent::setUp();
 
-		// Load plugin files.
+		// Load library files.
+		require_once dirname( dirname( __DIR__ ) ) . '/class-logger.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/class-factory.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/database/class-databasemanager.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/database/class-event-repository.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/database/class-report-repository.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/reports/class-report-generator.php';
 		require_once dirname( dirname( __DIR__ ) ) . '/reports/class-report-manager.php';
-
-		// Define constants.
-		if ( ! defined( 'SYBGO_PLUGIN_DIR' ) ) {
-			define( 'SYBGO_PLUGIN_DIR', dirname( dirname( __DIR__ ) ) . '/' );
-		}
 
 		// Create factory.
 		$this->factory_instance = new \Rocket\Sybgo\Factory();

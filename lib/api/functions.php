@@ -119,19 +119,11 @@ function sybgo_track_event( string $event_type, array $event_data, string $sourc
 /**
  * Check if Sybgo is active.
  *
- * Utility function for plugins to check if Sybgo is available.
+ * Utility function for plugins to check if the Sybgo library API is available.
  *
- * @return bool True if Sybgo is active and API is available.
+ * @return bool True if Sybgo library is loaded and API is initialized.
  */
 function sybgo_is_active(): bool {
-	return defined( 'SYBGO_VERSION' );
-}
-
-/**
- * Get Sybgo version.
- *
- * @return string Sybgo version number.
- */
-function sybgo_get_version(): string {
-	return defined( 'SYBGO_VERSION' ) ? SYBGO_VERSION : '1.0.0';
+	global $sybgo_api_event_repo;
+	return null !== $sybgo_api_event_repo;
 }

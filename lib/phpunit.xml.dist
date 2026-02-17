@@ -13,12 +13,19 @@
 		<testsuite name="Unit">
 			<directory suffix="Test.php">./Tests/Unit</directory>
 		</testsuite>
+		<testsuite name="Integration">
+			<directory suffix="Test.php">./Tests/Integration</directory>
+		</testsuite>
 	</testsuites>
 
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="true">
-			<directory suffix=".php">./admin</directory>
-			<file>./class-sybgo.php</file>
+			<directory suffix=".php">./database</directory>
+			<directory suffix=".php">./events</directory>
+			<directory suffix=".php">./reports</directory>
+			<directory suffix=".php">./email</directory>
+			<directory suffix=".php">./ai</directory>
+			<directory suffix=".php">./api</directory>
 		</whitelist>
 	</filter>
 

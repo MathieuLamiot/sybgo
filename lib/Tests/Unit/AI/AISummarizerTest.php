@@ -33,6 +33,13 @@ class AISummarizerTest extends TestCase {
 	private $report_repo;
 
 	/**
+	 * API key used in tests.
+	 *
+	 * @var string
+	 */
+	private $api_key = '';
+
+	/**
 	 * Set up test environment.
 	 */
 	protected function setUp(): void {
@@ -46,7 +53,16 @@ class AISummarizerTest extends TestCase {
 		$event_registry       = Mockery::mock( 'Rocket\Sybgo\Events\Event_Registry' );
 		$event_registry->shouldReceive( 'get_ai_description' )->andReturn( '' );
 		$event_registry->shouldReceive( 'get_ai_context_for_events' )->andReturn( '' );
-		$this->summarizer     = new AI_Summarizer( $this->report_repo, $event_registry );
+
+		$this->api_key = '';
+
+		$this->summarizer = new AI_Summarizer(
+			$this->report_repo,
+			$event_registry,
+			function () {
+				return $this->api_key;
+			}
+		);
 
 		// Mock WordPress functions.
 		Functions\when( 'get_option' )->justReturn( array() );
@@ -68,12 +84,7 @@ class AISummarizerTest extends TestCase {
 	 * Test generate_summary returns null when no API key configured.
 	 */
 	public function test_generate_summary_returns_null_without_api_key() {
-		// Mock Settings_Page static method.
-		require_once dirname( __DIR__, 3 ) . '/admin/class-settings-page.php';
-
-		Functions\expect( 'get_option' )
-			->with( 'sybgo_settings', array() )
-			->andReturn( array() );
+		$this->api_key = '';
 
 		$events = array(
 			array( 'event_type' => 'post_published' ),
@@ -87,19 +98,31 @@ class AISummarizerTest extends TestCase {
 	}
 
 	/**
-	 * Test generate_summary returns null when events are empty.
+	 * Test generate_summary calls API when key is provided, even with empty events.
 	 */
-	public function test_generate_summary_returns_null_with_empty_events() {
-		require_once dirname( __DIR__, 3 ) . '/admin/class-settings-page.php';
+	public function test_generate_summary_calls_api_with_empty_events() {
+		$this->api_key = 'test-key';
 
-		Functions\expect( 'get_option' )
-			->with( 'sybgo_settings', array() )
-			->andReturn( array( 'anthropic_api_key' => 'test-key' ) );
+		$mock_error = Mockery::mock( 'WP_Error' );
+		$mock_error->shouldReceive( 'get_error_message' )->andReturn( 'Connection refused' );
+
+		Functions\expect( 'wp_remote_post' )
+			->once()
+			->andReturn( $mock_error );
+
+		Functions\expect( 'is_wp_error' )
+			->once()
+			->andReturn( true );
+
+		Functions\expect( 'wp_json_encode' )
+			->once()
+			->andReturnUsing( 'json_encode' );
 
 		$events = array();
 		$totals = array();
 		$trends = array();
 
+		// Returns null because the API call fails gracefully.
 		$result = $this->summarizer->generate_summary( $events, $totals, $trends );
 
 		$this->assertNull( $result );

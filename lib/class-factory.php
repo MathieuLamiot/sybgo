@@ -13,10 +13,10 @@ declare(strict_types=1);
 namespace Rocket\Sybgo;
 
 // Require database classes.
-require_once SYBGO_PLUGIN_DIR . 'database/class-databasemanager.php';
-require_once SYBGO_PLUGIN_DIR . 'database/class-event-repository.php';
-require_once SYBGO_PLUGIN_DIR . 'database/class-report-repository.php';
-require_once SYBGO_PLUGIN_DIR . 'events/class-event-registry.php';
+require_once __DIR__ . '/database/class-databasemanager.php';
+require_once __DIR__ . '/database/class-event-repository.php';
+require_once __DIR__ . '/database/class-report-repository.php';
+require_once __DIR__ . '/events/class-event-registry.php';
 
 use Rocket\Sybgo\Database\DatabaseManager;
 use Rocket\Sybgo\Database\Event_Repository;
@@ -26,12 +26,25 @@ use Rocket\Sybgo\Events\Event_Registry;
 /**
  * Factory class.
  *
- * This class provides methods for creating and managing singleton instances.
+ * This class provides methods for creating and managing singleton instances
+ * of the Sybgo library services.
+ *
+ * Accepts a config array to decouple from plugin-specific settings:
+ * - 'api_key_provider'        => callable returning the Anthropic API key string.
+ * - 'email_settings_provider' => callable returning an email settings array with keys:
+ *                                 'recipients', 'from_name', 'from_email', 'send_empty_reports'.
  *
  * @package Rocket\Sybgo
  * @since   1.0.0
  */
 class Factory {
+	/**
+	 * Configuration array.
+	 *
+	 * @var array
+	 */
+	private array $config;
+
 	/**
 	 * Database manager instance.
 	 *
@@ -68,27 +81,6 @@ class Factory {
 	private static ?object $report_manager_instance = null;
 
 	/**
-	 * Dashboard widget instance.
-	 *
-	 * @var object|null
-	 */
-	private static ?object $dashboard_widget_instance = null;
-
-	/**
-	 * Settings page instance.
-	 *
-	 * @var object|null
-	 */
-	private static ?object $settings_page_instance = null;
-
-	/**
-	 * Reports page instance.
-	 *
-	 * @var object|null
-	 */
-	private static ?object $reports_page_instance = null;
-
-	/**
 	 * Email manager instance.
 	 *
 	 * @var object|null
@@ -101,6 +93,41 @@ class Factory {
 	 * @var Event_Registry|null
 	 */
 	private static ?Event_Registry $event_registry_instance = null;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param array $config Configuration array with keys:
+	 *                      - 'api_key_provider'        => callable returning API key string.
+	 *                      - 'email_settings_provider' => callable returning email settings array.
+	 */
+	public function __construct( array $config = array() ) {
+		$defaults = array(
+			'api_key_provider'        => function () {
+				return '';
+			},
+			'email_settings_provider' => function () {
+				return array(
+					'recipients'         => array( get_option( 'admin_email' ) ),
+					'from_name'          => get_bloginfo( 'name' ),
+					'from_email'         => get_option( 'admin_email' ),
+					'send_empty_reports' => false,
+				);
+			},
+		);
+
+		$this->config = array_merge( $defaults, $config );
+	}
+
+	/**
+	 * Get configuration value.
+	 *
+	 * @param string $key Configuration key.
+	 * @return mixed Configuration value or null.
+	 */
+	public function get_config( string $key ) {
+		return $this->config[ $key ] ?? null;
+	}
 
 	/**
 	 * Create a database manager instance.
@@ -174,20 +201,36 @@ class Factory {
 	}
 
 	/**
+	 * Create AI summarizer instance.
+	 *
+	 * @return \Rocket\Sybgo\AI\AI_Summarizer AI summarizer instance.
+	 */
+	public function create_ai_summarizer(): \Rocket\Sybgo\AI\AI_Summarizer {
+		require_once __DIR__ . '/ai/class-ai-summarizer.php';
+
+		$report_repo    = $this->create_report_repository();
+		$event_registry = $this->create_event_registry();
+
+		return new \Rocket\Sybgo\AI\AI_Summarizer(
+			$report_repo,
+			$event_registry,
+			$this->config['api_key_provider']
+		);
+	}
+
+	/**
 	 * Create report manager instance.
 	 *
 	 * @return object Report manager instance.
 	 */
 	public function create_report_manager(): object {
 		if ( null === self::$report_manager_instance ) {
-			require_once SYBGO_PLUGIN_DIR . 'reports/class-report-generator.php';
-			require_once SYBGO_PLUGIN_DIR . 'reports/class-report-manager.php';
-			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
+			require_once __DIR__ . '/reports/class-report-generator.php';
+			require_once __DIR__ . '/reports/class-report-manager.php';
 
-			$event_repo     = $this->create_event_repository();
-			$report_repo    = $this->create_report_repository();
-			$event_registry = $this->create_event_registry();
-			$ai_summarizer  = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo, $event_registry );
+			$event_repo    = $this->create_event_repository();
+			$report_repo   = $this->create_report_repository();
+			$ai_summarizer = $this->create_ai_summarizer();
 
 			// Create generator.
 			$generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
@@ -204,91 +247,14 @@ class Factory {
 	}
 
 	/**
-	 * Create dashboard widget instance.
-	 *
-	 * @return object Dashboard widget instance.
-	 */
-	public function create_dashboard_widget(): object {
-		if ( null === self::$dashboard_widget_instance ) {
-			require_once SYBGO_PLUGIN_DIR . 'admin/class-dashboard-widget.php';
-			require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
-			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
-
-			$event_repo       = $this->create_event_repository();
-			$report_repo      = $this->create_report_repository();
-			$event_registry   = $this->create_event_registry();
-			$ai_summarizer    = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo, $event_registry );
-			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
-
-			self::$dashboard_widget_instance = new \Rocket\Sybgo\Admin\Dashboard_Widget(
-				$event_repo,
-				$report_repo,
-				$report_generator,
-				$ai_summarizer,
-				$event_registry
-			);
-		}
-
-		return self::$dashboard_widget_instance;
-	}
-
-	/**
-	 * Create settings page instance.
-	 *
-	 * @return object Settings page instance.
-	 */
-	public function create_settings_page(): object {
-		if ( null === self::$settings_page_instance ) {
-			require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
-
-			$event_registry = $this->create_event_registry();
-
-			self::$settings_page_instance = new \Rocket\Sybgo\Admin\Settings_Page( $event_registry );
-		}
-
-		return self::$settings_page_instance;
-	}
-
-	/**
-	 * Create reports page instance.
-	 *
-	 * @return object Reports page instance.
-	 */
-	public function create_reports_page(): object {
-		if ( null === self::$reports_page_instance ) {
-			require_once SYBGO_PLUGIN_DIR . 'admin/class-reports-page.php';
-			require_once SYBGO_PLUGIN_DIR . 'ai/class-ai-summarizer.php';
-
-			$event_repo       = $this->create_event_repository();
-			$report_repo      = $this->create_report_repository();
-			$event_registry   = $this->create_event_registry();
-			$report_manager   = $this->create_report_manager();
-			$ai_summarizer    = new \Rocket\Sybgo\AI\AI_Summarizer( $report_repo, $event_registry );
-			$report_generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
-			$email_manager    = $this->create_email_manager();
-
-			self::$reports_page_instance = new \Rocket\Sybgo\Admin\Reports_Page(
-				$event_repo,
-				$report_repo,
-				$report_manager,
-				$report_generator,
-				$email_manager,
-				$event_registry
-			);
-		}
-
-		return self::$reports_page_instance;
-	}
-
-	/**
 	 * Create email manager instance.
 	 *
 	 * @return object Email manager instance.
 	 */
 	public function create_email_manager(): object {
 		if ( null === self::$email_manager_instance ) {
-			require_once SYBGO_PLUGIN_DIR . 'email/class-email-template.php';
-			require_once SYBGO_PLUGIN_DIR . 'email/class-email-manager.php';
+			require_once __DIR__ . '/email/class-email-template.php';
+			require_once __DIR__ . '/email/class-email-manager.php';
 
 			$report_repo    = $this->create_report_repository();
 			$event_registry = $this->create_event_registry();
@@ -296,7 +262,8 @@ class Factory {
 
 			self::$email_manager_instance = new \Rocket\Sybgo\Email\Email_Manager(
 				$report_repo,
-				$email_template
+				$email_template,
+				$this->config['email_settings_provider']
 			);
 		}
 
@@ -319,4 +286,3 @@ class Factory {
 		return $wp_filesystem;
 	}
 }
-

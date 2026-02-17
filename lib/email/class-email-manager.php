@@ -13,7 +13,6 @@ declare(strict_types=1);
 namespace Rocket\Sybgo\Email;
 
 use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Admin\Settings_Page;
 
 /**
  * Email Manager class.
@@ -39,14 +38,29 @@ class Email_Manager {
 	private Email_Template $email_template;
 
 	/**
+	 * Callable that returns email settings.
+	 *
+	 * Expected to return an array with keys:
+	 * - 'recipients'         => string[] Email addresses.
+	 * - 'from_name'          => string   Sender name.
+	 * - 'from_email'         => string   Sender email.
+	 * - 'send_empty_reports' => bool     Whether to send empty reports.
+	 *
+	 * @var callable
+	 */
+	private $settings_provider;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param Report_Repository $report_repo Report repository.
 	 * @param Email_Template    $email_template Email template.
+	 * @param callable          $settings_provider Callable returning email settings array.
 	 */
-	public function __construct( Report_Repository $report_repo, Email_Template $email_template ) {
-		$this->report_repo    = $report_repo;
-		$this->email_template = $email_template;
+	public function __construct( Report_Repository $report_repo, Email_Template $email_template, callable $settings_provider ) {
+		$this->report_repo       = $report_repo;
+		$this->email_template    = $email_template;
+		$this->settings_provider = $settings_provider;
 	}
 
 	/**
@@ -62,8 +76,9 @@ class Email_Manager {
 			return false;
 		}
 
-		// Get recipients from settings.
-		$recipients = Settings_Page::get_recipients();
+		// Get recipients from settings provider.
+		$settings   = ( $this->settings_provider )();
+		$recipients = $settings['recipients'] ?? array();
 
 		if ( empty( $recipients ) ) {
 			return false;
@@ -120,7 +135,7 @@ class Email_Manager {
 
 		if ( 0 === $total_events ) {
 			// Check settings for empty reports.
-			$settings   = get_option( Settings_Page::OPTION_NAME, array() );
+			$settings   = ( $this->settings_provider )();
 			$send_empty = $settings['send_empty_reports'] ?? false;
 
 			return $send_empty;
@@ -135,7 +150,7 @@ class Email_Manager {
 	 * @return array Email headers.
 	 */
 	private function get_email_headers(): array {
-		$settings = get_option( Settings_Page::OPTION_NAME, array() );
+		$settings = ( $this->settings_provider )();
 
 		$from_name  = $settings['from_name'] ?? get_bloginfo( 'name' );
 		$from_email = $settings['from_email'] ?? get_option( 'admin_email' );
