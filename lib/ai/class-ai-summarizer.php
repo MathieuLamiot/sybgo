@@ -62,9 +62,9 @@ class AI_Summarizer {
 	/**
 	 * Generate AI summary for events.
 	 *
-	 * @param array $events Array of events.
-	 * @param array $totals Event totals by type.
-	 * @param array $trends Trend data comparing to previous report.
+	 * @param array<int, array<string, mixed>>    $events Array of events.
+	 * @param array<string, int>                  $totals Event totals by type.
+	 * @param array<string, array<string, mixed>> $trends Trend data comparing to previous report.
 	 * @return string|null AI-generated summary or null if API key not configured.
 	 */
 	public function generate_summary( array $events, array $totals, array $trends ): ?string {
@@ -92,9 +92,9 @@ class AI_Summarizer {
 	/**
 	 * Build the prompt for Claude.
 	 *
-	 * @param array $events Array of events.
-	 * @param array $totals Event totals by type.
-	 * @param array $trends Trend data.
+	 * @param array<int, array<string, mixed>>    $events Array of events.
+	 * @param array<string, int>                  $totals Event totals by type.
+	 * @param array<string, array<string, mixed>> $trends Trend data.
 	 * @return string The prompt.
 	 */
 	private function build_prompt( array $events, array $totals, array $trends ): string {
@@ -194,13 +194,13 @@ class AI_Summarizer {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new \Exception( 'API request failed: ' . $response->get_error_message() );
+			throw new \Exception( 'API request failed: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$status_code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== $status_code ) {
 			$body = wp_remote_retrieve_body( $response );
-			throw new \Exception( "API returned status {$status_code}: {$body}" );
+			throw new \Exception( "API returned status {$status_code}: {$body}" ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		$body = wp_remote_retrieve_body( $response );

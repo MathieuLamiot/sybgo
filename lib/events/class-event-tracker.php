@@ -42,7 +42,7 @@ class Event_Tracker {
 	/**
 	 * Array of tracker instances.
 	 *
-	 * @var array
+	 * @var array<string, object>
 	 */
 	private array $trackers = array();
 
@@ -115,9 +115,9 @@ class Event_Tracker {
 	 *
 	 * Public method for other plugins to track custom events.
 	 *
-	 * @param string $event_type Event type identifier.
-	 * @param array  $event_data Event data.
-	 * @param string $source_plugin Source plugin identifier.
+	 * @param string               $event_type Event type identifier.
+	 * @param array<string, mixed> $event_data Event data.
+	 * @param string               $source_plugin Source plugin identifier.
 	 * @return int|false Event ID on success, false on failure.
 	 */
 	public function track_custom_event( string $event_type, array $event_data, string $source_plugin = 'custom' ) {

@@ -127,14 +127,14 @@ class Dashboard_Widget {
 
 		wp_enqueue_style(
 			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.css', dirname( __FILE__ ) ),
+			plugins_url( 'assets/admin.css', __DIR__ ),
 			array(),
 			'1.0.0'
 		);
 
 		wp_enqueue_script(
 			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.js', dirname( __FILE__ ) ),
+			plugins_url( 'assets/admin.js', __DIR__ ),
 			array( 'jquery' ),
 			'1.0.0',
 			true
@@ -203,7 +203,7 @@ class Dashboard_Widget {
 	/**
 	 * Render last report section.
 	 *
-	 * @param array $report Last frozen report.
+	 * @param array<string, mixed> $report Last frozen report.
 	 * @return void
 	 */
 	private function render_last_report_section( array $report ): void {
@@ -272,8 +272,8 @@ class Dashboard_Widget {
 	/**
 	 * Render events list.
 	 *
-	 * @param array $events Events to display.
-	 * @param int   $limit Maximum events to show.
+	 * @param array<int, array<string, mixed>> $events Events to display.
+	 * @param int                              $limit Maximum events to show.
 	 * @return void
 	 */
 	private function render_events_list( array $events, int $limit = 10 ): void {
@@ -289,7 +289,7 @@ class Dashboard_Widget {
 		// Sort by timestamp descending.
 		usort(
 			$events,
-			function( $a, $b ) {
+			function ( $a, $b ) {
 				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 			}
 		);
@@ -323,7 +323,7 @@ class Dashboard_Widget {
 	/**
 	 * Render single event item.
 	 *
-	 * @param array $event Event data.
+	 * @param array<string, mixed> $event Event data.
 	 * @return void
 	 */
 	private function render_event_item( array $event ): void {
@@ -366,7 +366,7 @@ class Dashboard_Widget {
 		if ( 'all' !== $filter ) {
 			$events = array_filter(
 				$events,
-				function( $event ) use ( $filter ) {
+				function ( $event ) use ( $filter ) {
 					// Special handling for 'update' filter.
 					if ( 'update' === $filter ) {
 						$update_types = array( 'core_updated', 'plugin_installed', 'plugin_activated', 'plugin_deactivated', 'plugin_updated', 'theme_installed', 'theme_updated', 'theme_switched' );
@@ -448,11 +448,11 @@ class Dashboard_Widget {
 	/**
 	 * Render preview content.
 	 *
-	 * @param array       $totals Event totals.
-	 * @param array       $trends Trend data.
-	 * @param array       $events All events.
-	 * @param string|null $ai_summary AI-generated summary (optional).
-	 * @param string|null $ai_error AI error message (optional).
+	 * @param array<string, int>                  $totals Event totals.
+	 * @param array<string, array<string, mixed>> $trends Trend data.
+	 * @param array<int, array<string, mixed>>    $events All events.
+	 * @param string|null                         $ai_summary AI-generated summary (optional).
+	 * @param string|null                         $ai_error AI error message (optional).
 	 * @return void
 	 */
 	private function render_preview_content( array $totals, array $trends, array $events, ?string $ai_summary = null, ?string $ai_error = null ): void {
@@ -520,7 +520,7 @@ class Dashboard_Widget {
 					<div class="sybgo-stat-item">
 						<div class="sybgo-stat-label"><?php echo esc_html( ucwords( str_replace( '_', ' ', $type ) ) ); ?></div>
 						<div class="sybgo-stat-value">
-							<?php echo esc_html( $count ); ?>
+							<?php echo esc_html( (string) $count ); ?>
 							<?php if ( $arrow ) : ?>
 								<span class="sybgo-trend <?php echo esc_attr( $trend['direction'] ); ?>">
 									<?php echo esc_html( $arrow . ' ' . $trend_text ); ?>
@@ -541,8 +541,8 @@ class Dashboard_Widget {
 	/**
 	 * Count events by type.
 	 *
-	 * @param array $events Events to count.
-	 * @return array Counts by type.
+	 * @param array<int, array<string, mixed>> $events Events to count.
+	 * @return array<string, int> Counts by type.
 	 */
 	private function count_events_by_type( array $events ): array {
 		$counts = array();

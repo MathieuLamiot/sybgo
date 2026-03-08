@@ -337,7 +337,7 @@ class Reports_Page {
 	/**
 	 * Render single report row.
 	 *
-	 * @param array $report Report data.
+	 * @param array<string, mixed> $report Report data.
 	 * @return void
 	 */
 	private function render_report_row( array $report ): void {
@@ -590,14 +590,14 @@ class Reports_Page {
 	/**
 	 * Render events table.
 	 *
-	 * @param array $events Events to display.
+	 * @param array<int, array<string, mixed>> $events Events to display.
 	 * @return void
 	 */
 	private function render_events_table( array $events ): void {
 		// Sort by timestamp descending.
 		usort(
 			$events,
-			function( $a, $b ) {
+			function ( $a, $b ) {
 				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 			}
 		);

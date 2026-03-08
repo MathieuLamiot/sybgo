@@ -61,8 +61,8 @@ class User_Tracker {
 	/**
 	 * Register user event types via filter.
 	 *
-	 * @param array $types Existing event types.
-	 * @return array Modified event types.
+	 * @param array<string, array<string, mixed>> $types Existing event types.
+	 * @return array<string, array<string, mixed>> Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
 		$types['user_registered'] = array(
@@ -197,9 +197,9 @@ class User_Tracker {
 	/**
 	 * Track user role change.
 	 *
-	 * @param int    $user_id The user ID.
-	 * @param string $new_role The new role.
-	 * @param array  $old_roles Array of old roles.
+	 * @param int                $user_id The user ID.
+	 * @param string             $new_role The new role.
+	 * @param array<int, string> $old_roles Array of old roles.
 	 * @return void
 	 */
 	public function track_role_change( int $user_id, string $new_role, array $old_roles ): void {

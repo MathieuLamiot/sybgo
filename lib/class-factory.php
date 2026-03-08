@@ -41,7 +41,7 @@ class Factory {
 	/**
 	 * Configuration array.
 	 *
-	 * @var array
+	 * @var array<string, mixed>
 	 */
 	private array $config;
 
@@ -97,9 +97,9 @@ class Factory {
 	/**
 	 * Constructor.
 	 *
-	 * @param array $config Configuration array with keys:
-	 *                      - 'api_key_provider'        => callable returning API key string.
-	 *                      - 'email_settings_provider' => callable returning email settings array.
+	 * @param array<string, mixed> $config Configuration array with keys:
+	 *                                     - 'api_key_provider'        => callable returning API key string.
+	 *                                     - 'email_settings_provider' => callable returning email settings array.
 	 */
 	public function __construct( array $config = array() ) {
 		$defaults = array(

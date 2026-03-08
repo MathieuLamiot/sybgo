@@ -36,9 +36,9 @@ function sybgo_init_api( \Rocket\Sybgo\Database\Event_Repository $event_repo ): 
  *
  * Global function for third-party plugins to track events.
  *
- * @param string $event_type Event type identifier.
- * @param array  $event_data Event data array.
- * @param string $source_plugin Source plugin identifier (optional).
+ * @param string               $event_type Event type identifier.
+ * @param array<string, mixed> $event_data Event data array.
+ * @param string               $source_plugin Source plugin identifier (optional).
  * @return int|false Event ID on success, false on failure.
  *
  * @example

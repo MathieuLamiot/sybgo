@@ -122,7 +122,7 @@ class Email_Manager {
 	/**
 	 * Check if report should be sent.
 	 *
-	 * @param array|null $summary Report summary data.
+	 * @param array<string, mixed>|null $summary Report summary data.
 	 * @return bool True if should send, false otherwise.
 	 */
 	private function should_send_report( ?array $summary ): bool {
@@ -147,7 +147,7 @@ class Email_Manager {
 	/**
 	 * Get email headers.
 	 *
-	 * @return array Email headers.
+	 * @return array<int, string> Email headers.
 	 */
 	private function get_email_headers(): array {
 		$settings = ( $this->settings_provider )();
@@ -322,7 +322,7 @@ class Email_Manager {
 	 * Get email log for a report.
 	 *
 	 * @param int $report_id Report ID.
-	 * @return array Email log entries.
+	 * @return array<int, array<string, mixed>> Email log entries.
 	 */
 	public function get_email_log( int $report_id ): array {
 		global $wpdb;

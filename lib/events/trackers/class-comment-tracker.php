@@ -58,8 +58,8 @@ class Comment_Tracker {
 	/**
 	 * Register comment event types via filter.
 	 *
-	 * @param array $types Existing event types.
-	 * @return array Modified event types.
+	 * @param array<string, array<string, mixed>> $types Existing event types.
+	 * @return array<string, array<string, mixed>> Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
 		$types['comment_posted'] = array(
@@ -171,9 +171,9 @@ class Comment_Tracker {
 	/**
 	 * Track new comment.
 	 *
-	 * @param int        $comment_id Comment ID.
-	 * @param int|string $comment_approved Comment approval status.
-	 * @param array      $commentdata Comment data array.
+	 * @param int                  $comment_id Comment ID.
+	 * @param int|string           $comment_approved Comment approval status.
+	 * @param array<string, mixed> $commentdata Comment data array.
 	 * @return void
 	 */
 	public function track_new_comment( int $comment_id, $comment_approved, array $commentdata ): void {

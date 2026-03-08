@@ -25,7 +25,7 @@ class Event_Registry {
 	/**
 	 * Cached event types from the filter.
 	 *
-	 * @var array<string, array>|null
+	 * @var array<string, array<string, mixed>>|null
 	 */
 	private ?array $event_types = null;
 
@@ -34,7 +34,7 @@ class Event_Registry {
 	 *
 	 * Applies the `sybgo_event_types` filter on first call, then caches.
 	 *
-	 * @return array<string, array> Event types keyed by identifier.
+	 * @return array<string, array<string, mixed>> Event types keyed by identifier.
 	 */
 	public function get_event_types(): array {
 		if ( null === $this->event_types ) {
@@ -48,7 +48,7 @@ class Event_Registry {
 	 * Get a single event type definition.
 	 *
 	 * @param string $event_type Event type identifier.
-	 * @return array|null Event type definition or null if not registered.
+	 * @return array<string, mixed>|null Event type definition or null if not registered.
 	 */
 	public function get_event_type( string $event_type ): ?array {
 		$types = $this->get_event_types();
@@ -110,8 +110,8 @@ class Event_Registry {
 	 *
 	 * Falls back to detailed_title, then to a generic ucwords title.
 	 *
-	 * @param string $event_type Event type.
-	 * @param array  $event_data Decoded event data.
+	 * @param string               $event_type Event type.
+	 * @param array<string, mixed> $event_data Decoded event data.
 	 * @return string Short event title.
 	 */
 	public function get_short_title( string $event_type, array $event_data ): string {
@@ -129,8 +129,8 @@ class Event_Registry {
 	 *
 	 * Falls back to a generic ucwords title.
 	 *
-	 * @param string $event_type Event type.
-	 * @param array  $event_data Decoded event data.
+	 * @param string               $event_type Event type.
+	 * @param array<string, mixed> $event_data Decoded event data.
 	 * @return string Detailed event title.
 	 */
 	public function get_detailed_title( string $event_type, array $event_data ): string {
@@ -146,9 +146,9 @@ class Event_Registry {
 	/**
 	 * Get AI-friendly short description for prompt building.
 	 *
-	 * @param string $event_type Event type.
-	 * @param array  $object Object data from event_data.
-	 * @param array  $metadata Metadata from event_data.
+	 * @param string               $event_type Event type.
+	 * @param array<string, mixed> $object Object data from event_data.
+	 * @param array<string, mixed> $metadata Metadata from event_data.
 	 * @return string AI description or empty string.
 	 */
 	public function get_ai_description( string $event_type, array $object, array $metadata ): string {
@@ -164,8 +164,8 @@ class Event_Registry {
 	/**
 	 * Get AI-friendly schema description of an event type.
 	 *
-	 * @param string $event_type The event type.
-	 * @param array  $event_data The JSON data for this event.
+	 * @param string               $event_type The event type.
+	 * @param array<string, mixed> $event_data The JSON data for this event.
 	 * @return string Text description for AI context.
 	 */
 	public function describe_event( string $event_type, array $event_data ): string {
@@ -183,7 +183,7 @@ class Event_Registry {
 	 *
 	 * Generates full AI context including event type descriptions.
 	 *
-	 * @param array $events Array of events from database.
+	 * @param array<int, array<string, mixed>> $events Array of events from database.
 	 * @return string AI-ready context string.
 	 */
 	public function get_ai_context_for_events( array $events ): string {

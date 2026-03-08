@@ -100,7 +100,7 @@ class Sybgo {
 	 *
 	 * Bridges plugin settings (Settings_Page) to the library's config interface.
 	 *
-	 * @return array Configuration array.
+	 * @return array<string, mixed> Configuration array.
 	 */
 	private function get_library_config(): array {
 		return array(
@@ -293,8 +293,8 @@ class Sybgo {
 	/**
 	 * Add custom cron intervals.
 	 *
-	 * @param array $schedules Existing schedules.
-	 * @return array Modified schedules.
+	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
+	 * @return array<string, array<string, mixed>> Modified schedules.
 	 */
 	public function add_cron_intervals( array $schedules ): array {
 		if ( ! isset( $schedules['weekly'] ) ) {

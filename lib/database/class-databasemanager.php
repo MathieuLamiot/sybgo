@@ -155,7 +155,7 @@ class DatabaseManager {
 	/**
 	 * Get table names.
 	 *
-	 * @return array Array of table names.
+	 * @return array<string, string> Array of table names keyed by identifier.
 	 * @since 1.0.0
 	 */
 	public function get_table_names(): array {
