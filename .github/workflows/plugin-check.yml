@@ -32,12 +32,13 @@ jobs:
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: './wp-plugin'
-          plugin-slug: 'sybgo'
+          slug: 'sybgo'
           exclude-directories: |
             Tests
             bin
             docs
           exclude-files: |
+            .distignore
             phpunit.xml.dist
             phpcs.xml.dist
             phpcs.xml

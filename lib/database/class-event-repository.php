@@ -4,20 +4,20 @@
  *
  * This file defines the Event Repository class for CRUD operations on events.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Database;
+namespace Sybgo\Database;
 
 /**
  * Event Repository class.
  *
  * Handles all database operations for events table.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 class Event_Repository {

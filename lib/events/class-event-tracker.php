@@ -4,22 +4,22 @@
  *
  * This file defines the Event Tracker class for tracking WordPress events.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events;
+namespace Sybgo\Events;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Event Tracker class.
  *
  * Core event tracking system that coordinates all event trackers.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 class Event_Tracker {

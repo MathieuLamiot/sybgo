@@ -4,22 +4,22 @@
  *
  * This file defines the Comment Tracker for tracking comment-related events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Comment Tracker class.
  *
  * Tracks new comments and comment status changes.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Comment_Tracker {

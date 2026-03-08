@@ -4,22 +4,22 @@
  *
  * This file defines the Update Tracker for tracking WordPress, plugin, and theme updates.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Update Tracker class.
  *
  * Tracks WordPress core, plugin, and theme updates.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Update_Tracker {

@@ -4,22 +4,22 @@
  *
  * This file defines the Email Template for generating HTML email content.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Email;
+namespace Sybgo\Email;
 
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Email Template class.
  *
  * Generates HTML email content for weekly digests.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 class Email_Template {

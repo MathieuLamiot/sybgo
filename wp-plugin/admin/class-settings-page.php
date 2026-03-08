@@ -4,26 +4,26 @@
  *
  * This file defines the Settings Page for Sybgo plugin configuration.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Settings Page class.
  *
  * Manages plugin settings and configuration options.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Settings_Page {

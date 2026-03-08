@@ -2,17 +2,17 @@
 /**
  * Report Manager Test
  *
- * @package Rocket\Sybgo\Tests\Unit\Reports
+ * @package SybgoTests\Unit\Reports
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Tests\Unit\Reports;
+namespace SybgoTests\Unit\Reports;
 
-use Rocket\Sybgo\Reports\Report_Manager;
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Reports\Report_Generator;
+use SybgoReports\Report_Manager;
+use SybgoDatabase\Event_Repository;
+use SybgoDatabase\Report_Repository;
+use SybgoReports\Report_Generator;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

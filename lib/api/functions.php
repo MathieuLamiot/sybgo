@@ -4,7 +4,7 @@
  *
  * Provides global function wrappers for the Sybgo API.
  *
- * @package Rocket\Sybgo\API
+ * @package Sybgo\API
  * @since   1.0.0
  */
 
@@ -13,7 +13,7 @@ declare(strict_types=1);
 /**
  * Event repository instance for API functions.
  *
- * @var \Rocket\Sybgo\Database\Event_Repository|null
+ * @var \Sybgo\Database\Event_Repository|null
  */
 global $sybgo_api_event_repo;
 $sybgo_api_event_repo = null;
@@ -23,10 +23,10 @@ $sybgo_api_event_repo = null;
  *
  * Called during plugin initialization to provide the event repository.
  *
- * @param \Rocket\Sybgo\Database\Event_Repository $event_repo Event repository instance.
+ * @param \Sybgo\Database\Event_Repository $event_repo Event repository instance.
  * @return void
  */
-function sybgo_init_api( \Rocket\Sybgo\Database\Event_Repository $event_repo ): void {
+function sybgo_init_api( \Sybgo\Database\Event_Repository $event_repo ): void {
 	global $sybgo_api_event_repo;
 	$sybgo_api_event_repo = $event_repo;
 }

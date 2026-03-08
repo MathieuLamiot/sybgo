@@ -2,16 +2,16 @@
 /**
  * Report Generator Unit Tests
  *
- * @package Rocket\Sybgo\Tests\Unit\Reports
+ * @package SybgoTests\Unit\Reports
  */
 
-namespace Rocket\Sybgo\Tests\Unit\Reports;
+namespace SybgoTests\Unit\Reports;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
-use Rocket\Sybgo\Reports\Report_Generator;
+use SybgoReports\Report_Generator;
 
 /**
  * Report Generator Test Case
@@ -53,9 +53,9 @@ class ReportGeneratorTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->event_repo    = Mockery::mock( 'Rocket\Sybgo\Database\Event_Repository' );
-		$this->report_repo   = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
-		$this->ai_summarizer = Mockery::mock( 'Rocket\Sybgo\AI\AI_Summarizer' );
+		$this->event_repo    = Mockery::mock( 'SybgoDatabase\Event_Repository' );
+		$this->report_repo   = Mockery::mock( 'SybgoDatabase\Report_Repository' );
+		$this->ai_summarizer = Mockery::mock( 'SybgoAI\AI_Summarizer' );
 
 		// Mock AI summarizer to return null (no API key configured).
 		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( null );

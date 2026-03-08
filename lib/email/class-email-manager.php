@@ -4,22 +4,22 @@
  *
  * This file defines the Email Manager for sending weekly digest emails.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Email;
+namespace Sybgo\Email;
 
-use Rocket\Sybgo\Database\Report_Repository;
+use Sybgo\Database\Report_Repository;
 
 /**
  * Email Manager class.
  *
  * Handles sending weekly digest emails with retry logic.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 class Email_Manager {

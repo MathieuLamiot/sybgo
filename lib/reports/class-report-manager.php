@@ -4,23 +4,23 @@
  *
  * This file defines the Report Manager for report lifecycle management.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Reports;
+namespace Sybgo\Reports;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
 
 /**
  * Report Manager class.
  *
  * Manages report lifecycle: create, freeze, email coordination.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 class Report_Manager {

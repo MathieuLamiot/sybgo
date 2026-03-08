@@ -4,22 +4,22 @@
  *
  * This file defines the User Tracker for tracking user-related events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * User Tracker class.
  *
  * Tracks user registration, role changes, and deletion events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class User_Tracker {

@@ -2,16 +2,16 @@
 /**
  * Event Repository Unit Tests
  *
- * @package Rocket\Sybgo\Tests\Unit\Database
+ * @package SybgoTests\Unit\Database
  */
 
-namespace Rocket\Sybgo\Tests\Unit\Database;
+namespace SybgoTests\Unit\Database;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
-use Rocket\Sybgo\Database\Event_Repository;
+use SybgoDatabase\Event_Repository;
 
 /**
  * Event Repository Test Case

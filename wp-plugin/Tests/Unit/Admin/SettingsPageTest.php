@@ -2,15 +2,15 @@
 /**
  * Settings Page Test
  *
- * @package Rocket\Sybgo\Tests\Unit\Admin
+ * @package Sybgo\Tests\Unit\Admin
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Tests\Unit\Admin;
+namespace Sybgo\Tests\Unit\Admin;
 
-use Rocket\Sybgo\Admin\Settings_Page;
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Admin\Settings_Page;
+use Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

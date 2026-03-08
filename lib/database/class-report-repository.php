@@ -4,20 +4,20 @@
  *
  * This file defines the Report Repository class for CRUD operations on reports.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Database;
+namespace Sybgo\Database;
 
 /**
  * Report Repository class.
  *
  * Handles all database operations for reports table.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 class Report_Repository {

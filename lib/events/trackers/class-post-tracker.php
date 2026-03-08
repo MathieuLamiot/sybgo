@@ -4,22 +4,22 @@
  *
  * This file defines the Post Tracker for tracking post and page events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Post Tracker class.
  *
  * Tracks post and page publish, edit, and delete events with edit magnitude calculation.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Post_Tracker {

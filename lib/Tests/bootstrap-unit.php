@@ -5,7 +5,7 @@
  * This bootstrap does NOT load WordPress, so Brain\Monkey / Patchwork
  * can intercept functions like get_option() without conflicts.
  *
- * @package Rocket\Sybgo\Tests
+ * @package SybgoTests
  */
 
 // Composer autoloader.

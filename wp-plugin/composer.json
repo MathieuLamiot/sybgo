@@ -48,7 +48,7 @@
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"Rocket\\Sybgo\\Tests\\": "Tests/"
+			"Sybgo\\Tests\\": "Tests/"
 		}
 	},
 	"scripts": {

@@ -4,24 +4,24 @@
  *
  * This file defines the AI Summarizer for generating human-friendly report summaries using Claude API.
  *
- * @package Rocket\Sybgo\AI
+ * @package Sybgo\AI
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\AI;
+namespace Sybgo\AI;
 
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
-use Rocket\Sybgo\Logger;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Events\Event_Registry;
+use Sybgo\Logger;
 
 /**
  * AI Summarizer class.
  *
  * Generates natural language summaries of reports using Anthropic's Claude API.
  *
- * @package Rocket\Sybgo\AI
+ * @package Sybgo\AI
  * @since   1.0.0
  */
 class AI_Summarizer {

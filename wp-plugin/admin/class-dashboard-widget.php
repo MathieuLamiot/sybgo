@@ -4,30 +4,30 @@
  *
  * This file defines the Dashboard Widget for displaying Sybgo activity.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Reports\Report_Generator;
-use Rocket\Sybgo\AI\AI_Summarizer;
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Reports\Report_Generator;
+use Sybgo\AI\AI_Summarizer;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Dashboard Widget class.
  *
  * Displays weekly activity digest in WordPress dashboard.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Dashboard_Widget {
@@ -427,7 +427,7 @@ class Dashboard_Widget {
 			$ai_error   = null;
 
 			// Check if API key is configured but summary is null (API error).
-			if ( null === $ai_summary && ! empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
+			if ( null === $ai_summary && ! empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
 				// Get the last error from error log.
 				$ai_error = 'The AI summary could not be generated. Check your API key and account status.';
 			}
@@ -482,7 +482,7 @@ class Dashboard_Widget {
 						<?php echo esc_html( $ai_error ); ?>
 					</p>
 				</div>
-			<?php elseif ( empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
+			<?php elseif ( empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
 				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
 					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
 						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>

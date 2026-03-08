@@ -4,13 +4,13 @@
  *
  * This file defines the Factory class, responsible for creating and managing objects.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo;
+namespace Sybgo;
 
 // Require database classes.
 require_once __DIR__ . '/database/class-databasemanager.php';
@@ -18,10 +18,10 @@ require_once __DIR__ . '/database/class-event-repository.php';
 require_once __DIR__ . '/database/class-report-repository.php';
 require_once __DIR__ . '/events/class-event-registry.php';
 
-use Rocket\Sybgo\Database\DatabaseManager;
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Database\DatabaseManager;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Factory class.
@@ -34,7 +34,7 @@ use Rocket\Sybgo\Events\Event_Registry;
  * - 'email_settings_provider' => callable returning an email settings array with keys:
  *                                 'recipients', 'from_name', 'from_email', 'send_empty_reports'.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 class Factory {
@@ -203,15 +203,15 @@ class Factory {
 	/**
 	 * Create AI summarizer instance.
 	 *
-	 * @return \Rocket\Sybgo\AI\AI_Summarizer AI summarizer instance.
+	 * @return \Sybgo\AI\AI_Summarizer AI summarizer instance.
 	 */
-	public function create_ai_summarizer(): \Rocket\Sybgo\AI\AI_Summarizer {
+	public function create_ai_summarizer(): \Sybgo\AI\AI_Summarizer {
 		require_once __DIR__ . '/ai/class-ai-summarizer.php';
 
 		$report_repo    = $this->create_report_repository();
 		$event_registry = $this->create_event_registry();
 
-		return new \Rocket\Sybgo\AI\AI_Summarizer(
+		return new \Sybgo\AI\AI_Summarizer(
 			$report_repo,
 			$event_registry,
 			$this->config['api_key_provider']
@@ -233,10 +233,10 @@ class Factory {
 			$ai_summarizer = $this->create_ai_summarizer();
 
 			// Create generator.
-			$generator = new \Rocket\Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 
 			// Create manager.
-			self::$report_manager_instance = new \Rocket\Sybgo\Reports\Report_Manager(
+			self::$report_manager_instance = new \Sybgo\Reports\Report_Manager(
 				$event_repo,
 				$report_repo,
 				$generator
@@ -258,9 +258,9 @@ class Factory {
 
 			$report_repo    = $this->create_report_repository();
 			$event_registry = $this->create_event_registry();
-			$email_template = new \Rocket\Sybgo\Email\Email_Template( $event_registry );
+			$email_template = new \Sybgo\Email\Email_Template( $event_registry );
 
-			self::$email_manager_instance = new \Rocket\Sybgo\Email\Email_Manager(
+			self::$email_manager_instance = new \Sybgo\Email\Email_Manager(
 				$report_repo,
 				$email_template,
 				$this->config['email_settings_provider']

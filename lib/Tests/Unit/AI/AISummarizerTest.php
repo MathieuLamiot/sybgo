@@ -2,16 +2,16 @@
 /**
  * AI Summarizer Unit Tests
  *
- * @package Rocket\Sybgo\Tests\Unit\AI
+ * @package SybgoTests\Unit\AI
  */
 
-namespace Rocket\Sybgo\Tests\Unit\AI;
+namespace SybgoTests\Unit\AI;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
-use Rocket\Sybgo\AI\AI_Summarizer;
+use SybgoAI\AI_Summarizer;
 
 /**
  * AI Summarizer Test Case
@@ -49,8 +49,8 @@ class AISummarizerTest extends TestCase {
 		// Load the AI_Summarizer class.
 		require_once dirname( __DIR__, 3 ) . '/ai/class-ai-summarizer.php';
 
-		$this->report_repo    = Mockery::mock( 'Rocket\Sybgo\Database\Report_Repository' );
-		$event_registry       = Mockery::mock( 'Rocket\Sybgo\Events\Event_Registry' );
+		$this->report_repo    = Mockery::mock( 'SybgoDatabase\Report_Repository' );
+		$event_registry       = Mockery::mock( 'SybgoEvents\Event_Registry' );
 		$event_registry->shouldReceive( 'get_ai_description' )->andReturn( '' );
 		$event_registry->shouldReceive( 'get_ai_context_for_events' )->andReturn( '' );
 

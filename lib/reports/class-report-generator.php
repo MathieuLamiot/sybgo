@@ -4,24 +4,24 @@
  *
  * This file defines the Report Generator for creating report summaries.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Reports;
+namespace Sybgo\Reports;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\AI\AI_Summarizer;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\AI\AI_Summarizer;
 
 /**
  * Report Generator class.
  *
  * Aggregates events and generates report summaries with trends.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 class Report_Generator {

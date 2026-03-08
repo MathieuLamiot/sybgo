@@ -2,7 +2,7 @@
 /**
  * Sybgo - Since You've Been Gone
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  *
  * Plugin Name: Sybgo - Activity Digest
  * Plugin URI: https://github.com/your-repo/sybgo
@@ -19,7 +19,7 @@
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo;
+namespace Sybgo;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,7 +51,7 @@ if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
  * Initializes the Sybgo plugin and coordinates all subsystems.
  * This is the standalone plugin wrapper around the Sybgo library.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 class Sybgo {

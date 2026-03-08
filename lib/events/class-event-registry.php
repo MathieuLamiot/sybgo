@@ -4,13 +4,13 @@
  *
  * Provides a centralized, filter-driven registry for event types and their display metadata.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events;
+namespace Sybgo\Events;
 
 /**
  * Event Registry class.
@@ -18,7 +18,7 @@ namespace Rocket\Sybgo\Events;
  * Read-only accessor backed by the `sybgo_event_types` filter.
  * Core trackers and third-party plugins register event types via `add_filter`.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 class Event_Registry {

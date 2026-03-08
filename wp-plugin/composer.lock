@@ -83,11 +83,11 @@
         },
         {
             "name": "wp-media/sybgo-lib",
-            "version": "dev-main",
+            "version": "dev-chore/ci-quality-epic",
             "dist": {
                 "type": "path",
                 "url": "../lib",
-                "reference": "1bf91ef6d880c03ebb6059e1f1565aaf3eb31d52"
+                "reference": "6f0c7459dbe3dccaf3e2cded24cfbe619817dd6d"
             },
             "require": {
                 "berlindb/core": "^2.0",
@@ -122,7 +122,7 @@
             },
             "autoload-dev": {
                 "psr-4": {
-                    "Rocket\\Sybgo\\Tests\\": "Tests/"
+                    "Sybgo\\Tests\\": "Tests/"
                 }
             },
             "scripts": {

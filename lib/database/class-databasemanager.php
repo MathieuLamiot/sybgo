@@ -4,13 +4,13 @@
  *
  * This file defines the DatabaseManager class, responsible for managing database interactions.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Database;
+namespace Sybgo\Database;
 
 /**
  * DatabaseManager class.
@@ -18,7 +18,7 @@ namespace Rocket\Sybgo\Database;
  * This class provides methods for managing database interactions for the Sybgo plugin.
  * Creates and manages three tables: events, reports, and email_log.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 class DatabaseManager {

@@ -4,31 +4,31 @@
  *
  * This file defines the Reports Admin Page for viewing and managing reports.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Reports\Report_Manager;
-use Rocket\Sybgo\Reports\Report_Generator;
-use Rocket\Sybgo\Email\Email_Manager;
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Reports\Report_Manager;
+use Sybgo\Reports\Report_Generator;
+use Sybgo\Email\Email_Manager;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Reports Page class.
  *
  * Displays all reports with filtering and manual freeze functionality.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Reports_Page {
