@@ -49,11 +49,8 @@ class Uninstaller {
 	 * @return void
 	 */
 	public function drop_tables(): void {
-		global $wpdb;
-
 		foreach ( DatabaseManager::get_table_names() as $table ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+			DatabaseManager::drop_table( $table );
 		}
 	}
 

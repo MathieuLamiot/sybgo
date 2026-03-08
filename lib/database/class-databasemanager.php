@@ -199,6 +199,19 @@ class DatabaseManager {
 	}
 
 	/**
+	 * Drop a single database table.
+	 *
+	 * @param string $table Fully-qualified table name (including prefix).
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public static function drop_table( string $table ): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+	}
+
+	/**
 	 * Cleanup old events (older than 1 year).
 	 *
 	 * This should be called by a daily cron job.
