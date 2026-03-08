@@ -45,7 +45,11 @@ class AggregatedEventRepositoryTest extends TestCase {
 
 		$this->repo = new Aggregated_Event_Repository( 'wp_sybgo_aggregated_events' );
 
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+		Functions\when( 'wp_json_encode' )->alias(
+			function ( $data, int $flags = 0 ) {
+				return json_encode( $data, $flags );
+			}
+		);
 	}
 
 	/**
@@ -58,101 +62,110 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * Test upsert_count() returns true on success.
+	 * Test upsert() returns true on success.
 	 */
-	public function test_upsert_count_returns_true_on_success() {
-		$this->wpdb
-			->shouldReceive( 'prepare' )
-			->once()
-			->andReturn( 'PREPARED SQL' );
+	public function test_upsert_returns_true_on_success() {
+		$this->wpdb->shouldReceive( 'prepare' )->once()->andReturn( 'PREPARED SQL' );
+		$this->wpdb->shouldReceive( 'query' )->once()->with( 'PREPARED SQL' )->andReturn( 1 );
 
-		$this->wpdb
-			->shouldReceive( 'query' )
-			->once()
-			->with( 'PREPARED SQL' )
-			->andReturn( 1 );
-
-		$result = $this->repo->upsert_count( 'page_view', '2026-03-08' );
+		$result = $this->repo->upsert( 'page_view', '2026-03-08' );
 
 		$this->assertTrue( $result );
 	}
 
 	/**
-	 * Test upsert_count() returns false when query fails.
+	 * Test upsert() returns false when query fails.
 	 */
-	public function test_upsert_count_returns_false_on_failure() {
-		$this->wpdb
-			->shouldReceive( 'prepare' )
-			->once()
-			->andReturn( 'PREPARED SQL' );
+	public function test_upsert_returns_false_on_failure() {
+		$this->wpdb->shouldReceive( 'prepare' )->once()->andReturn( 'PREPARED SQL' );
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( false );
 
-		$this->wpdb
-			->shouldReceive( 'query' )
-			->once()
-			->andReturn( false );
-
-		$result = $this->repo->upsert_count( 'page_view', '2026-03-08' );
+		$result = $this->repo->upsert( 'page_view', '2026-03-08' );
 
 		$this->assertFalse( $result );
 	}
 
 	/**
-	 * Test upsert_count() passes event_type and date to prepare().
+	 * Test upsert() passes event_type, date, and value to prepare().
 	 */
-	public function test_upsert_count_passes_correct_arguments_to_prepare() {
+	public function test_upsert_passes_event_type_date_value_to_prepare() {
 		$this->wpdb
 			->shouldReceive( 'prepare' )
 			->once()
 			->with(
 				Mockery::type( 'string' ),
-				'login_attempt',
+				'woo_sale_revenue',
+				Mockery::type( 'string' ), // dimensions JSON
+				249.95,
 				'2026-03-08',
+				Mockery::type( 'string' )  // meta JSON
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
+
+		$this->repo->upsert( 'woo_sale_revenue', '2026-03-08', 249.95 );
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test upsert() with empty dimensions encodes as '{}' (empty JSON object).
+	 */
+	public function test_upsert_with_empty_dimensions_encodes_as_empty_json_object() {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::type( 'string' ),
+				Mockery::type( 'string' ), // event_type
+				'{}',                      // empty dimensions → '{}'
+				Mockery::type( 'float' ),
 				Mockery::type( 'string' ),
 				Mockery::type( 'string' )
 			)
 			->andReturn( 'PREPARED SQL' );
 
-		$this->wpdb
-			->shouldReceive( 'query' )
-			->once()
-			->andReturn( 1 );
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
 
-		$this->repo->upsert_count( 'login_attempt', '2026-03-08' );
+		$this->repo->upsert( 'page_view', '2026-03-08' );
 
 		$this->addToAssertionCount( 1 );
 	}
 
 	/**
-	 * Test upsert_count() with empty meta uses empty JSON object.
+	 * Test upsert() sorts dimension keys alphabetically for canonical JSON.
 	 */
-	public function test_upsert_count_with_empty_meta() {
+	public function test_upsert_sorts_dimension_keys_canonically() {
+		// Pass keys in reverse order; expect them sorted alphabetically.
+		$dimensions          = array( 'role' => 'editor', 'product_id' => 99 );
+		$expected_dimensions = '{"product_id":99,"role":"editor"}';
+
 		$this->wpdb
 			->shouldReceive( 'prepare' )
 			->once()
 			->with(
 				Mockery::type( 'string' ),
 				Mockery::type( 'string' ),
+				$expected_dimensions,
+				Mockery::type( 'float' ),
 				Mockery::type( 'string' ),
-				'[]',
-				'[]'
+				Mockery::type( 'string' )
 			)
 			->andReturn( 'PREPARED SQL' );
 
-		$this->wpdb
-			->shouldReceive( 'query' )
-			->once()
-			->andReturn( 1 );
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
 
-		$this->repo->upsert_count( 'page_view', '2026-03-08' );
+		$this->repo->upsert( 'user_registered', '2026-03-08', 1.0, $dimensions );
 
 		$this->addToAssertionCount( 1 );
 	}
 
 	/**
-	 * Test upsert_count() with meta passes JSON-encoded meta.
+	 * Test upsert() with meta passes JSON-encoded meta.
 	 */
-	public function test_upsert_count_with_meta() {
-		$meta      = array( 'source' => 'homepage' );
+	public function test_upsert_with_meta_passes_json_encoded_meta() {
+		$meta      = array( 'product_name' => 'Widget' );
 		$meta_json = json_encode( $meta );
 
 		$this->wpdb
@@ -162,18 +175,48 @@ class AggregatedEventRepositoryTest extends TestCase {
 				Mockery::type( 'string' ),
 				Mockery::type( 'string' ),
 				Mockery::type( 'string' ),
-				$meta_json,
+				Mockery::type( 'float' ),
+				Mockery::type( 'string' ),
 				$meta_json
 			)
 			->andReturn( 'PREPARED SQL' );
 
-		$this->wpdb
-			->shouldReceive( 'query' )
-			->once()
-			->andReturn( 1 );
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
 
-		$this->repo->upsert_count( 'page_view', '2026-03-08', $meta );
+		$this->repo->upsert( 'woo_sale_units', '2026-03-08', 1.0, array(), $meta );
 
 		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test upsert() SQL uses value accumulation, not a fixed count increment.
+	 */
+	public function test_upsert_sql_accumulates_value() {
+		$captured_sql = '';
+
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) use ( &$captured_sql ) {
+						$captured_sql = $sql;
+						return true;
+					}
+				),
+				Mockery::any(),
+				Mockery::any(),
+				Mockery::any(),
+				Mockery::any(),
+				Mockery::any()
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
+
+		$this->repo->upsert( 'page_view', '2026-03-08' );
+
+		$this->assertStringContainsString( 'value = value + VALUES(value)', $captured_sql );
+		$this->assertStringNotContainsString( 'count = count + 1', $captured_sql );
 	}
 }
