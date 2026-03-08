@@ -18,7 +18,6 @@
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="true">
 			<directory suffix=".php">./admin</directory>
-			<file>./class-sybgo.php</file>
 		</whitelist>
 	</filter>
 

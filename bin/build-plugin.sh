@@ -93,8 +93,12 @@ done < <(build_excludes)
 
 # ---------------------------------------------------------------------------
 # Step 2: Replace symlink with a clean copy of lib/ (no dev artifacts)
-# lib/ always uses the same excludes as the plugin itself.
+# lib/ vendor is installed without dev dependencies before copying.
 # ---------------------------------------------------------------------------
+echo "Installing production Composer dependencies for lib..."
+rm -rf "${LIB_DIR}/vendor"
+(cd "${LIB_DIR}" && composer install --no-dev --prefer-dist --no-interaction --quiet)
+
 echo "Replacing vendor/wp-media/sybgo-lib symlink with real copy..."
 rm -rf "${PLUGIN_DIR}/vendor/wp-media/sybgo-lib"
 rsync -a --quiet "${RSYNC_EXCLUDE_ARGS[@]}" \
