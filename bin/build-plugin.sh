@@ -117,6 +117,7 @@ rsync -a --quiet "${RSYNC_EXCLUDE_ARGS[@]}" \
 mkdir -p "${DIST_DIR}"
 ZIP_NAME="sybgo-${PLUGIN_VERSION}.zip"
 ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
+rm -f "${ZIP_PATH}"
 echo "Creating ${ZIP_NAME}..."
 (cd "${BUILD_TMP}" && zip -r --quiet "${ZIP_PATH}" sybgo/)
 
