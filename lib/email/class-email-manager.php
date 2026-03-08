@@ -165,7 +165,7 @@ class Email_Manager {
 		 *
 		 * @param array $headers Email headers.
 		 */
-		return apply_filters( 'sybgo_email_headers', $headers );
+		return wpm_apply_filters_typesafe( 'sybgo_email_headers', $headers );
 	}
 
 	/**

@@ -13,3 +13,6 @@ parameters:
 		- phpstan-bootstrap.php
 	ignoreErrors:
 		- identifier: property.onlyWritten
+
+rules:
+	- Sybgo\Tests\phpstan\Rules\DiscourageApplyFilters
