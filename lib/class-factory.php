@@ -16,11 +16,13 @@ namespace Sybgo;
 require_once __DIR__ . '/database/class-databasemanager.php';
 require_once __DIR__ . '/database/class-event-repository.php';
 require_once __DIR__ . '/database/class-report-repository.php';
+require_once __DIR__ . '/database/class-aggregated-event-repository.php';
 require_once __DIR__ . '/events/class-event-registry.php';
 
 use Sybgo\Database\DatabaseManager;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Events\Event_Registry;
 
 /**
@@ -86,6 +88,13 @@ class Factory {
 	 * @var object|null
 	 */
 	private static ?object $email_manager_instance = null;
+
+	/**
+	 * Aggregated event repository instance.
+	 *
+	 * @var Aggregated_Event_Repository|null
+	 */
+	private static ?Aggregated_Event_Repository $aggregated_event_repo_instance = null;
 
 	/**
 	 * Event registry instance.
@@ -167,6 +176,20 @@ class Factory {
 			self::$report_repo_instance = new Report_Repository( $tables['reports'] );
 		}
 		return self::$report_repo_instance;
+	}
+
+	/**
+	 * Create aggregated event repository instance.
+	 *
+	 * @return Aggregated_Event_Repository The aggregated event repository instance.
+	 */
+	public function create_aggregated_event_repository(): Aggregated_Event_Repository {
+		if ( null === self::$aggregated_event_repo_instance ) {
+			$db_manager                           = $this->create_database_manager();
+			$tables                               = $db_manager->get_table_names();
+			self::$aggregated_event_repo_instance = new Aggregated_Event_Repository( $tables['aggregated_events'] );
+		}
+		return self::$aggregated_event_repo_instance;
 	}
 
 	/**
