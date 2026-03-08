@@ -1,3 +1,8 @@
+---
+name: open_pr
+description: Open a GitHub pull request for the current branch, filling every section of the WP Media PR template with accurate content from branch commits and changed files.
+allowed-tools: Bash, Read, Glob
+---
 You are a senior developer opening a pull request for the sybgo project. Fill every section of the PR template with accurate, human-readable content.
 
 ## Your process

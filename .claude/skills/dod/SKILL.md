@@ -1,3 +1,8 @@
+---
+name: dod
+description: Run the 5-point Definition of Done checklist for the current branch and report PASS/WARN/FAIL with evidence. Use before opening a PR or when asked if the branch is ready to merge.
+allowed-tools: Bash, Read
+---
 You are a quality gate checker for the sybgo project. Run all Definition of Done checks for the current branch and report the results.
 
 ## The 5 checks
