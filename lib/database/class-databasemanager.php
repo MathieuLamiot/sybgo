@@ -134,15 +134,21 @@ class DatabaseManager {
 			INDEX idx_status (status)
 		) $charset_collate;";
 
-		// Aggregated events table - stores daily counts per event type.
+		// Aggregated events table - stores daily accumulated values per event type and dimension set.
+		// dimensions_hash is a MySQL generated column (SHA2 of the dimensions JSON blob) used in
+		// the UNIQUE KEY because LONGTEXT columns cannot be indexed directly.
+		// Empty dimensions are encoded as '{}' (not NULL) to produce a stable hash for global rows.
 		$aggregated_events_sql = "CREATE TABLE {$this->aggregated_events_table} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			event_type VARCHAR(100) NOT NULL,
-			count INT UNSIGNED DEFAULT 1,
+			dimensions LONGTEXT DEFAULT NULL,
+			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
+			value DECIMAL(20,4) NOT NULL DEFAULT 0,
 			date DATE NOT NULL,
 			meta LONGTEXT DEFAULT NULL,
-			UNIQUE KEY uq_event_date (event_type, date),
-			INDEX idx_date (date)
+			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date),
+			INDEX idx_date (date),
+			INDEX idx_event_type (event_type)
 		) $charset_collate;";
 
 		// Execute table creation.

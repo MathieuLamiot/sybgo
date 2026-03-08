@@ -30,7 +30,7 @@ Fill every section of `.github/PULL_REQUEST_TEMPLATE.md`. Never leave placeholde
 
 **Type of change**: Tick the correct checkbox(es). Never leave all unchecked.
 
-**What was tested**: Concrete scenarios with exact steps and observed results. Not "tested locally".
+**What was tested**: Concrete scenarios with exact steps and observed results. Not "tested locally". Don't mention automated tests here, only manual testing. If no testing was done, consider doing it now. Resort to writing "No testing performed" with a justification only if that's truly the case and cannot be remediated.
 
 **How to test**: Autonomous step-by-step instructions. A reviewer with no prior context must be able to follow them. No assumed environment setup.
 
