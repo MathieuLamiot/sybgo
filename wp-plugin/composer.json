@@ -11,6 +11,8 @@
 		}
 	],
 	"type": "wordpress-plugin",
+	"minimum-stability": "dev",
+	"prefer-stable": true,
 	"config": {
 		"sort-packages": true,
 		"allow-plugins": {
@@ -19,12 +21,12 @@
 	},
 	"repositories": [
 		{
-			"type": "vcs",
-			"url": "https://github.com/mathieulamiot/sybgo-lib"
+			"type": "path",
+			"url": "../lib"
 		}
 	],
 	"require": {
-		"wp-media/sybgo-lib": "dev-main"
+		"wp-media/sybgo-lib": "*"
 	},
 	"require-dev": {
 		"php": "^7 || ^8",

@@ -1,3 +1,6 @@
-/vendor/*
-/Tests/env/local/
+/wp-plugin/vendor/*
+/wp-plugin/Tests/env/local/
+/lib/vendor/*
+/lib/Tests/env/local/
 *.cache
+*.DS_Store

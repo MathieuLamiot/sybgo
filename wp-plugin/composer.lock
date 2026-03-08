@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2c8c4133ff1ef849306afc514cf58850",
+    "content-hash": "96c5ebb577ede359446221b941ef859a",
     "packages": [
         {
             "name": "berlindb/core",
@@ -83,17 +83,11 @@
         },
         {
             "name": "wp-media/sybgo-lib",
-            "version": "dev-main",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/MathieuLamiot/sybgo-lib.git",
-                "reference": "f1994b47ff7630f7222cbab395f3c734abcbc556"
-            },
+            "version": "dev-chore/monorepo-migration",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/MathieuLamiot/sybgo-lib/zipball/f1994b47ff7630f7222cbab395f3c734abcbc556",
-                "reference": "f1994b47ff7630f7222cbab395f3c734abcbc556",
-                "shasum": ""
+                "type": "path",
+                "url": "../lib",
+                "reference": "ad2c5e6c4bab66f36b5a661786735a330acd2414"
             },
             "require": {
                 "berlindb/core": "^2.0",
@@ -110,7 +104,6 @@
                 "wp-coding-standards/wpcs": "^2",
                 "yoast/phpunit-polyfills": "^1.0"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "classmap": [
@@ -162,11 +155,9 @@
             ],
             "description": "Event tracking and report generation library for WordPress",
             "homepage": "https://github.com/wp-media/sybgo-lib",
-            "support": {
-                "source": "https://github.com/MathieuLamiot/sybgo-lib/tree/main",
-                "issues": "https://github.com/MathieuLamiot/sybgo-lib/issues"
-            },
-            "time": "2026-02-17T11:01:47+00:00"
+            "transport-options": {
+                "relative": true
+            }
         }
     ],
     "packages-dev": [
@@ -1033,11 +1024,11 @@
         },
         {
             "name": "phpstan/phpstan",
-            "version": "2.1.39",
+            "version": "2.1.40",
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/c6f73a2af4cbcd99c931d0fb8f08548cc0fa8224",
-                "reference": "c6f73a2af4cbcd99c931d0fb8f08548cc0fa8224",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/9b2c7aeb83a75d8680ea5e7c9b7fca88052b766b",
+                "reference": "9b2c7aeb83a75d8680ea5e7c9b7fca88052b766b",
                 "shasum": ""
             },
             "require": {
@@ -1082,7 +1073,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-02-11T14:48:56+00:00"
+            "time": "2026-02-23T15:04:35+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -2571,11 +2562,9 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {
-        "wp-media/sybgo-lib": 20
-    },
-    "prefer-stable": false,
+    "minimum-stability": "dev",
+    "stability-flags": {},
+    "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {

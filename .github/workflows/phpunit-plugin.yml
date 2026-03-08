@@ -1,11 +1,16 @@
-name: PHPUnit Unit & Integration Tests with coverage
+name: PHPUnit Unit & Integration Tests with coverage (Plugin)
 
 on:
   pull_request:
+    paths:
+      - 'wp-plugin/**'
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wp-plugin
 
     strategy:
       fail-fast: false
@@ -51,8 +56,8 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ matrix.php-versions }}-${{ github.run_id }}
-          path: coverage/*.xml
+          name: plugin-coverage-${{ matrix.php-versions }}-${{ github.run_id }}
+          path: wp-plugin/coverage/*.xml
           retention-days: 1
 
   diff-cover:
@@ -67,7 +72,7 @@ jobs:
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-report-*
+          pattern: plugin-coverage-*
           merge-multiple: true
           path: coverage
 
@@ -87,6 +92,7 @@ jobs:
           echo "DIFF_COVER_EXIT_STATUS=$?" >> $GITHUB_ENV
           set -e
         shell: bash
+
       - name: Fail job if coverage is below threshold
         if: github.event_name == 'pull_request'
         run: |
