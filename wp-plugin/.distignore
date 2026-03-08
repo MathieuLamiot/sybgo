@@ -1,0 +1,12 @@
+/.github
+/Tests
+/bin
+/docs
+/.phpunit.result.cache
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan-bootstrap.php
+phpunit.xml.dist
+composer.json
+composer.lock

@@ -125,9 +125,6 @@ class Sybgo {
 	 * @return void
 	 */
 	public function init(): void {
-		// Load text domain for translations.
-		load_plugin_textdomain( 'sybgo', false, dirname( plugin_basename( SYBGO_PLUGIN_FILE ) ) . '/languages' );
-
 		// Initialize database.
 		$this->factory->create_database_manager();
 

@@ -12,6 +12,10 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Reports\Report_Manager;
@@ -293,7 +297,7 @@ class Reports_Page {
 	private function render_reports_list(): void {
 		global $wpdb;
 
-		$table_name = $this->report_repo->get_table_name();
+		$table_name = esc_sql( $this->report_repo->get_table_name() );
 
 		// Get all reports ordered by date.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.

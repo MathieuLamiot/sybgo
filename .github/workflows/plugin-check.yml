@@ -32,3 +32,16 @@ jobs:
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: './wp-plugin'
+          plugin-slug: 'sybgo'
+          exclude-directories: |
+            Tests
+            bin
+            docs
+          exclude-files: |
+            phpunit.xml.dist
+            phpcs.xml.dist
+            phpcs.xml
+            phpstan.neon
+            phpstan-bootstrap.php
+            composer.json
+            composer.lock

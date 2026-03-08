@@ -12,6 +12,10 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Rocket\Sybgo\Events\Event_Registry;
 
 /**

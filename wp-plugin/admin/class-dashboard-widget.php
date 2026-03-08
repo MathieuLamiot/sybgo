@@ -12,6 +12,10 @@ declare(strict_types=1);
 
 namespace Rocket\Sybgo\Admin;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Rocket\Sybgo\Database\Event_Repository;
 use Rocket\Sybgo\Database\Report_Repository;
 use Rocket\Sybgo\Reports\Report_Generator;
