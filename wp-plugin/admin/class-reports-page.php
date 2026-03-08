@@ -152,10 +152,6 @@ class Reports_Page {
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sybgo Reports', 'sybgo' ); ?></h1>
 
-			<?php if ( 'list' === $view ) : ?>
-				<?php $this->render_freeze_button(); ?>
-			<?php endif; ?>
-
 			<hr class="wp-header-end">
 
 			<?php $this->render_notices(); ?>
@@ -170,27 +166,141 @@ class Reports_Page {
 	}
 
 	/**
-	 * Render freeze now button.
+	 * Render admin notices.
 	 *
 	 * @return void
 	 */
-	private function render_freeze_button(): void {
-		$active_report = $this->report_repo->get_active();
-
-		if ( ! $active_report ) {
+	private function render_notices(): void {
+		if ( ! isset( $_GET['message'] ) ) {
 			return;
 		}
 
-		$events_count = count( $this->event_repo->get_by_report( null ) );
+		check_admin_referer( 'sybgo_report_message' );
+		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) );
+
+		switch ( $message ) {
+			case 'frozen':
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Report frozen and email sent successfully!', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+
+			case 'resent':
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Email resent successfully!', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+
+			case 'error':
+				?>
+				<div class="notice notice-error is-dismissible">
+					<p><?php esc_html_e( 'An error occurred. Please try again.', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+		}
+	}
+
+	/**
+	 * Render reports list table.
+	 *
+	 * @return void
+	 */
+	private function render_reports_list(): void {
+		global $wpdb;
+
+		$table_name = esc_sql( $this->report_repo->get_table_name() );
+
+		// Get all frozen/emailed reports ordered by date.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
+		$reports = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
+				"SELECT * FROM {$table_name} WHERE status != %s ORDER BY period_end DESC LIMIT 50",
+				'active'
+			),
+			ARRAY_A
+		);
+
+		$active_report = $this->report_repo->get_active();
+		$events_count  = $active_report ? count( $this->event_repo->get_by_report( null ) ) : 0;
 
 		?>
-		<a
-			href="#"
-			class="page-title-action sybgo-freeze-btn"
-			data-events="<?php echo esc_attr( (string) $events_count ); ?>"
-		>
-			<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
-		</a>
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Period', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Events', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Created', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'sybgo' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( ! $active_report && empty( $reports ) ) : ?>
+					<tr>
+						<td colspan="5" style="text-align: center;">
+							<?php esc_html_e( 'No reports found. Reports will appear here after the first freeze.', 'sybgo' ); ?>
+						</td>
+					</tr>
+				<?php else : ?>
+					<?php if ( $active_report ) : ?>
+						<?php $this->render_active_report_row( $active_report, $events_count ); ?>
+					<?php endif; ?>
+					<?php foreach ( $reports as $report ) : ?>
+						<?php $this->render_report_row( $report ); ?>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Render the active (ongoing) report as the first table row.
+	 *
+	 * @param array<string, mixed> $report       Active report data.
+	 * @param int                  $events_count Live count of unassigned events.
+	 * @return void
+	 */
+	private function render_active_report_row( array $report, int $events_count ): void {
+		$period_start = gmdate( 'M j, Y', strtotime( $report['period_start'] ) );
+		$running_for  = human_time_diff( strtotime( $report['period_start'] ), time() ) . ' ago';
+
+		?>
+		<tr>
+			<td>
+				<strong><?php echo esc_html( $period_start . ' – ' . __( 'Now', 'sybgo' ) ); ?></strong>
+			</td>
+			<td>
+				<?php echo esc_html( number_format_i18n( $events_count ) ); ?>
+			</td>
+			<td>
+				<?php $this->render_status_badge( 'active' ); ?>
+			</td>
+			<td>
+				<?php echo esc_html( $running_for ); ?>
+			</td>
+			<td>
+				<a
+					href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . $report['id'] ), 'sybgo_view_report' ) ); ?>"
+					class="button button-small"
+				>
+					<?php esc_html_e( 'View Details', 'sybgo' ); ?>
+				</a>
+				<a
+					href="#"
+					class="button button-small sybgo-freeze-btn"
+					data-events="<?php echo esc_attr( (string) $events_count ); ?>"
+				>
+					<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
+				</a>
+			</td>
+		</tr>
 
 		<div id="sybgo-freeze-modal" class="sybgo-modal" style="display:none;">
 			<div class="sybgo-modal-content">
@@ -246,95 +356,6 @@ class Reports_Page {
 			});
 		});
 		</script>
-		<?php
-	}
-
-	/**
-	 * Render admin notices.
-	 *
-	 * @return void
-	 */
-	private function render_notices(): void {
-		if ( ! isset( $_GET['message'] ) ) {
-			return;
-		}
-
-		check_admin_referer( 'sybgo_report_message' );
-		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) );
-
-		switch ( $message ) {
-			case 'frozen':
-				?>
-				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Report frozen and email sent successfully!', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-
-			case 'resent':
-				?>
-				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Email resent successfully!', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-
-			case 'error':
-				?>
-				<div class="notice notice-error is-dismissible">
-					<p><?php esc_html_e( 'An error occurred. Please try again.', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-		}
-	}
-
-	/**
-	 * Render reports list table.
-	 *
-	 * @return void
-	 */
-	private function render_reports_list(): void {
-		global $wpdb;
-
-		$table_name = esc_sql( $this->report_repo->get_table_name() );
-
-		// Get all reports ordered by date.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
-		$reports = $wpdb->get_results(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
-				"SELECT * FROM {$table_name} WHERE status != %s ORDER BY period_end DESC LIMIT 50",
-				'active'
-			),
-			ARRAY_A
-		);
-
-		?>
-		<table class="wp-list-table widefat fixed striped">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Period', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Events', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Created', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'sybgo' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php if ( empty( $reports ) ) : ?>
-					<tr>
-						<td colspan="5" style="text-align: center;">
-							<?php esc_html_e( 'No reports found. Reports will appear here after the first freeze.', 'sybgo' ); ?>
-						</td>
-					</tr>
-				<?php else : ?>
-					<?php foreach ( $reports as $report ) : ?>
-						<?php $this->render_report_row( $report ); ?>
-					<?php endforeach; ?>
-				<?php endif; ?>
-			</tbody>
-		</table>
 		<?php
 	}
 
@@ -445,8 +466,12 @@ class Reports_Page {
 			return;
 		}
 
-		$summary = json_decode( $report['summary_data'], true );
-		$events  = $this->event_repo->get_by_report( $report_id );
+		$summary = ! empty( $report['summary_data'] ) ? json_decode( $report['summary_data'], true ) : null;
+		$events  = $this->event_repo->get_by_report( 'active' === $report['status'] ? null : $report_id );
+
+		if ( null === $summary && 'active' === $report['status'] ) {
+			$summary = $this->report_generator->generate_live_summary( $events, (int) $report['id'] );
+		}
 
 		?>
 		<div class="sybgo-report-details">
@@ -464,7 +489,7 @@ class Reports_Page {
 							/* translators: %1$s: start date, %2$s: end date */
 							__( 'Report: %1$s to %2$s', 'sybgo' ),
 							gmdate( 'F j, Y', strtotime( $report['period_start'] ) ),
-							gmdate( 'F j, Y', strtotime( $report['period_end'] ) )
+							! empty( $report['period_end'] ) ? gmdate( 'F j, Y', strtotime( $report['period_end'] ) ) : __( 'Now', 'sybgo' )
 						)
 					);
 					?>
