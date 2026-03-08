@@ -2,5 +2,6 @@
 /wp-plugin/Tests/env/local/
 /lib/vendor/*
 /lib/Tests/env/local/
+/dist/
 *.cache
 *.DS_Store
