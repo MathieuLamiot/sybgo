@@ -419,8 +419,8 @@ class Dashboard_Widget {
 				$events,
 				$active_report ? (int) $active_report['id'] : 0
 			);
-			$totals = $live_summary['totals'];
-			$trends = $live_summary['trends'];
+			$totals       = $live_summary['totals'];
+			$trends       = $live_summary['trends'];
 
 			// Generate AI summary if API key is configured.
 			$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
@@ -541,5 +541,4 @@ class Dashboard_Widget {
 		</div>
 		<?php
 	}
-
 }

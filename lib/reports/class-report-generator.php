@@ -75,7 +75,7 @@ class Report_Generator {
 			$summary['trends']
 		);
 
-		return apply_filters( 'sybgo_report_summary', $summary, $report_id );
+		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
 	}
 
 	/**
