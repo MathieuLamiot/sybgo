@@ -40,13 +40,13 @@ Trackers extend one of two abstract base classes in `lib/events/abstracts/`, dep
 
 - **`Abstract_Singular_Event`** — for events logged individually. Provides `record()` (persists the event, applies `sybgo_event_data` and `sybgo_should_track_event` filters, fires `sybgo_event_recorded`) and `is_throttled()` (checks whether a recent event for the same object is within a given window). The constructor automatically wires the `sybgo_event_types` filter. All 4 built-in trackers extend this class.
 
-- **`Abstract_Aggregated_Event`** — for events counted daily rather than logged individually. Provides `increment()`, which upserts a row in `wp_sybgo_aggregated_events` for today's date. No filter registration is done automatically; subclasses hook into WordPress actions directly.
+- **`Abstract_Aggregated_Event`** — for events accumulated daily rather than logged individually. Provides `increment(string $event_type, float $value = 1.0, array $dimensions = [], array $meta = [])`, which upserts a row in `wp_sybgo_aggregated_events` for today's date. Pass `$value = 1.0` for simple counts, or a decimal (e.g. `249.95`) to accumulate sums such as revenue. Pass `$dimensions` to break the metric down per object, role, product, etc. No filter registration is done automatically; subclasses hook into WordPress actions directly.
 
 ### Event Categories
 
 Every event type belongs to a category: `'singular'` (default) or `'aggregated'`. The category is declared via the `category` key when registering the event type on the `sybgo_event_types` filter. `Event_Registry::get_event_category( $event_type )` returns the category string.
 
-Singular events are written to `wp_sybgo_events` (one row per occurrence). Aggregated events are written to `wp_sybgo_aggregated_events` (one row per event type per day, with an incrementing count).
+Singular events are written to `wp_sybgo_events` (one row per occurrence). Aggregated events are written to `wp_sybgo_aggregated_events` (one row per `(event_type, dimensions, date)` combination, with an accumulating `value`).
 
 ### Event Data Structure
 
@@ -155,7 +155,7 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 
 ### Database Inspection
 
-Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, date)` so each event type has at most one row per day.
+Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date)` so each `(event_type, dimension set, date)` combination has at most one row.
 
 The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tables()`):
 
@@ -163,9 +163,21 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 |---|---|---|
 | `id` | BIGINT UNSIGNED | Auto-increment PK |
 | `event_type` | VARCHAR(100) | Event type identifier |
-| `count` | INT UNSIGNED | Daily occurrence count |
-| `date` | DATE | Date of the counts (Y-m-d) |
-| `meta` | LONGTEXT | Optional JSON metadata |
+| `dimensions` | LONGTEXT | JSON blob of breakdown axes, e.g. `{"role":"editor","product_id":42}`. Empty = `'{}'` (global row). |
+| `dimensions_hash` | VARCHAR(64) | SHA2-256 of `dimensions`, computed by MySQL automatically. Used in the UNIQUE KEY. |
+| `value` | DECIMAL(20,4) | Accumulated value for the day (count or sum). Default 0. |
+| `date` | DATE | Date of the aggregation (Y-m-d) |
+| `meta` | LONGTEXT | Optional JSON context snapshot (overwritten on conflict, not accumulated) |
+
+**Use-case examples:**
+
+| Use case | `event_type` | `dimensions` | `value` delta |
+|---|---|---|---|
+| Page visits per page | `page_view` | `{"post_id": 42}` | 1.0 |
+| PHP errors per error type | `php_error` | `{"error_code": "E_WARNING"}` | 1.0 |
+| WooCommerce units per product | `woo_sale_units` | `{"product_id": 99}` | 1.0 |
+| WooCommerce revenue per product | `woo_sale_revenue` | `{"product_id": 99}` | 249.95 |
+| User registrations per role | `user_registered` | `{"role": "editor"}` | 1.0 |
 
 ```sql
 -- View recent singular events
@@ -180,10 +192,28 @@ FROM wp_sybgo_events
 WHERE report_id IS NULL  -- Current week only
 GROUP BY event_type;
 
--- View aggregated daily counts
-SELECT event_type, date, count
+-- Top 10 pages by visits today
+SELECT JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.post_id')) AS post_id,
+       SUM(value) AS visits
 FROM wp_sybgo_aggregated_events
-ORDER BY date DESC, count DESC;
+WHERE event_type = 'page_view' AND date = CURDATE()
+GROUP BY post_id ORDER BY visits DESC LIMIT 10;
+
+-- Revenue per product this week
+SELECT JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.product_id')) AS product_id,
+       SUM(value) AS revenue
+FROM wp_sybgo_aggregated_events
+WHERE event_type = 'woo_sale_revenue'
+  AND date BETWEEN DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND CURDATE()
+GROUP BY product_id ORDER BY revenue DESC;
+
+-- User registrations per role last 30 days
+SELECT JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.role')) AS role,
+       date, SUM(value) AS registrations
+FROM wp_sybgo_aggregated_events
+WHERE event_type = 'user_registered'
+  AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+GROUP BY role, date ORDER BY date, role;
 ```
 
 ## Troubleshooting
