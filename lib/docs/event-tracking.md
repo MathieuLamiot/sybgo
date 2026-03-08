@@ -34,6 +34,20 @@ Sybgo tracks 16 different event types across 4 categories:
 
 When you perform an action in WordPress (publish a post, approve a comment, etc.), Sybgo's tracker classes listen for the corresponding WordPress hook and create an event record. Each tracker registers its event types via the `sybgo_event_types` filter and hooks into WordPress actions to capture events.
 
+### Tracker Class Hierarchy
+
+Trackers extend one of two abstract base classes in `lib/events/abstracts/`, depending on the storage strategy:
+
+- **`Abstract_Singular_Event`** — for events logged individually. Provides `record()` (persists the event, applies `sybgo_event_data` and `sybgo_should_track_event` filters, fires `sybgo_event_recorded`) and `is_throttled()` (checks whether a recent event for the same object is within a given window). The constructor automatically wires the `sybgo_event_types` filter. All 4 built-in trackers extend this class.
+
+- **`Abstract_Aggregated_Event`** — for events counted daily rather than logged individually. Provides `increment()`, which upserts a row in `wp_sybgo_aggregated_events` for today's date. No filter registration is done automatically; subclasses hook into WordPress actions directly.
+
+### Event Categories
+
+Every event type belongs to a category: `'singular'` (default) or `'aggregated'`. The category is declared via the `category` key when registering the event type on the `sybgo_event_types` filter. `Event_Registry::get_event_category( $event_type )` returns the category string.
+
+Singular events are written to `wp_sybgo_events` (one row per occurrence). Aggregated events are written to `wp_sybgo_aggregated_events` (one row per event type per day, with an incrementing count).
+
 ### Event Data Structure
 
 Each event stores the following information:
@@ -141,8 +155,20 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 
 ### Database Inspection
 
+Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, date)` so each event type has at most one row per day.
+
+The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tables()`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | BIGINT UNSIGNED | Auto-increment PK |
+| `event_type` | VARCHAR(100) | Event type identifier |
+| `count` | INT UNSIGNED | Daily occurrence count |
+| `date` | DATE | Date of the counts (Y-m-d) |
+| `meta` | LONGTEXT | Optional JSON metadata |
+
 ```sql
--- View recent events
+-- View recent singular events
 SELECT event_type, JSON_EXTRACT(event_data, '$.object.title') as title, event_timestamp
 FROM wp_sybgo_events
 ORDER BY event_timestamp DESC
@@ -154,15 +180,10 @@ FROM wp_sybgo_events
 WHERE report_id IS NULL  -- Current week only
 GROUP BY event_type;
 
--- View edit magnitude for recent edits
-SELECT
-    JSON_EXTRACT(event_data, '$.object.title') as title,
-    JSON_EXTRACT(event_data, '$.metadata.edit_magnitude') as edit_pct,
-    event_timestamp
-FROM wp_sybgo_events
-WHERE event_type = 'post_edited'
-ORDER BY event_timestamp DESC
-LIMIT 10;
+-- View aggregated daily counts
+SELECT event_type, date, count
+FROM wp_sybgo_aggregated_events
+ORDER BY date DESC, count DESC;
 ```
 
 ## Troubleshooting

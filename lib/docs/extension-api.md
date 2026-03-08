@@ -105,6 +105,7 @@ add_filter( 'sybgo_event_types', function( array $types ): array {
 **Registration keys:**
 - `icon` - Emoji displayed in dashboard and emails
 - `stat_label` - Human-readable label for statistics
+- `category` - Storage strategy: `'singular'` (default, one row per event in `wp_sybgo_events`) or `'aggregated'` (daily count in `wp_sybgo_aggregated_events`). Readable via `Event_Registry::get_event_category()`.
 - `short_title` - Callable returning a short display title
 - `detailed_title` - Callable returning a detailed display title
 - `ai_description` - Callable providing context for AI summaries
