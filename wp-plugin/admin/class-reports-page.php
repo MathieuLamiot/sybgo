@@ -287,6 +287,12 @@ class Reports_Page {
 			</td>
 			<td>
 				<a
+					href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . $report['id'] ), 'sybgo_view_report' ) ); ?>"
+					class="button button-small"
+				>
+					<?php esc_html_e( 'View Details', 'sybgo' ); ?>
+				</a>
+				<a
 					href="#"
 					class="button button-small sybgo-freeze-btn"
 					data-events="<?php echo esc_attr( (string) $events_count ); ?>"
@@ -460,7 +466,7 @@ class Reports_Page {
 			return;
 		}
 
-		$summary = json_decode( $report['summary_data'], true );
+		$summary = ! empty( $report['summary_data'] ) ? json_decode( $report['summary_data'], true ) : null;
 		$events  = $this->event_repo->get_by_report( $report_id );
 
 		?>
@@ -479,7 +485,7 @@ class Reports_Page {
 							/* translators: %1$s: start date, %2$s: end date */
 							__( 'Report: %1$s to %2$s', 'sybgo' ),
 							gmdate( 'F j, Y', strtotime( $report['period_start'] ) ),
-							gmdate( 'F j, Y', strtotime( $report['period_end'] ) )
+							! empty( $report['period_end'] ) ? gmdate( 'F j, Y', strtotime( $report['period_end'] ) ) : __( 'Now', 'sybgo' )
 						)
 					);
 					?>
