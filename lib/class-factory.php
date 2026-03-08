@@ -146,6 +146,7 @@ class Factory {
 	public function create_database_manager(): DatabaseManager {
 		if ( null === self::$db_manager_instance ) {
 			self::$db_manager_instance = new DatabaseManager();
+			self::$db_manager_instance->maybe_create_tables();
 		}
 		return self::$db_manager_instance;
 	}

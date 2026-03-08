@@ -49,8 +49,9 @@ class Uninstaller {
 	 * @return void
 	 */
 	public function drop_tables(): void {
-		foreach ( DatabaseManager::get_table_names() as $table ) {
-			DatabaseManager::drop_table( $table );
+		$db = new DatabaseManager();
+		foreach ( $db->get_table_names() as $table ) {
+			$db->drop_table( $table );
 		}
 	}
 

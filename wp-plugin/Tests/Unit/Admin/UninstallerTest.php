@@ -67,7 +67,7 @@ class UninstallerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_drop_tables_drops_all_four_tables(): void {
-		$table_names = array_values( DatabaseManager::get_table_names() );
+		$table_names = array_values( ( new DatabaseManager() )->get_table_names() );
 
 		$GLOBALS['wpdb']->shouldReceive( 'query' )
 			->times( 4 )
@@ -124,7 +124,7 @@ class UninstallerTest extends TestCase {
 	 */
 	public function test_run_executes_full_cleanup(): void {
 		$GLOBALS['wpdb']->shouldReceive( 'query' )
-			->times( count( DatabaseManager::get_table_names() ) );
+			->times( count( ( new DatabaseManager() )->get_table_names() ) );
 
 		Functions\expect( 'wp_clear_scheduled_hook' )
 			->times( count( Sybgo::get_cron_hooks() ) );
