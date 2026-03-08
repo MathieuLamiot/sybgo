@@ -12,5 +12,9 @@ parameters:
 		- docs
 	bootstrapFiles:
 		- phpstan-bootstrap.php
+		- ../lib/vendor/autoload.php
 	ignoreErrors:
 		- identifier: property.onlyWritten
+
+rules:
+	- Sybgo\Tests\phpstan\Rules\DiscourageApplyFilters

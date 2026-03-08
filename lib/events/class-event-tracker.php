@@ -122,10 +122,10 @@ class Event_Tracker {
 	 */
 	public function track_custom_event( string $event_type, array $event_data, string $source_plugin = 'custom' ) {
 		// Allow filtering of event data.
-		$event_data = apply_filters( 'sybgo_event_data', $event_data, $event_type );
+		$event_data = wpm_apply_filters_typesafe( 'sybgo_event_data', $event_data, $event_type );
 
 		// Check if we should track this event.
-		$should_track = apply_filters( 'sybgo_should_track_event', true, $event_type, $event_data );
+		$should_track = wpm_apply_filters_typesafe( 'sybgo_should_track_event', true, $event_type, $event_data );
 
 		if ( ! $should_track ) {
 			return false;
