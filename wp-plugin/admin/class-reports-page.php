@@ -467,7 +467,11 @@ class Reports_Page {
 		}
 
 		$summary = ! empty( $report['summary_data'] ) ? json_decode( $report['summary_data'], true ) : null;
-		$events  = $this->event_repo->get_by_report( $report_id );
+		$events  = $this->event_repo->get_by_report( 'active' === $report['status'] ? null : $report_id );
+
+		if ( null === $summary && 'active' === $report['status'] ) {
+			$summary = $this->report_generator->generate_live_summary( $events, (int) $report['id'] );
+		}
 
 		?>
 		<div class="sybgo-report-details">

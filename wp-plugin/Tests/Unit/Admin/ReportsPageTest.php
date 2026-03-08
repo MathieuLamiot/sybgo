@@ -37,6 +37,11 @@ class ReportsPageTest extends TestCase {
 	private $event_repo;
 
 	/**
+	 * @var \Mockery\MockInterface&Report_Generator
+	 */
+	private $report_generator;
+
+	/**
 	 * Reports_Page instance.
 	 *
 	 * @var Reports_Page
@@ -52,14 +57,15 @@ class ReportsPageTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->report_repo = Mockery::mock( Report_Repository::class );
-		$this->event_repo  = Mockery::mock( Event_Repository::class );
+		$this->report_repo      = Mockery::mock( Report_Repository::class );
+		$this->event_repo       = Mockery::mock( Event_Repository::class );
+		$this->report_generator = Mockery::mock( Report_Generator::class );
 
 		$this->reports_page = new Reports_Page(
 			$this->event_repo,
 			$this->report_repo,
 			Mockery::mock( Report_Manager::class ),
-			Mockery::mock( Report_Generator::class ),
+			$this->report_generator,
 			Mockery::mock( Email_Manager::class ),
 			Mockery::mock( Event_Registry::class )
 		);
@@ -136,7 +142,16 @@ class ReportsPageTest extends TestCase {
 		);
 
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 5 )->andReturn( $report );
-		$this->event_repo->shouldReceive( 'get_by_report' )->with( 5 )->andReturn( array() );
+		// Active reports: events are fetched as unassigned (null), not by report ID.
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 5 )->andReturn(
+			array(
+				'totals'       => array(),
+				'trends'       => array(),
+				'highlights'   => array(),
+				'total_events' => 0,
+			)
+		);
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
@@ -145,8 +160,37 @@ class ReportsPageTest extends TestCase {
 		$this->assertStringContainsString( 'Back to Reports', $output );
 		// Heading should show "Now" as the end date when period_end is null.
 		$this->assertStringContainsString( 'Now', $output );
-		// No summary cards div should appear (summary_data was null).
-		$this->assertStringNotContainsString( '<div class="sybgo-summary-cards">', $output );
+	}
+
+	/**
+	 * Viewing the active report details must show a live summary (stats cards + highlights).
+	 */
+	public function test_render_report_details_active_report_shows_live_summary(): void {
+		$report = array(
+			'id'           => 5,
+			'status'       => 'active',
+			'period_start' => '2026-03-01 00:00:00',
+			'period_end'   => null,
+			'summary_data' => null,
+		);
+
+		$live_summary = array(
+			'totals'       => array( 'post_published' => 3 ),
+			'trends'       => array(),
+			'highlights'   => array( '3 new posts published' ),
+			'total_events' => 3,
+		);
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 5 )->andReturn( $report );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 5 )->andReturn( $live_summary );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+
+		$output = $this->capture( 'render_report_details', array( 5 ) );
+
+		$this->assertStringContainsString( '<div class="sybgo-summary-cards">', $output );
+		$this->assertStringContainsString( '3 new posts published', $output );
 	}
 
 	// -------------------------------------------------------------------------
