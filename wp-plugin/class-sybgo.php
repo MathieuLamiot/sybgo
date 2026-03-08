@@ -44,9 +44,6 @@ if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 	require_once SYBGO_PLUGIN_DIR . 'vendor/autoload.php';
 }
 
-// Require library core files.
-require_once SYBGO_PLUGIN_DIR . 'lib/class-logger.php';
-require_once SYBGO_PLUGIN_DIR . 'lib/class-factory.php';
 
 /**
  * Main Sybgo Plugin Class.
@@ -155,9 +152,6 @@ class Sybgo {
 	 * @return void
 	 */
 	private function init_event_tracking(): void {
-		// Load Event Tracker.
-		require_once SYBGO_PLUGIN_DIR . 'lib/events/class-event-tracker.php';
-
 		// Initialize event tracker.
 		$event_repo    = $this->factory->create_event_repository();
 		$event_tracker = new Events\Event_Tracker( $event_repo );
@@ -173,9 +167,6 @@ class Sybgo {
 	 * @return void
 	 */
 	private function init_extensibility_api(): void {
-		// Load API functions.
-		require_once SYBGO_PLUGIN_DIR . 'lib/api/functions.php';
-
 		// Initialize API with event repository.
 		$event_repo = $this->factory->create_event_repository();
 		\sybgo_init_api( $event_repo );
@@ -209,9 +200,6 @@ class Sybgo {
 	 * @return Admin\Dashboard_Widget Dashboard widget instance.
 	 */
 	private function create_dashboard_widget(): Admin\Dashboard_Widget {
-		require_once SYBGO_PLUGIN_DIR . 'admin/class-dashboard-widget.php';
-		require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
-
 		$event_repo       = $this->factory->create_event_repository();
 		$report_repo      = $this->factory->create_report_repository();
 		$event_registry   = $this->factory->create_event_registry();
@@ -233,8 +221,6 @@ class Sybgo {
 	 * @return Admin\Settings_Page Settings page instance.
 	 */
 	private function create_settings_page(): Admin\Settings_Page {
-		require_once SYBGO_PLUGIN_DIR . 'admin/class-settings-page.php';
-
 		$event_registry = $this->factory->create_event_registry();
 
 		return new Admin\Settings_Page( $event_registry );
@@ -246,8 +232,6 @@ class Sybgo {
 	 * @return Admin\Reports_Page Reports page instance.
 	 */
 	private function create_reports_page(): Admin\Reports_Page {
-		require_once SYBGO_PLUGIN_DIR . 'admin/class-reports-page.php';
-
 		$event_repo       = $this->factory->create_event_repository();
 		$report_repo      = $this->factory->create_report_repository();
 		$event_registry   = $this->factory->create_event_registry();
