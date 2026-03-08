@@ -63,19 +63,38 @@ class DatabaseManager {
 	 * @since 1.0.0
 	 */
 	public function __construct() {
-		global $wpdb;
-
-		// Set table names.
-		$this->events_table            = $wpdb->prefix . 'sybgo_events';
-		$this->reports_table           = $wpdb->prefix . 'sybgo_reports';
-		$this->email_log_table         = $wpdb->prefix . 'sybgo_email_log';
-		$this->aggregated_events_table = $wpdb->prefix . 'sybgo_aggregated_events';
+		// Set table names from the static method (single source of truth).
+		$table_names                   = self::get_table_names();
+		$this->events_table            = $table_names['events'];
+		$this->reports_table           = $table_names['reports'];
+		$this->email_log_table         = $table_names['email_log'];
+		$this->aggregated_events_table = $table_names['aggregated_events'];
 
 		// Create tables.
 		$this->create_tables();
 
 		// Run migration.
 		$this->migrate_from_old_schema();
+	}
+
+	/**
+	 * Get all table names owned by the plugin.
+	 *
+	 * This static method is the single source of truth for plugin table names.
+	 * It can be called without instantiating DatabaseManager (e.g. during uninstall).
+	 *
+	 * @return array<string, string> Table names keyed by identifier.
+	 * @since 1.0.0
+	 */
+	public static function get_table_names(): array {
+		global $wpdb;
+
+		return array(
+			'events'            => $wpdb->prefix . 'sybgo_events',
+			'reports'           => $wpdb->prefix . 'sybgo_reports',
+			'email_log'         => $wpdb->prefix . 'sybgo_email_log',
+			'aggregated_events' => $wpdb->prefix . 'sybgo_aggregated_events',
+		);
 	}
 
 	/**
@@ -177,21 +196,6 @@ class DatabaseManager {
 			// Drop old table.
 			$wpdb->query( "DROP TABLE IF EXISTS $old_table" );
 		}
-	}
-
-	/**
-	 * Get table names.
-	 *
-	 * @return array<string, string> Array of table names keyed by identifier.
-	 * @since 1.0.0
-	 */
-	public function get_table_names(): array {
-		return array(
-			'events'            => $this->events_table,
-			'reports'           => $this->reports_table,
-			'email_log'         => $this->email_log_table,
-			'aggregated_events' => $this->aggregated_events_table,
-		);
 	}
 
 	/**

@@ -248,43 +248,63 @@ class Sybgo {
 	}
 
 	/**
+	 * Get all cron hook names registered by the plugin.
+	 *
+	 * Single source of truth for cron hook names, used both when scheduling
+	 * (init_cron_schedules, deactivate) and when cleaning up (Uninstaller).
+	 *
+	 * @return array<string> List of WP-Cron hook names.
+	 * @since 1.0.0
+	 */
+	public static function get_cron_hooks(): array {
+		return array(
+			'sybgo_freeze_weekly_report',
+			'sybgo_send_report_emails',
+			'sybgo_cleanup_old_events',
+			'sybgo_retry_failed_emails',
+		);
+	}
+
+	/**
 	 * Initialize cron schedules.
 	 *
 	 * @return void
 	 */
 	private function init_cron_schedules(): void {
+		$hooks = self::get_cron_hooks();
+
 		// Register custom cron intervals.
 		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
 
 		// Schedule weekly freeze (Sunday 23:55).
-		if ( ! wp_next_scheduled( 'sybgo_freeze_weekly_report' ) ) {
+		if ( ! wp_next_scheduled( $hooks[0] ) ) {
 			$next_sunday = strtotime( 'next Sunday 23:55' );
-			wp_schedule_event( $next_sunday, 'weekly', 'sybgo_freeze_weekly_report' );
+			wp_schedule_event( $next_sunday, 'weekly', $hooks[0] );
 		}
 
 		// Schedule weekly email (Monday 00:05).
-		if ( ! wp_next_scheduled( 'sybgo_send_report_emails' ) ) {
+		if ( ! wp_next_scheduled( $hooks[1] ) ) {
 			$next_monday = strtotime( 'next Monday 00:05' );
-			wp_schedule_event( $next_monday, 'weekly', 'sybgo_send_report_emails' );
+			wp_schedule_event( $next_monday, 'weekly', $hooks[1] );
 		}
 
 		// Schedule daily cleanup (3am).
-		if ( ! wp_next_scheduled( 'sybgo_cleanup_old_events' ) ) {
+		if ( ! wp_next_scheduled( $hooks[2] ) ) {
 			$next_3am = strtotime( 'tomorrow 3:00' );
-			wp_schedule_event( $next_3am, 'daily', 'sybgo_cleanup_old_events' );
+			wp_schedule_event( $next_3am, 'daily', $hooks[2] );
 		}
 
 		// Schedule daily retry failed emails (9am).
-		if ( ! wp_next_scheduled( 'sybgo_retry_failed_emails' ) ) {
+		if ( ! wp_next_scheduled( $hooks[3] ) ) {
 			$next_9am = strtotime( 'tomorrow 9:00' );
-			wp_schedule_event( $next_9am, 'daily', 'sybgo_retry_failed_emails' );
+			wp_schedule_event( $next_9am, 'daily', $hooks[3] );
 		}
 
 		// Register cron callbacks.
-		add_action( 'sybgo_freeze_weekly_report', array( $this, 'freeze_weekly_report_callback' ) );
-		add_action( 'sybgo_send_report_emails', array( $this, 'send_report_emails_callback' ) );
-		add_action( 'sybgo_cleanup_old_events', array( $this, 'cleanup_old_events_callback' ) );
-		add_action( 'sybgo_retry_failed_emails', array( $this, 'retry_failed_emails_callback' ) );
+		add_action( $hooks[0], array( $this, 'freeze_weekly_report_callback' ) );
+		add_action( $hooks[1], array( $this, 'send_report_emails_callback' ) );
+		add_action( $hooks[2], array( $this, 'cleanup_old_events_callback' ) );
+		add_action( $hooks[3], array( $this, 'retry_failed_emails_callback' ) );
 	}
 
 	/**
@@ -443,8 +463,8 @@ class Sybgo {
 		}
 
 		// Set default options.
-		if ( false === get_option( 'sybgo_email_recipients' ) ) {
-			update_option( 'sybgo_email_recipients', get_option( 'admin_email' ) );
+		if ( false === get_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS ) ) {
+			update_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS, get_option( 'admin_email' ) );
 		}
 
 		// Flush rewrite rules.
@@ -458,10 +478,9 @@ class Sybgo {
 	 */
 	public function deactivate(): void {
 		// Clear scheduled events.
-		wp_clear_scheduled_hook( 'sybgo_freeze_weekly_report' );
-		wp_clear_scheduled_hook( 'sybgo_send_report_emails' );
-		wp_clear_scheduled_hook( 'sybgo_cleanup_old_events' );
-		wp_clear_scheduled_hook( 'sybgo_retry_failed_emails' );
+		foreach ( self::get_cron_hooks() as $hook ) {
+			wp_clear_scheduled_hook( $hook );
+		}
 
 		// Flush rewrite rules.
 		flush_rewrite_rules();
