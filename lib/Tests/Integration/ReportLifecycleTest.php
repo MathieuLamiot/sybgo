@@ -4,10 +4,10 @@
  *
  * Tests the complete flow from event tracking to report generation.
  *
- * @package SybgoTests\Integration
+ * @package Sybgo\Tests\Integration
  */
 
-namespace SybgoTests\Integration;
+namespace Sybgo\Tests\Integration;
 
 use WP_UnitTestCase;
 
@@ -63,7 +63,7 @@ class ReportLifecycleTest extends WP_UnitTestCase {
 		require_once dirname( dirname( __DIR__ ) ) . '/reports/class-report-manager.php';
 
 		// Create factory.
-		$this->factory_instance = new \SybgoFactory();
+		$this->factory_instance = new \Sybgo\Factory();
 
 		// Create database tables.
 		$db_manager = $this->factory_instance->create_database_manager();

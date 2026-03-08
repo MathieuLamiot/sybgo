@@ -2,15 +2,15 @@
 /**
  * Comment Tracker Test
  *
- * @package SybgoTests\Unit\Events
+ * @package Sybgo\Tests\Unit\Events
  */
 
 declare(strict_types=1);
 
-namespace SybgoTests\Unit\Events;
+namespace Sybgo\Tests\Unit\Events;
 
-use SybgoEvents\Trackers\Comment_Tracker;
-use SybgoDatabase\Event_Repository;
+use Sybgo\Events\Trackers\Comment_Tracker;
+use Sybgo\Database\Event_Repository;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

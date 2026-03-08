@@ -2,14 +2,14 @@
 /**
  * Event Registry Unit Tests
  *
- * @package SybgoTests\Unit\Events
+ * @package Sybgo\Tests\Unit\Events
  */
 
-namespace SybgoTests\Unit\Events;
+namespace Sybgo\Tests\Unit\Events;
 
 use Brain\Monkey;
 use PHPUnit\Framework\TestCase;
-use SybgoEvents\Event_Registry;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Event Registry Test Case

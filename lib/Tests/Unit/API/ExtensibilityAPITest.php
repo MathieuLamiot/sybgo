@@ -2,12 +2,12 @@
 /**
  * API Functions Test
  *
- * @package SybgoTests\Unit\API
+ * @package Sybgo\Tests\Unit\API
  */
 
 declare(strict_types=1);
 
-namespace SybgoTests\Unit\API;
+namespace Sybgo\Tests\Unit\API;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;
@@ -37,7 +37,7 @@ class ExtensibilityAPITest extends TestCase {
 		// Load the API functions file.
 		require_once dirname( __DIR__, 3 ) . '/api/functions.php';
 
-		$this->event_repo = Mockery::mock( 'SybgoDatabase\Event_Repository' );
+		$this->event_repo = Mockery::mock( 'Sybgo\Database\Event_Repository' );
 
 		// Initialize API with mock repo.
 		sybgo_init_api( $this->event_repo );

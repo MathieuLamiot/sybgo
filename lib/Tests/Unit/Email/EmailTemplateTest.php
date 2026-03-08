@@ -2,15 +2,15 @@
 /**
  * Email Template Test
  *
- * @package SybgoTests\Unit\Email
+ * @package Sybgo\Tests\Unit\Email
  */
 
 declare(strict_types=1);
 
-namespace SybgoTests\Unit\Email;
+namespace Sybgo\Tests\Unit\Email;
 
-use SybgoEmail\Email_Template;
-use SybgoEvents\Event_Registry;
+use Sybgo\Email\Email_Template;
+use Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

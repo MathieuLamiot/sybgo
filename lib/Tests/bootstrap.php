@@ -4,7 +4,7 @@
  *
  * Loads the WordPress test suite for integration testing.
  *
- * @package SybgoTests
+ * @package Sybgo\Tests
  */
 
 // Composer autoloader.

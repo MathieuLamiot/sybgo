@@ -25,6 +25,9 @@ if ( ! defined( 'SYBGO_VERSION' ) ) {
 }
 
 // WordPress constants for unit tests (WP is not loaded).
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+}
 if ( ! defined( 'ARRAY_A' ) ) {
 	define( 'ARRAY_A', 'ARRAY_A' );
 }
