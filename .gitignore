@@ -1,0 +1,6 @@
+/vendor/*
+/lib/vendor/*
+/lib/composer.lock
+/Tests/env/local/
+*.cache
+*.DS_Store

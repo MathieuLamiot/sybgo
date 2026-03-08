@@ -1,0 +1,62 @@
+{
+	"name": "wp-media/sybgo-lib",
+	"description": "Event tracking and report generation library for WordPress",
+	"homepage": "https://github.com/wp-media/sybgo-lib",
+	"license": "GPL-2.0+",
+	"authors": [
+		{
+			"name": "WP Media",
+			"email": "contact@wp-media.me",
+			"homepage": "https://wp-media.me"
+		}
+	],
+	"type": "library",
+	"config": {
+		"sort-packages": true,
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true
+		}
+	},
+	"require": {
+		"berlindb/core": "^2.0",
+		"wp-media/apply-filters-typed": "^1.2"
+	},
+	"require-dev": {
+		"brain/monkey": "^2.0",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.0.0",
+		"mockery/mockery": "^1.3",
+		"phpcompatibility/phpcompatibility-wp": "^2.0",
+		"phpstan/phpstan": "^2.1",
+		"phpunit/phpunit": "^7 || ^8",
+		"szepeviktor/phpstan-wordpress": "^2.0",
+		"wp-coding-standards/wpcs": "^2",
+		"yoast/phpunit-polyfills": "^1.0"
+	},
+	"autoload": {
+		"classmap": [
+			"database/",
+			"events/",
+			"reports/",
+			"email/",
+			"ai/",
+			"api/",
+			"class-factory.php",
+			"class-logger.php"
+		],
+		"files": [
+			"api/functions.php"
+		]
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Rocket\\Sybgo\\Tests\\": "Tests/"
+		}
+	},
+	"scripts": {
+		"test-unit": "phpunit --testsuite=Unit",
+		"test-integration": "phpunit --testsuite=Integration --bootstrap Tests/bootstrap.php",
+		"run-tests": ["@test-unit", "@test-integration"],
+		"phpcs": "phpcs --basepath=.",
+		"phpstan": "phpstan analyse --memory-limit=2G"
+	}
+}
