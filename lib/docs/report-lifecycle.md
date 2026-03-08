@@ -234,6 +234,16 @@ The table shows the active (ongoing) report first, followed by all frozen/emaile
 - Status badge (Active, Frozen, Sent)
 - Actions (Freeze & Send Now for active row; View Details and Resend Email for past rows)
 
+### Active Report Details (Live Summary)
+
+Clicking **View Details** on the active report row opens the report details page. Because the active report has no frozen `summary_data` yet, Sybgo generates a **live summary** on the fly:
+
+1. Fetches all unassigned events (`report_id IS NULL`).
+2. Calls `Report_Generator::generate_live_summary()`, which runs the same computation pipeline as the freeze process (`totals → trends → highlights → top_authors`) — but skips the AI summarizer and does not persist anything.
+3. Renders the same summary cards and highlights UI as a frozen report.
+
+This gives an accurate, real-time preview of what the next frozen report will look like. The same `generate_live_summary()` method is used by the dashboard widget preview modal.
+
 ## Empty Reports
 
 If no events occurred during the week, Sybgo handles it gracefully:
