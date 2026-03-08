@@ -113,6 +113,8 @@ add_filter( 'sybgo_event_types', function( array $types ): array {
 
 ## Hooks & Filters
 
+All Sybgo filters are dispatched via `wpm_apply_filters_typesafe()` (from the [`wp-media/apply-filters-typed`](https://github.com/wp-media/apply-filters-typed) package). If a filter callback returns a value of the wrong type, WordPress will trigger a `_doing_it_wrong()` notice. Each filter's expected return type matches the type of the default value passed to it (array, string, or bool — as indicated in the API Reference below).
+
 ### Modify Event Data Before Saving
 
 ```php

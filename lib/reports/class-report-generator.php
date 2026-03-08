@@ -105,13 +105,16 @@ class Report_Generator {
 		$highlights  = $this->generate_highlights( $totals, $trends );
 		$top_authors = $this->get_top_authors( $events );
 
-		return array(
+		$summary = array(
 			'totals'       => $totals,
 			'trends'       => $trends,
 			'highlights'   => $highlights,
 			'top_authors'  => $top_authors,
 			'total_events' => count( $events ),
 		);
+
+		// Allow filtering.
+		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
 	}
 
 	/**
