@@ -4,26 +4,30 @@
  *
  * This file defines the Dashboard Widget for displaying Sybgo activity.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Reports\Report_Generator;
-use Rocket\Sybgo\AI\AI_Summarizer;
-use Rocket\Sybgo\Events\Event_Registry;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Reports\Report_Generator;
+use Sybgo\AI\AI_Summarizer;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Dashboard Widget class.
  *
  * Displays weekly activity digest in WordPress dashboard.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Dashboard_Widget {
@@ -127,14 +131,14 @@ class Dashboard_Widget {
 
 		wp_enqueue_style(
 			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.css', dirname( __FILE__ ) ),
+			plugins_url( 'assets/admin.css', __DIR__ ),
 			array(),
 			'1.0.0'
 		);
 
 		wp_enqueue_script(
 			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.js', dirname( __FILE__ ) ),
+			plugins_url( 'assets/admin.js', __DIR__ ),
 			array( 'jquery' ),
 			'1.0.0',
 			true
@@ -203,7 +207,7 @@ class Dashboard_Widget {
 	/**
 	 * Render last report section.
 	 *
-	 * @param array $report Last frozen report.
+	 * @param array<string, mixed> $report Last frozen report.
 	 * @return void
 	 */
 	private function render_last_report_section( array $report ): void {
@@ -272,8 +276,8 @@ class Dashboard_Widget {
 	/**
 	 * Render events list.
 	 *
-	 * @param array $events Events to display.
-	 * @param int   $limit Maximum events to show.
+	 * @param array<int, array<string, mixed>> $events Events to display.
+	 * @param int                              $limit Maximum events to show.
 	 * @return void
 	 */
 	private function render_events_list( array $events, int $limit = 10 ): void {
@@ -289,7 +293,7 @@ class Dashboard_Widget {
 		// Sort by timestamp descending.
 		usort(
 			$events,
-			function( $a, $b ) {
+			function ( $a, $b ) {
 				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 			}
 		);
@@ -323,7 +327,7 @@ class Dashboard_Widget {
 	/**
 	 * Render single event item.
 	 *
-	 * @param array $event Event data.
+	 * @param array<string, mixed> $event Event data.
 	 * @return void
 	 */
 	private function render_event_item( array $event ): void {
@@ -366,7 +370,7 @@ class Dashboard_Widget {
 		if ( 'all' !== $filter ) {
 			$events = array_filter(
 				$events,
-				function( $event ) use ( $filter ) {
+				function ( $event ) use ( $filter ) {
 					// Special handling for 'update' filter.
 					if ( 'update' === $filter ) {
 						$update_types = array( 'core_updated', 'plugin_installed', 'plugin_activated', 'plugin_deactivated', 'plugin_updated', 'theme_installed', 'theme_updated', 'theme_switched' );
@@ -423,7 +427,7 @@ class Dashboard_Widget {
 			$ai_error   = null;
 
 			// Check if API key is configured but summary is null (API error).
-			if ( null === $ai_summary && ! empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
+			if ( null === $ai_summary && ! empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
 				// Get the last error from error log.
 				$ai_error = 'The AI summary could not be generated. Check your API key and account status.';
 			}
@@ -448,11 +452,11 @@ class Dashboard_Widget {
 	/**
 	 * Render preview content.
 	 *
-	 * @param array       $totals Event totals.
-	 * @param array       $trends Trend data.
-	 * @param array       $events All events.
-	 * @param string|null $ai_summary AI-generated summary (optional).
-	 * @param string|null $ai_error AI error message (optional).
+	 * @param array<string, int>                  $totals Event totals.
+	 * @param array<string, array<string, mixed>> $trends Trend data.
+	 * @param array<int, array<string, mixed>>    $events All events.
+	 * @param string|null                         $ai_summary AI-generated summary (optional).
+	 * @param string|null                         $ai_error AI error message (optional).
 	 * @return void
 	 */
 	private function render_preview_content( array $totals, array $trends, array $events, ?string $ai_summary = null, ?string $ai_error = null ): void {
@@ -478,7 +482,7 @@ class Dashboard_Widget {
 						<?php echo esc_html( $ai_error ); ?>
 					</p>
 				</div>
-			<?php elseif ( empty( \Rocket\Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
+			<?php elseif ( empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
 				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
 					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
 						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>
@@ -520,7 +524,7 @@ class Dashboard_Widget {
 					<div class="sybgo-stat-item">
 						<div class="sybgo-stat-label"><?php echo esc_html( ucwords( str_replace( '_', ' ', $type ) ) ); ?></div>
 						<div class="sybgo-stat-value">
-							<?php echo esc_html( $count ); ?>
+							<?php echo esc_html( (string) $count ); ?>
 							<?php if ( $arrow ) : ?>
 								<span class="sybgo-trend <?php echo esc_attr( $trend['direction'] ); ?>">
 									<?php echo esc_html( $arrow . ' ' . $trend_text ); ?>
@@ -541,8 +545,8 @@ class Dashboard_Widget {
 	/**
 	 * Count events by type.
 	 *
-	 * @param array $events Events to count.
-	 * @return array Counts by type.
+	 * @param array<int, array<string, mixed>> $events Events to count.
+	 * @return array<string, int> Counts by type.
 	 */
 	private function count_events_by_type( array $events ): array {
 		$counts = array();

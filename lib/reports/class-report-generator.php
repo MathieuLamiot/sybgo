@@ -4,24 +4,24 @@
  *
  * This file defines the Report Generator for creating report summaries.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Reports;
+namespace Sybgo\Reports;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\AI\AI_Summarizer;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\AI\AI_Summarizer;
 
 /**
  * Report Generator class.
  *
  * Aggregates events and generates report summaries with trends.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 class Report_Generator {
@@ -63,7 +63,7 @@ class Report_Generator {
 	 * Generate summary data for a report.
 	 *
 	 * @param int $report_id Report ID.
-	 * @return array Summary data array.
+	 * @return array<string, mixed> Summary data array.
 	 */
 	public function generate_summary( int $report_id ): array {
 		// Get all events for this report.
@@ -101,8 +101,8 @@ class Report_Generator {
 	/**
 	 * Count events by type.
 	 *
-	 * @param array $events Array of events.
-	 * @return array Counts by event type.
+	 * @param array<int, array<string, mixed>> $events Array of events.
+	 * @return array<string, int> Counts by event type.
 	 */
 	private function count_events_by_type( array $events ): array {
 		$counts = array();
@@ -126,9 +126,9 @@ class Report_Generator {
 	/**
 	 * Get trend comparison with previous report.
 	 *
-	 * @param int   $current_report_id Current report ID.
-	 * @param array $current_totals Current totals.
-	 * @return array Trend data.
+	 * @param int                $current_report_id Current report ID.
+	 * @param array<string, int> $current_totals Current totals.
+	 * @return array<string, array<string, mixed>> Trend data.
 	 */
 	public function get_trend_comparison( int $current_report_id, array $current_totals ): array {
 		// Get previous frozen report.
@@ -186,9 +186,9 @@ class Report_Generator {
 	/**
 	 * Generate highlights from totals and trends.
 	 *
-	 * @param array $totals Event totals.
-	 * @param array $trends Trend data.
-	 * @return array Array of highlight strings.
+	 * @param array<string, int>                  $totals Event totals.
+	 * @param array<string, array<string, mixed>> $trends Trend data.
+	 * @return array<int, string> Array of highlight strings.
 	 */
 	private function generate_highlights( array $totals, array $trends ): array {
 		$highlights = array();
@@ -236,8 +236,8 @@ class Report_Generator {
 	/**
 	 * Get top authors from post events.
 	 *
-	 * @param array $events All events.
-	 * @return array Top authors with post counts.
+	 * @param array<int, array<string, mixed>> $events All events.
+	 * @return array<int, array<string, mixed>> Top authors with post counts.
 	 */
 	private function get_top_authors( array $events ): array {
 		$author_counts = array();

@@ -13,7 +13,7 @@ jobs:
         working-directory: lib
     strategy:
       matrix:
-        php-versions: ['7.4']
+        php-versions: ['7.4', '8.2', '8.3', '8.4']
     name: PHPCS with PHP ${{ matrix.php-versions }}
     steps:
       - uses: actions/checkout@v4

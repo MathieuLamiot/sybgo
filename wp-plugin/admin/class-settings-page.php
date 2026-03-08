@@ -4,22 +4,26 @@
  *
  * This file defines the Settings Page for Sybgo plugin configuration.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
-use Rocket\Sybgo\Events\Event_Registry;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use Sybgo\Events\Event_Registry;
 
 /**
  * Settings Page class.
  *
  * Manages plugin settings and configuration options.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Settings_Page {
@@ -178,8 +182,8 @@ class Settings_Page {
 	/**
 	 * Sanitize settings before saving.
 	 *
-	 * @param array $input Raw input data.
-	 * @return array Sanitized data.
+	 * @param array<string, mixed> $input Raw input data.
+	 * @return array<string, mixed> Sanitized data.
 	 */
 	public function sanitize_settings( array $input ): array {
 		$sanitized = array();
@@ -458,7 +462,7 @@ class Settings_Page {
 	/**
 	 * Get current settings.
 	 *
-	 * @return array Settings array.
+	 * @return array<string, mixed> Settings array.
 	 */
 	public function get_settings(): array {
 		$settings = get_option( self::OPTION_NAME, array() );
@@ -479,7 +483,7 @@ class Settings_Page {
 	/**
 	 * Get default event types (all enabled).
 	 *
-	 * @return array Event types.
+	 * @return array<int, string> Event types.
 	 */
 	private function get_default_event_types(): array {
 		return array(
@@ -499,7 +503,7 @@ class Settings_Page {
 	/**
 	 * Get email recipients as array.
 	 *
-	 * @return array Email addresses.
+	 * @return array<int, string> Email addresses.
 	 */
 	public static function get_recipients(): array {
 		$settings   = get_option( self::OPTION_NAME, array() );

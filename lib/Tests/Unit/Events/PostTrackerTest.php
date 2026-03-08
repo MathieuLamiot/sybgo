@@ -2,16 +2,16 @@
 /**
  * Post Tracker Unit Tests
  *
- * @package Rocket\Sybgo\Tests\Unit\Events
+ * @package Sybgo\Tests\Unit\Events
  */
 
-namespace Rocket\Sybgo\Tests\Unit\Events;
+namespace Sybgo\Tests\Unit\Events;
 
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
-use Rocket\Sybgo\Events\Trackers\Post_Tracker;
+use Sybgo\Events\Trackers\Post_Tracker;
 
 /**
  * Post Tracker Test Case
@@ -39,7 +39,7 @@ class PostTrackerTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->event_repo = Mockery::mock( 'Rocket\Sybgo\Database\Event_Repository' );
+		$this->event_repo = Mockery::mock( 'Sybgo\Database\Event_Repository' );
 		$this->tracker    = new Post_Tracker( $this->event_repo );
 
 		// Mock WordPress functions.

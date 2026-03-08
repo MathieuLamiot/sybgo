@@ -4,20 +4,20 @@
  *
  * This file defines the Report Repository class for CRUD operations on reports.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Database;
+namespace Sybgo\Database;
 
 /**
  * Report Repository class.
  *
  * Handles all database operations for reports table.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 class Report_Repository {
@@ -40,7 +40,7 @@ class Report_Repository {
 	/**
 	 * Create a new report.
 	 *
-	 * @param array $report_data Report data array.
+	 * @param array<string, mixed> $report_data Report data array.
 	 * @return int|false Report ID on success, false on failure.
 	 */
 	public function create( array $report_data ) {
@@ -78,8 +78,8 @@ class Report_Repository {
 	/**
 	 * Update a report.
 	 *
-	 * @param int   $report_id Report ID to update.
-	 * @param array $data Data to update.
+	 * @param int                  $report_id Report ID to update.
+	 * @param array<string, mixed> $data Data to update.
 	 * @return bool True on success, false on failure.
 	 */
 	public function update( int $report_id, array $data ): bool {
@@ -109,7 +109,7 @@ class Report_Repository {
 	/**
 	 * Get active report.
 	 *
-	 * @return array|null Active report or null if none exists.
+	 * @return array<string, mixed>|null Active report or null if none exists.
 	 */
 	public function get_active(): ?array {
 		$cached = wp_cache_get( 'sybgo_active_report', 'sybgo_cache' );
@@ -139,7 +139,7 @@ class Report_Repository {
 	/**
 	 * Get last frozen report.
 	 *
-	 * @return array|null Last frozen report or null if none exists.
+	 * @return array<string, mixed>|null Last frozen report or null if none exists.
 	 */
 	public function get_last_frozen(): ?array {
 		$cached = wp_cache_get( 'sybgo_last_frozen_report', 'sybgo_cache' );
@@ -171,7 +171,7 @@ class Report_Repository {
 	 * Get report by ID.
 	 *
 	 * @param int $report_id Report ID.
-	 * @return array|null Report data or null if not found.
+	 * @return array<string, mixed>|null Report data or null if not found.
 	 */
 	public function get_by_id( int $report_id ): ?array {
 		$cache_key = 'sybgo_report_' . $report_id;
@@ -204,7 +204,7 @@ class Report_Repository {
 	 *
 	 * @param int $limit Maximum number of reports to return.
 	 * @param int $offset Offset for pagination.
-	 * @return array Array of reports.
+	 * @return array<int, array<string, mixed>> Array of reports.
 	 */
 	public function get_all_frozen( int $limit = 20, int $offset = 0 ): array {
 		global $wpdb;

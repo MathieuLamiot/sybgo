@@ -4,20 +4,20 @@
  *
  * Provides centralized logging for the Sybgo plugin.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo;
+namespace Sybgo;
 
 /**
  * Logger class.
  *
  * Wraps error_log() to centralize logging and respect WP_DEBUG settings.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 class Logger {

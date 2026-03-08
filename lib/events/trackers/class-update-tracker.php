@@ -4,22 +4,22 @@
  *
  * This file defines the Update Tracker for tracking WordPress, plugin, and theme updates.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Update Tracker class.
  *
  * Tracks WordPress core, plugin, and theme updates.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Update_Tracker {
@@ -65,8 +65,8 @@ class Update_Tracker {
 	/**
 	 * Register update event types via filter.
 	 *
-	 * @param array $types Existing event types.
-	 * @return array Modified event types.
+	 * @param array<string, array<string, mixed>> $types Existing event types.
+	 * @return array<string, array<string, mixed>> Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
 		$types['core_updated'] = array(
@@ -334,8 +334,8 @@ class Update_Tracker {
 	/**
 	 * Track plugin and theme updates via upgrader process.
 	 *
-	 * @param \WP_Upgrader $upgrader Upgrader instance.
-	 * @param array        $options Update options.
+	 * @param \WP_Upgrader         $upgrader Upgrader instance.
+	 * @param array<string, mixed> $options Update options.
 	 * @return void
 	 */
 	public function track_upgrader_process( \WP_Upgrader $upgrader, array $options ): void {
@@ -366,7 +366,7 @@ class Update_Tracker {
 	/**
 	 * Track plugin updates.
 	 *
-	 * @param array $options Update options.
+	 * @param array<string, mixed> $options Update options.
 	 * @return void
 	 */
 	private function track_plugin_updates( array $options ): void {
@@ -420,7 +420,7 @@ class Update_Tracker {
 	/**
 	 * Track theme updates.
 	 *
-	 * @param array $options Update options.
+	 * @param array<string, mixed> $options Update options.
 	 * @return void
 	 */
 	private function track_theme_updates( array $options ): void {
@@ -498,8 +498,8 @@ class Update_Tracker {
 	/**
 	 * Track plugin installation.
 	 *
-	 * @param \WP_Upgrader $upgrader Upgrader instance.
-	 * @param array        $options Install options.
+	 * @param \WP_Upgrader         $upgrader Upgrader instance.
+	 * @param array<string, mixed> $options Install options.
 	 * @return void
 	 */
 	private function track_plugin_installed( \WP_Upgrader $upgrader, array $options ): void {
@@ -639,8 +639,8 @@ class Update_Tracker {
 	/**
 	 * Track theme installation.
 	 *
-	 * @param \WP_Upgrader $upgrader Upgrader instance.
-	 * @param array        $options Install options.
+	 * @param \WP_Upgrader         $upgrader Upgrader instance.
+	 * @param array<string, mixed> $options Install options.
 	 * @return void
 	 */
 	private function track_theme_installed( \WP_Upgrader $upgrader, array $options ): void {

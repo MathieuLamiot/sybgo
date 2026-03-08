@@ -4,27 +4,31 @@
  *
  * This file defines the Reports Admin Page for viewing and managing reports.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Admin;
+namespace Sybgo\Admin;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Reports\Report_Manager;
-use Rocket\Sybgo\Reports\Report_Generator;
-use Rocket\Sybgo\Email\Email_Manager;
-use Rocket\Sybgo\Events\Event_Registry;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Reports\Report_Manager;
+use Sybgo\Reports\Report_Generator;
+use Sybgo\Email\Email_Manager;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Reports Page class.
  *
  * Displays all reports with filtering and manual freeze functionality.
  *
- * @package Rocket\Sybgo\Admin
+ * @package Sybgo\Admin
  * @since   1.0.0
  */
 class Reports_Page {
@@ -293,7 +297,7 @@ class Reports_Page {
 	private function render_reports_list(): void {
 		global $wpdb;
 
-		$table_name = $this->report_repo->get_table_name();
+		$table_name = esc_sql( $this->report_repo->get_table_name() );
 
 		// Get all reports ordered by date.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
@@ -337,7 +341,7 @@ class Reports_Page {
 	/**
 	 * Render single report row.
 	 *
-	 * @param array $report Report data.
+	 * @param array<string, mixed> $report Report data.
 	 * @return void
 	 */
 	private function render_report_row( array $report ): void {
@@ -590,14 +594,14 @@ class Reports_Page {
 	/**
 	 * Render events table.
 	 *
-	 * @param array $events Events to display.
+	 * @param array<int, array<string, mixed>> $events Events to display.
 	 * @return void
 	 */
 	private function render_events_table( array $events ): void {
 		// Sort by timestamp descending.
 		usort(
 			$events,
-			function( $a, $b ) {
+			function ( $a, $b ) {
 				return strtotime( $b['event_timestamp'] ) - strtotime( $a['event_timestamp'] );
 			}
 		);

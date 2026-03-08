@@ -2,7 +2,7 @@
 /**
  * Sybgo - Since You've Been Gone
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  *
  * Plugin Name: Sybgo - Activity Digest
  * Plugin URI: https://github.com/your-repo/sybgo
@@ -19,7 +19,7 @@
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo;
+namespace Sybgo;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,7 +51,7 @@ if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
  * Initializes the Sybgo plugin and coordinates all subsystems.
  * This is the standalone plugin wrapper around the Sybgo library.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  * @since   1.0.0
  */
 class Sybgo {
@@ -100,7 +100,7 @@ class Sybgo {
 	 *
 	 * Bridges plugin settings (Settings_Page) to the library's config interface.
 	 *
-	 * @return array Configuration array.
+	 * @return array<string, mixed> Configuration array.
 	 */
 	private function get_library_config(): array {
 		return array(
@@ -125,9 +125,6 @@ class Sybgo {
 	 * @return void
 	 */
 	public function init(): void {
-		// Load text domain for translations.
-		load_plugin_textdomain( 'sybgo', false, dirname( plugin_basename( SYBGO_PLUGIN_FILE ) ) . '/languages' );
-
 		// Initialize database.
 		$this->factory->create_database_manager();
 
@@ -293,8 +290,8 @@ class Sybgo {
 	/**
 	 * Add custom cron intervals.
 	 *
-	 * @param array $schedules Existing schedules.
-	 * @return array Modified schedules.
+	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
+	 * @return array<string, array<string, mixed>> Modified schedules.
 	 */
 	public function add_cron_intervals( array $schedules ): array {
 		if ( ! isset( $schedules['weekly'] ) ) {

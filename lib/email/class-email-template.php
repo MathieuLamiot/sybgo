@@ -4,22 +4,22 @@
  *
  * This file defines the Email Template for generating HTML email content.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Email;
+namespace Sybgo\Email;
 
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Events\Event_Registry;
 
 /**
  * Email Template class.
  *
  * Generates HTML email content for weekly digests.
  *
- * @package Rocket\Sybgo\Email
+ * @package Sybgo\Email
  * @since   1.0.0
  */
 class Email_Template {
@@ -41,7 +41,7 @@ class Email_Template {
 	/**
 	 * Get email subject.
 	 *
-	 * @param array $report Report data.
+	 * @param array<string, mixed> $report Report data.
 	 * @return string Email subject.
 	 */
 	public function get_subject( array $report ): string {
@@ -68,7 +68,7 @@ class Email_Template {
 	/**
 	 * Get email body HTML.
 	 *
-	 * @param array $report Report data.
+	 * @param array<string, mixed> $report Report data.
 	 * @return string Email body HTML.
 	 */
 	public function get_body( array $report ): string {
@@ -349,7 +349,7 @@ class Email_Template {
 	/**
 	 * Render statistics section.
 	 *
-	 * @param array $summary Summary data.
+	 * @param array<string, mixed> $summary Summary data.
 	 * @return void
 	 */
 	private function render_statistics( array $summary ): void {
@@ -387,7 +387,7 @@ class Email_Template {
 	/**
 	 * Render highlights section.
 	 *
-	 * @param array $summary Summary data.
+	 * @param array<string, mixed> $summary Summary data.
 	 * @return void
 	 */
 	private function render_highlights( array $summary ): void {
@@ -410,7 +410,7 @@ class Email_Template {
 	/**
 	 * Render top authors section.
 	 *
-	 * @param array $summary Summary data.
+	 * @param array<string, mixed> $summary Summary data.
 	 * @return void
 	 */
 	private function render_top_authors( array $summary ): void {
@@ -446,7 +446,7 @@ class Email_Template {
 	/**
 	 * Render AI summary section.
 	 *
-	 * @param array $summary Summary data.
+	 * @param array<string, mixed> $summary Summary data.
 	 * @return void
 	 */
 	private function render_ai_summary( array $summary ): void {

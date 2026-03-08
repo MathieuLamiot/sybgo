@@ -18,7 +18,7 @@
 	<!-- Rules: Check PHP version compatibility -->
 	<rule ref="PHPCompatibility"/>
 	<config name="testVersion" value="7.4-"/>
-	<config name="minimum_supported_wp_version" value="5.0"/>
+	<config name="minimum_wp_version" value="5.0"/>
 
 	<rule ref="WordPress">
         <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase" />
@@ -67,4 +67,16 @@
 	<rule ref="WordPress-Docs" />
 
 	<rule ref="WordPress-Extra" />
+
+	<!-- Hook callbacks must match the API signature even when some params are unused -->
+	<rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+		<exclude-pattern>events/*</exclude-pattern>
+		<exclude-pattern>ai/*</exclude-pattern>
+	</rule>
+
+	<!-- Hook callbacks use $object as a parameter name per WP API conventions -->
+	<rule ref="Universal.NamingConventions.NoReservedKeywordParameterNames">
+		<exclude-pattern>events/*</exclude-pattern>
+		<exclude-pattern>ai/*</exclude-pattern>
+	</rule>
 </ruleset>

@@ -2,7 +2,7 @@
 /**
  * PHPUnit Bootstrap File
  *
- * @package Rocket\Sybgo\Tests
+ * @package Sybgo\Tests
  */
 
 // Composer autoloader.

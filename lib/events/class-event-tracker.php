@@ -4,22 +4,22 @@
  *
  * This file defines the Event Tracker class for tracking WordPress events.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events;
+namespace Sybgo\Events;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Event Tracker class.
  *
  * Core event tracking system that coordinates all event trackers.
  *
- * @package Rocket\Sybgo\Events
+ * @package Sybgo\Events
  * @since   1.0.0
  */
 class Event_Tracker {
@@ -42,7 +42,7 @@ class Event_Tracker {
 	/**
 	 * Array of tracker instances.
 	 *
-	 * @var array
+	 * @var array<string, object>
 	 */
 	private array $trackers = array();
 
@@ -115,9 +115,9 @@ class Event_Tracker {
 	 *
 	 * Public method for other plugins to track custom events.
 	 *
-	 * @param string $event_type Event type identifier.
-	 * @param array  $event_data Event data.
-	 * @param string $source_plugin Source plugin identifier.
+	 * @param string               $event_type Event type identifier.
+	 * @param array<string, mixed> $event_data Event data.
+	 * @param string               $source_plugin Source plugin identifier.
 	 * @return int|false Event ID on success, false on failure.
 	 */
 	public function track_custom_event( string $event_type, array $event_data, string $source_plugin = 'custom' ) {

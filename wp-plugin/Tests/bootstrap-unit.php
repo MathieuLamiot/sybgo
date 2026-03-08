@@ -5,7 +5,7 @@
  * This bootstrap does NOT load WordPress, so Brain\Monkey / Patchwork
  * can intercept functions like get_option() without conflicts.
  *
- * @package Rocket\Sybgo\Tests
+ * @package Sybgo\Tests
  */
 
 // Composer autoloader.
@@ -25,6 +25,21 @@ if ( ! defined( 'SYBGO_VERSION' ) ) {
 }
 
 // WordPress constants for unit tests (WP is not loaded).
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+}
+
+// WordPress function stubs for unit tests (WP is not loaded).
+if ( ! function_exists( 'plugin_dir_path' ) ) {
+	function plugin_dir_path( $file ) {
+		return dirname( $file ) . '/';
+	}
+}
+if ( ! function_exists( 'plugin_dir_url' ) ) {
+	function plugin_dir_url( $file ) {
+		return 'http://example.com/wp-content/plugins/sybgo/';
+	}
+}
 if ( ! defined( 'ARRAY_A' ) ) {
 	define( 'ARRAY_A', 'ARRAY_A' );
 }

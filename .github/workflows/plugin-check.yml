@@ -1,0 +1,48 @@
+name: WordPress Plugin Check
+
+on:
+  pull_request:
+    paths:
+      - 'wp-plugin/**'
+
+jobs:
+  plugin-check:
+    runs-on: ubuntu-latest
+    name: WordPress Plugin Check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install production dependencies
+        working-directory: wp-plugin
+        run: composer install --no-dev --prefer-dist --no-interaction
+
+      - name: Replace symlink with real copy (path repo symlink fix)
+        run: |
+          rm -rf wp-plugin/vendor/wp-media/sybgo-lib
+          cp -r lib wp-plugin/vendor/wp-media/sybgo-lib
+
+      - name: WordPress Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: './wp-plugin'
+          slug: 'sybgo'
+          exclude-directories: |
+            Tests
+            bin
+            docs
+          exclude-files: |
+            .distignore
+            phpunit.xml.dist
+            phpcs.xml.dist
+            phpcs.xml
+            phpstan.neon
+            phpstan-bootstrap.php
+            composer.json
+            composer.lock

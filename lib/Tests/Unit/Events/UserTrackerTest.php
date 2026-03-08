@@ -2,15 +2,15 @@
 /**
  * User Tracker Test
  *
- * @package Rocket\Sybgo\Tests\Unit\Events
+ * @package Sybgo\Tests\Unit\Events
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Tests\Unit\Events;
+namespace Sybgo\Tests\Unit\Events;
 
-use Rocket\Sybgo\Events\Trackers\User_Tracker;
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Events\Trackers\User_Tracker;
+use Sybgo\Database\Event_Repository;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

@@ -4,20 +4,20 @@
  *
  * This file defines the Event Repository class for CRUD operations on events.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Database;
+namespace Sybgo\Database;
 
 /**
  * Event Repository class.
  *
  * Handles all database operations for events table.
  *
- * @package Rocket\Sybgo\Database
+ * @package Sybgo\Database
  * @since   1.0.0
  */
 class Event_Repository {
@@ -40,7 +40,7 @@ class Event_Repository {
 	/**
 	 * Create a new event.
 	 *
-	 * @param array $event_data Event data array.
+	 * @param array<string, mixed> $event_data Event data array.
 	 * @return int|false Event ID on success, false on failure.
 	 */
 	public function create( array $event_data ) {
@@ -78,7 +78,7 @@ class Event_Repository {
 	 * @param int|null $report_id Report ID (null for unassigned events).
 	 * @param int      $limit Maximum number of events to return.
 	 * @param int      $offset Offset for pagination.
-	 * @return array Array of events.
+	 * @return array<int, array<string, mixed>> Array of events.
 	 */
 	public function get_by_report( ?int $report_id, int $limit = 100, int $offset = 0 ): array {
 		global $wpdb;
@@ -111,7 +111,7 @@ class Event_Repository {
 	 * Get recent events for current week.
 	 *
 	 * @param int $limit Number of events to return.
-	 * @return array Array of recent events.
+	 * @return array<int, array<string, mixed>> Array of recent events.
 	 */
 	public function get_recent( int $limit = 5 ): array {
 		$cache_key = 'sybgo_recent_events_' . $limit;
@@ -144,7 +144,7 @@ class Event_Repository {
 	 * @param string   $event_type Event type to filter by.
 	 * @param int|null $report_id Optional report ID to filter by.
 	 * @param int      $limit Maximum number of events.
-	 * @return array Array of events.
+	 * @return array<int, array<string, mixed>> Array of events.
 	 */
 	public function get_by_type( string $event_type, ?int $report_id = null, int $limit = 100 ): array {
 		global $wpdb;
@@ -206,7 +206,7 @@ class Event_Repository {
 	 *
 	 * @param string $event_type Event type.
 	 * @param int    $object_id Object ID.
-	 * @return array|null Last event or null if none found.
+	 * @return array<string, mixed>|null Last event or null if none found.
 	 */
 	public function get_last_event_for_object( string $event_type, int $object_id ): ?array {
 		global $wpdb;
@@ -227,7 +227,7 @@ class Event_Repository {
 	 * Count events by type.
 	 *
 	 * @param int|null $report_id Optional report ID to filter by.
-	 * @return array Associative array of event_type => count.
+	 * @return array<string, int> Associative array of event_type => count.
 	 */
 	public function count_by_type( ?int $report_id = null ): array {
 		global $wpdb;

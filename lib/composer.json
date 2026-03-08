@@ -29,7 +29,7 @@
 		"phpstan/phpstan": "^2.1",
 		"phpunit/phpunit": "^7 || ^8",
 		"szepeviktor/phpstan-wordpress": "^2.0",
-		"wp-coding-standards/wpcs": "^2",
+		"wp-coding-standards/wpcs": "^3",
 		"yoast/phpunit-polyfills": "^1.0"
 	},
 	"autoload": {
@@ -49,7 +49,7 @@
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"Rocket\\Sybgo\\Tests\\": "Tests/"
+			"Sybgo\\Tests\\": "Tests/"
 		}
 	},
 	"scripts": {

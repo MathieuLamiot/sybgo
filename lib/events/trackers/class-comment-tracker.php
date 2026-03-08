@@ -4,22 +4,22 @@
  *
  * This file defines the Comment Tracker for tracking comment-related events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Comment Tracker class.
  *
  * Tracks new comments and comment status changes.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Comment_Tracker {
@@ -58,8 +58,8 @@ class Comment_Tracker {
 	/**
 	 * Register comment event types via filter.
 	 *
-	 * @param array $types Existing event types.
-	 * @return array Modified event types.
+	 * @param array<string, array<string, mixed>> $types Existing event types.
+	 * @return array<string, array<string, mixed>> Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
 		$types['comment_posted'] = array(
@@ -171,9 +171,9 @@ class Comment_Tracker {
 	/**
 	 * Track new comment.
 	 *
-	 * @param int        $comment_id Comment ID.
-	 * @param int|string $comment_approved Comment approval status.
-	 * @param array      $commentdata Comment data array.
+	 * @param int                  $comment_id Comment ID.
+	 * @param int|string           $comment_approved Comment approval status.
+	 * @param array<string, mixed> $commentdata Comment data array.
 	 * @return void
 	 */
 	public function track_new_comment( int $comment_id, $comment_approved, array $commentdata ): void {

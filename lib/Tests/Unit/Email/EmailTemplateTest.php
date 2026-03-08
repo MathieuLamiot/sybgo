@@ -2,15 +2,15 @@
 /**
  * Email Template Test
  *
- * @package Rocket\Sybgo\Tests\Unit\Email
+ * @package Sybgo\Tests\Unit\Email
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Tests\Unit\Email;
+namespace Sybgo\Tests\Unit\Email;
 
-use Rocket\Sybgo\Email\Email_Template;
-use Rocket\Sybgo\Events\Event_Registry;
+use Sybgo\Email\Email_Template;
+use Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

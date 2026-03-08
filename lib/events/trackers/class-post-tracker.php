@@ -4,22 +4,22 @@
  *
  * This file defines the Post Tracker for tracking post and page events.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Events\Trackers;
+namespace Sybgo\Events\Trackers;
 
-use Rocket\Sybgo\Database\Event_Repository;
+use Sybgo\Database\Event_Repository;
 
 /**
  * Post Tracker class.
  *
  * Tracks post and page publish, edit, and delete events with edit magnitude calculation.
  *
- * @package Rocket\Sybgo\Events\Trackers
+ * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
 class Post_Tracker {
@@ -68,8 +68,8 @@ class Post_Tracker {
 	/**
 	 * Register post event types via filter.
 	 *
-	 * @param array $types Existing event types.
-	 * @return array Modified event types.
+	 * @param array<string, array<string, mixed>> $types Existing event types.
+	 * @return array<string, array<string, mixed>> Modified event types.
 	 */
 	public function register_event_types( array $types ): array {
 		$types['post_published'] = array(
@@ -375,7 +375,7 @@ class Post_Tracker {
 	 * Get category names for a post.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array Array of category names.
+	 * @return array<int, string> Array of category names.
 	 */
 	private function get_categories( int $post_id ): array {
 		$categories = get_the_category( $post_id );
@@ -396,7 +396,7 @@ class Post_Tracker {
 	 * Get tag names for a post.
 	 *
 	 * @param int $post_id Post ID.
-	 * @return array Array of tag names.
+	 * @return array<int, string> Array of tag names.
 	 */
 	private function get_tags( int $post_id ): array {
 		$tags = get_the_tags( $post_id );

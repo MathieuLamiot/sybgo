@@ -4,7 +4,7 @@
  *
  * Defines constants that are normally set at runtime by WordPress.
  *
- * @package Rocket\Sybgo
+ * @package Sybgo
  */
 
 if ( ! defined( 'SYBGO_PLUGIN_DIR' ) ) {

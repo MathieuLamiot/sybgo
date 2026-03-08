@@ -2,16 +2,16 @@
 /**
  * Email Manager Test
  *
- * @package Rocket\Sybgo\Tests\Unit\Email
+ * @package Sybgo\Tests\Unit\Email
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Tests\Unit\Email;
+namespace Sybgo\Tests\Unit\Email;
 
-use Rocket\Sybgo\Email\Email_Manager;
-use Rocket\Sybgo\Database\Report_Repository;
-use Rocket\Sybgo\Email\Email_Template;
+use Sybgo\Email\Email_Manager;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Email\Email_Template;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;

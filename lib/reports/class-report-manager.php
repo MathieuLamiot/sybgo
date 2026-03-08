@@ -4,23 +4,23 @@
  *
  * This file defines the Report Manager for report lifecycle management.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 
 declare(strict_types=1);
 
-namespace Rocket\Sybgo\Reports;
+namespace Sybgo\Reports;
 
-use Rocket\Sybgo\Database\Event_Repository;
-use Rocket\Sybgo\Database\Report_Repository;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
 
 /**
  * Report Manager class.
  *
  * Manages report lifecycle: create, freeze, email coordination.
  *
- * @package Rocket\Sybgo\Reports
+ * @package Sybgo\Reports
  * @since   1.0.0
  */
 class Report_Manager {
@@ -65,7 +65,7 @@ class Report_Manager {
 	/**
 	 * Get or create active report.
 	 *
-	 * @return array Active report data.
+	 * @return array<string, mixed> Active report data.
 	 */
 	public function get_or_create_active_report(): array {
 		$active = $this->report_repo->get_active();
@@ -156,7 +156,7 @@ class Report_Manager {
 	/**
 	 * Get last frozen report.
 	 *
-	 * @return array|null Report data or null.
+	 * @return array<string, mixed>|null Report data or null.
 	 */
 	public function get_last_frozen_report(): ?array {
 		return $this->report_repo->get_last_frozen();
@@ -166,7 +166,7 @@ class Report_Manager {
 	 * Get report by ID.
 	 *
 	 * @param int $report_id Report ID.
-	 * @return array|null Report data or null.
+	 * @return array<string, mixed>|null Report data or null.
 	 */
 	public function get_report( int $report_id ): ?array {
 		return $this->report_repo->get_by_id( $report_id );
@@ -177,7 +177,7 @@ class Report_Manager {
 	 *
 	 * @param int $limit Maximum number of reports.
 	 * @param int $offset Offset for pagination.
-	 * @return array Array of reports.
+	 * @return array<int, array<string, mixed>> Array of reports.
 	 */
 	public function get_all_frozen_reports( int $limit = 20, int $offset = 0 ): array {
 		return $this->report_repo->get_all_frozen( $limit, $offset );
@@ -188,7 +188,7 @@ class Report_Manager {
 	 *
 	 * @param int $report_id Report ID.
 	 * @param int $limit Maximum events to return.
-	 * @return array Array of events.
+	 * @return array<int, array<string, mixed>> Array of events.
 	 */
 	public function get_report_events( int $report_id, int $limit = 100 ): array {
 		return $this->event_repo->get_by_report( $report_id, $limit );
@@ -198,7 +198,7 @@ class Report_Manager {
 	 * Get recent events for current active report.
 	 *
 	 * @param int $limit Number of events.
-	 * @return array Recent events.
+	 * @return array<int, array<string, mixed>> Recent events.
 	 */
 	public function get_recent_events( int $limit = 5 ): array {
 		return $this->event_repo->get_recent( $limit );
