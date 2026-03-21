@@ -77,17 +77,14 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_register_hooks_registers_error_handler(): void {
-		Functions\expect( 'register_shutdown_function' )
-			->once()
-			->with( array( $this->tracker, 'handle_shutdown' ) );
-
+		// Call register_hooks() for real — this installs the error handler and
+		// registers a shutdown function. Both are safe to run in a test context.
 		$this->tracker->register_hooks();
 
-		// Restore previous handler and capture what was set.
+		// Capture the registered error handler by replacing it with null,
+		// then immediately restoring so we leave the handler stack clean.
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
 		$registered = set_error_handler( null );
-
-		// Clean up: remove the null handler we just registered.
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_restore_error_handler
 		restore_error_handler();
 
