@@ -42,18 +42,18 @@ class Report_Generator {
 	/**
 	 * AI summarizer instance.
 	 *
-	 * @var AI_Summarizer
+	 * @var AI_Summarizer|null
 	 */
-	private AI_Summarizer $ai_summarizer;
+	private ?AI_Summarizer $ai_summarizer;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
+	 * @param Event_Repository   $event_repo    Event repository.
+	 * @param Report_Repository  $report_repo   Report repository.
+	 * @param AI_Summarizer|null $ai_summarizer AI summarizer or null if unavailable.
 	 */
-	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo, AI_Summarizer $ai_summarizer ) {
+	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo, ?AI_Summarizer $ai_summarizer ) {
 		$this->event_repo    = $event_repo;
 		$this->report_repo   = $report_repo;
 		$this->ai_summarizer = $ai_summarizer;
@@ -82,7 +82,14 @@ class Report_Generator {
 		$top_authors = $this->get_top_authors( $events );
 
 		// Generate AI summary.
-		$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
+		$ai_summary = null;
+		if ( null !== $this->ai_summarizer ) {
+			$ai_summary = $this->ai_summarizer->generate_summary(
+				$events,
+				$totals,
+				$trends
+			);
+		}
 
 		// Build summary data.
 		$summary = array(

@@ -55,9 +55,9 @@ class Dashboard_Widget {
 	/**
 	 * AI summarizer instance.
 	 *
-	 * @var AI_Summarizer
+	 * @var AI_Summarizer|null
 	 */
-	private AI_Summarizer $ai_summarizer;
+	private ?AI_Summarizer $ai_summarizer;
 
 	/**
 	 * Event registry instance.
@@ -69,17 +69,17 @@ class Dashboard_Widget {
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Generator  $report_generator Report generator.
-	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
-	 * @param Event_Registry    $event_registry Event registry.
+	 * @param Event_Repository   $event_repo       Event repository.
+	 * @param Report_Repository  $report_repo      Report repository.
+	 * @param Report_Generator   $report_generator Report generator.
+	 * @param AI_Summarizer|null $ai_summarizer    AI summarizer or null if unavailable.
+	 * @param Event_Registry     $event_registry   Event registry.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
 		Report_Generator $report_generator,
-		AI_Summarizer $ai_summarizer,
+		?AI_Summarizer $ai_summarizer,
 		Event_Registry $event_registry
 	) {
 		$this->event_repo       = $event_repo;
@@ -422,14 +422,16 @@ class Dashboard_Widget {
 				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
 			}
 
-			// Generate AI summary if API key is configured.
-			$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
-			$ai_error   = null;
+			// Generate AI summary if transport is available.
+			$ai_summary = null;
+			if ( null !== $this->ai_summarizer ) {
+				$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
+			}
+			$ai_error = null;
 
-			// Check if API key is configured but summary is null (API error).
-			if ( null === $ai_summary && ! empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
-				// Get the last error from error log.
-				$ai_error = 'The AI summary could not be generated. Check your API key and account status.';
+			// Check if summarizer is configured but summary is null (transport error).
+			if ( null === $ai_summary && null !== $this->ai_summarizer ) {
+				$ai_error = 'The AI summary could not be generated. Please check your WordPress AI connector configuration.';
 			}
 
 			ob_start();
@@ -482,22 +484,14 @@ class Dashboard_Widget {
 						<?php echo esc_html( $ai_error ); ?>
 					</p>
 				</div>
-			<?php elseif ( empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
+			<?php elseif ( null === $this->ai_summarizer ) : ?>
 				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
 					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
 						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>
-						<?php esc_html_e( 'AI Summaries Available', 'sybgo' ); ?>
+						<?php esc_html_e( 'AI Summaries Require WordPress 7', 'sybgo' ); ?>
 					</h3>
 					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php
-						echo wp_kses_post(
-							sprintf(
-								/* translators: %s: settings page URL */
-								__( 'Configure your Anthropic API key in <a href="%s">Settings</a> to enable AI-powered summaries of your weekly activity!', 'sybgo' ),
-								admin_url( 'options-general.php?page=sybgo-settings' )
-							)
-						);
-						?>
+						<?php esc_html_e( 'AI-powered summaries are available on WordPress 7 and later. Please upgrade to enable this feature.', 'sybgo' ); ?>
 					</p>
 				</div>
 			<?php endif; ?>
