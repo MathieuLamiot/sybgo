@@ -112,6 +112,7 @@ class Dashboard_Widget {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
 		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
+		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
 	}
 
 	/**
@@ -173,17 +174,19 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function render_widget(): void {
-		// Get last frozen report.
-		$last_report = $this->report_repo->get_last_frozen();
-
 		// Get current week's events (unassigned).
 		$current_events = $this->event_repo->get_by_report( null );
 
 		?>
 		<div class="sybgo-widget">
-			<?php if ( $last_report ) : ?>
-				<?php $this->render_last_report_section( $last_report ); ?>
-			<?php endif; ?>
+			<div class="sybgo-widget-actions">
+				<button type="button" class="button button-secondary sybgo-preview-btn">
+					<?php esc_html_e( 'Preview This Week\'s Digest', 'sybgo' ); ?>
+				</button>
+				<button type="button" class="button button-secondary sybgo-preview-last-btn">
+					<?php esc_html_e( 'View Previous Digest', 'sybgo' ); ?>
+				</button>
+			</div>
 
 			<div class="sybgo-current-week">
 				<h3><?php esc_html_e( 'This Week\'s Activity', 'sybgo' ); ?></h3>
@@ -198,13 +201,9 @@ class Dashboard_Widget {
 				<div class="sybgo-events-list" data-filter="all">
 					<?php $this->render_events_list( $current_events ); ?>
 				</div>
-
-				<div class="sybgo-widget-actions">
-					<button type="button" class="button button-secondary sybgo-preview-btn">
-						<?php esc_html_e( 'Preview This Week\'s Digest', 'sybgo' ); ?>
-					</button>
-				</div>
 			</div>
+
+			<?php $this->render_php_errors_section(); ?>
 
 			<div id="sybgo-preview-modal" class="sybgo-modal" style="display:none;">
 				<div class="sybgo-modal-content">
@@ -214,78 +213,87 @@ class Dashboard_Widget {
 				</div>
 			</div>
 		</div>
-
-		<?php $this->render_php_errors_section(); ?>
 		<?php
 	}
 
 	/**
 	 * Render PHP errors summary section.
 	 *
-	 * Displays today's and this week's PHP error occurrence counts sourced from
-	 * the aggregated_events table. Shows nothing when no errors have been recorded.
+	 * Displays the number of distinct error signatures and total occurrences for
+	 * the current report period, plus a top-5 list by occurrence count.
+	 * Uses the same stat/list style as "This Week's Activity".
+	 * Shows nothing when no errors have been recorded in the period.
 	 *
 	 * @return void
 	 */
 	private function render_php_errors_section(): void {
-		$today      = gmdate( 'Y-m-d' );
-		$week_start = gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
+		$today = gmdate( 'Y-m-d' );
 
-		$today_count = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $today, $today );
-		$week_count  = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $week_start, $today );
+		// Use the active report's period_start for the date range; fall back to Monday.
+		$active_report = $this->report_repo->get_active();
+		$period_start  = $active_report
+			? gmdate( 'Y-m-d', strtotime( $active_report['period_start'] ) )
+			: gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
 
-		if ( 0.0 === $today_count && 0.0 === $week_count ) {
+		$total_count    = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $period_start, $today );
+		$top_errors     = array_slice(
+			$this->aggregated_repo->get_rows_for_event_type_and_date_range( 'php_error', $period_start, $today ),
+			0,
+			5
+		);
+		$distinct_count = count( $top_errors );
+
+		if ( 0 === $distinct_count && 0.0 === $total_count ) {
 			return;
 		}
 
+		$level_emoji = array(
+			'warning'         => '⚠️',
+			'user_warning'    => '⚠️',
+			'notice'          => 'ℹ️',
+			'user_notice'     => 'ℹ️',
+			'deprecated'      => '🔔',
+			'user_deprecated' => '🔔',
+			'user_error'      => '❌',
+		);
+
 		?>
+		<hr class="sybgo-section-separator">
 		<div class="sybgo-php-errors">
 			<h3><?php esc_html_e( 'PHP Errors', 'sybgo' ); ?></h3>
-			<div class="sybgo-stat-item">
-				<span class="sybgo-stat-label"><?php esc_html_e( 'Today', 'sybgo' ); ?></span>
-				<span class="sybgo-stat-value"><?php echo esc_html( (string) (int) $today_count ); ?></span>
+
+			<div class="sybgo-event-stats">
+				<strong><?php echo esc_html( (string) $distinct_count ); ?></strong>
+				<?php esc_html_e( 'distinct signatures', 'sybgo' ); ?>
 			</div>
-			<div class="sybgo-stat-item">
-				<span class="sybgo-stat-label"><?php esc_html_e( 'This Week', 'sybgo' ); ?></span>
-				<span class="sybgo-stat-value"><?php echo esc_html( (string) (int) $week_count ); ?></span>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Render last report section.
-	 *
-	 * @param array<string, mixed> $report Last frozen report.
-	 * @return void
-	 */
-	private function render_last_report_section( array $report ): void {
-		$summary = json_decode( $report['summary_data'], true );
-		if ( ! $summary ) {
-			return;
-		}
-
-		?>
-		<div class="sybgo-last-report">
-			<h3><?php esc_html_e( 'Last Week\'s Summary', 'sybgo' ); ?></h3>
-
-			<div class="sybgo-period">
-				<?php
-				echo esc_html(
-					sprintf(
-						/* translators: %1$s: start date, %2$s: end date */
-						__( '%1$s to %2$s', 'sybgo' ),
-						gmdate( 'M j', strtotime( $report['period_start'] ) ),
-						gmdate( 'M j, Y', strtotime( $report['period_end'] ) )
-					)
-				);
-				?>
+			<div class="sybgo-event-stats">
+				<strong><?php echo esc_html( (string) (int) $total_count ); ?></strong>
+				<?php esc_html_e( 'total occurrences', 'sybgo' ); ?>
 			</div>
 
-			<?php if ( ! empty( $summary['highlights'] ) ) : ?>
-				<ul class="sybgo-highlights">
-					<?php foreach ( array_slice( $summary['highlights'], 0, 3 ) as $highlight ) : ?>
-						<li><?php echo esc_html( $highlight ); ?></li>
+			<?php if ( ! empty( $top_errors ) ) : ?>
+				<ul class="sybgo-error-items">
+					<?php foreach ( $top_errors as $row ) : ?>
+						<?php
+						$dims    = json_decode( $row['dimensions'], true );
+						$meta    = json_decode( $row['meta'], true );
+						$level   = $dims['level'] ?? 'warning';
+						$emoji   = $level_emoji[ $level ] ?? '⚠️';
+						$message = $meta['message'] ?? '';
+						$file    = isset( $meta['file'] ) ? basename( $meta['file'] ) : '';
+						$line    = $meta['line'] ?? '';
+						$count   = (int) $row['total'];
+						?>
+						<li class="sybgo-error-item">
+							<span class="sybgo-error-item-icon"><?php echo esc_html( $emoji ); ?></span>
+							<span class="sybgo-error-item-desc" title="<?php echo esc_attr( $message ); ?>">
+								<?php echo esc_html( $message ); ?>
+								<?php if ( $file ) : ?>
+									<span class="sybgo-error-item-location"><?php echo esc_html( $file . ':' . $line ); ?></span>
+								<?php endif; ?>
+							</span>
+							<span class="sybgo-error-item-count"><?php echo esc_html( (string) $count ); ?>×</span>
+						</li>
 					<?php endforeach; ?>
 				</ul>
 			<?php endif; ?>
@@ -496,6 +504,43 @@ class Dashboard_Widget {
 				)
 			);
 		}
+	}
+
+	/**
+	 * AJAX handler for previewing the last frozen digest.
+	 *
+	 * Renders the summary of the most recently frozen/emailed report.
+	 *
+	 * @return void
+	 */
+	public function ajax_preview_last_digest(): void {
+		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'read' ) ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+		}
+
+		$last_report = $this->report_repo->get_last_frozen();
+
+		if ( ! $last_report ) {
+			wp_send_json_error( array( 'message' => __( 'No previous digest available yet.', 'sybgo' ) ) );
+		}
+
+		$summary = ! empty( $last_report['summary_data'] ) ? json_decode( $last_report['summary_data'], true ) : null;
+
+		if ( ! $summary || empty( $summary['totals'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
+		}
+
+		$totals     = $summary['totals'];
+		$trends     = $summary['trends'] ?? array();
+		$ai_summary = $summary['ai_summary'] ?? null;
+
+		ob_start();
+		$this->render_preview_content( $totals, $trends, array(), $ai_summary );
+		$html = ob_get_clean();
+
+		wp_send_json_success( array( 'html' => $html ) );
 	}
 
 	/**

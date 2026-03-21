@@ -243,6 +243,7 @@ class Sybgo {
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
 		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 		$email_manager    = $this->factory->create_email_manager();
+		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
 
 		return new Admin\Reports_Page(
 			$event_repo,
@@ -250,7 +251,8 @@ class Sybgo {
 			$report_manager,
 			$report_generator,
 			$email_manager,
-			$event_registry
+			$event_registry,
+			$aggregated_repo
 		);
 	}
 

@@ -136,6 +136,47 @@ class Aggregated_Event_Repository {
 	}
 
 	/**
+	 * Retrieve all rows for a given event type across a date range, grouped by signature.
+	 *
+	 * Returns one row per distinct dimension set (i.e. per error signature), with the
+	 * accumulated value summed across the date range. Rows are ordered by total descending,
+	 * so callers can slice the top-N results.
+	 *
+	 * Each result row contains:
+	 *   - dimensions (string): JSON-encoded dimension key→value pairs.
+	 *   - total       (string): Sum of value across the date range (cast to float by caller).
+	 *   - meta        (string): JSON context snapshot from the most recent upsert.
+	 *
+	 * @param string $event_type Event type identifier (e.g. 'php_error').
+	 * @param string $date_from  Start date inclusive (Y-m-d).
+	 * @param string $date_to    End date inclusive (Y-m-d).
+	 * @return array<int, array<string, string>> Rows ordered by total descending.
+	 */
+	public function get_rows_for_event_type_and_date_range(
+		string $event_type,
+		string $date_from,
+		string $date_to
+	): array {
+		global $wpdb;
+
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT dimensions, SUM(value) AS total, meta
+				 FROM {$this->table}
+				 WHERE event_type = %s AND date BETWEEN %s AND %s
+				 GROUP BY dimensions_hash
+				 ORDER BY total DESC",
+				$event_type,
+				$date_from,
+				$date_to
+			),
+			ARRAY_A
+		);
+
+		return $results ?: array();
+	}
+
+	/**
 	 * Encode dimensions array to canonical JSON.
 	 *
 	 * Keys are sorted alphabetically so the same set of dimensions always produces
