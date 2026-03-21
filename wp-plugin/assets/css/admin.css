@@ -52,10 +52,19 @@
 }
 
 .sybgo-event-stats {
-	font-size: 18px;
+	background: #f0f6fc;
+	border-radius: 4px;
+	padding: 12px;
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.sybgo-event-stats strong {
+	display: block;
+	font-size: 28px;
 	font-weight: 600;
-	color: #1d2327;
-	margin-bottom: 8px;
+	color: #2271b1;
+	line-height: 1.2;
 }
 
 .sybgo-event-items {
@@ -99,21 +108,31 @@
 
 /* Filter Buttons */
 .sybgo-filters {
-	margin: 12px 0;
+	margin: 8px 0 12px;
 	display: flex;
-	gap: 6px;
-	flex-wrap: wrap;
+	gap: 0;
+}
+
+.sybgo-filters .sybgo-filter-btn {
+	flex: 1;
+	padding: 6px 0;
+	font-size: 13px;
+	border: 1px solid #c3c4c7;
+	border-right: none;
+	background: #fff;
+	color: #1d2327;
+	cursor: pointer;
+	text-align: center;
+}
+
+.sybgo-filters .sybgo-filter-btn:last-child {
+	border-right: 1px solid #c3c4c7;
 }
 
 .sybgo-filters .sybgo-filter-btn.active {
 	background: #2271b1;
 	color: #fff;
 	border-color: #2271b1;
-}
-
-.sybgo-filters .sybgo-filter-btn.active:hover {
-	background: #135e96;
-	border-color: #135e96;
 }
 
 /* Trend Indicators */

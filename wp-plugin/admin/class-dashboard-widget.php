@@ -215,25 +215,12 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	private function render_php_errors_section(): void {
-		$today = gmdate( 'Y-m-d' );
-
-		// Determine date_from for the query.
-		// After a same-day freeze, the new active report's created_at timestamp is today,
-		// but pre-freeze errors also have date = today. Use tomorrow as the floor so only
-		// new-period errors are shown (correctly 0 until a new error is tracked).
-		$active_report = $this->report_repo->get_active();
-		if ( $active_report ) {
-			$report_created_date = gmdate( 'Y-m-d', strtotime( $active_report['created_at'] ) );
-			$date_from           = ( $report_created_date === $today )
-				? gmdate( 'Y-m-d', strtotime( '+1 day' ) )
-				: gmdate( 'Y-m-d', strtotime( $active_report['period_start'] ) );
-		} else {
-			$date_from = gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
-		}
-
-		$total_count    = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $date_from, $today );
+		// Query by report_id IS NULL — same pattern as singular events.
+		// This ensures errors are always scoped to the current unassigned period,
+		// regardless of calendar dates, and resets automatically after a freeze.
+		$total_count    = $this->aggregated_repo->get_sum_for_report( 'php_error', null );
 		$top_errors     = array_slice(
-			$this->aggregated_repo->get_rows_for_event_type_and_date_range( 'php_error', $date_from, $today ),
+			$this->aggregated_repo->get_rows_for_report( 'php_error', null ),
 			0,
 			5
 		);
@@ -316,7 +303,7 @@ class Dashboard_Widget {
 			<?php foreach ( $filters as $filter => $label ) : ?>
 				<button
 					type="button"
-					class="button sybgo-filter-btn <?php echo 'all' === $filter ? 'active' : ''; ?>"
+					class="sybgo-filter-btn <?php echo 'all' === $filter ? 'active' : ''; ?>"
 					data-filter="<?php echo esc_attr( $filter ); ?>"
 				>
 					<?php echo esc_html( $label ); ?>

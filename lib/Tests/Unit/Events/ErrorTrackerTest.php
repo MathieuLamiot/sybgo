@@ -14,7 +14,6 @@ use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
 use Sybgo\Database\Aggregated_Event_Repository;
-use Sybgo\Database\Report_Repository;
 use Sybgo\Events\Trackers\Error_Tracker;
 
 /**
@@ -28,13 +27,6 @@ class ErrorTrackerTest extends TestCase {
 	 * @var Aggregated_Event_Repository&\Mockery\MockInterface
 	 */
 	private $aggregated_repo;
-
-	/**
-	 * Report repository mock.
-	 *
-	 * @var Report_Repository&\Mockery\MockInterface
-	 */
-	private $report_repo;
 
 	/**
 	 * Error tracker instance.
@@ -53,8 +45,7 @@ class ErrorTrackerTest extends TestCase {
 		Monkey\setUp();
 
 		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
-		$this->report_repo     = Mockery::mock( Report_Repository::class );
-		$this->tracker         = new Error_Tracker( $this->aggregated_repo, $this->report_repo );
+		$this->tracker         = new Error_Tracker( $this->aggregated_repo );
 
 		// Seed normal_error_reporting with the ambient mask so the suppression
 		// check works in tests that simulate @ by calling error_reporting(0).
@@ -109,20 +100,15 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that a warning is tracked when under the daily cap.
+	 * Test that a warning is tracked when under the per-period cap.
 	 *
 	 * @return void
 	 */
 	public function test_handle_error_tracks_warning(): void {
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
-			->with( 'php_error', '2026-03-21', '2026-03-21' )
+			->with( 'php_error', null )
 			->andReturn( 0 );
 
 		$this->aggregated_repo
@@ -167,7 +153,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_skips_suppressed_error(): void {
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_report' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
@@ -183,19 +169,15 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that new error signatures are dropped once the daily cap is reached.
+	 * Test that new error signatures are dropped once the per-period cap is reached.
 	 *
 	 * @return void
 	 */
 	public function test_handle_error_drops_when_cap_reached(): void {
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
+			->with( 'php_error', null )
 			->andReturn( 5 ); // At cap.
 
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
@@ -206,19 +188,15 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that errors are tracked when the count is under the daily cap.
+	 * Test that errors are tracked when the count is under the per-period cap.
 	 *
 	 * @return void
 	 */
 	public function test_handle_error_allows_when_under_cap(): void {
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
+			->with( 'php_error', null )
 			->andReturn( 4 ); // One slot remaining.
 
 		$this->aggregated_repo
@@ -243,7 +221,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_skips_fatal_errors(): void {
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_report' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		$result = $this->tracker->handle_error( E_ERROR, 'Fatal error', '/file.php', 1 );
@@ -259,14 +237,10 @@ class ErrorTrackerTest extends TestCase {
 	public function test_handle_error_truncates_message_to_100_chars(): void {
 		$long_message = str_repeat( 'x', 200 );
 
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
+			->with( 'php_error', null )
 			->andReturn( 0 );
 
 		$this->aggregated_repo
@@ -307,7 +281,7 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setAccessible( true );
 		$ref->setValue( null, true );
 
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_report' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		$result = $this->tracker->handle_error( E_WARNING, 'Re-entrant error', '/file.php', 1 );
@@ -321,7 +295,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_records_fatal_error(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -373,7 +347,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_ignores_non_fatal(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -401,7 +375,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_ignores_null(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -422,7 +396,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_calls_previous_handler(): void {
-		$called_with = null;
+		$called_with  = null;
 		$mock_handler = function ( int $errno, string $errstr ) use ( &$called_with ): bool {
 			$called_with = array( $errno, $errstr );
 			return true;
@@ -433,14 +407,10 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setAccessible( true );
 		$ref->setValue( $this->tracker, $mock_handler );
 
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
+			->with( 'php_error', null )
 			->andReturn( 0 );
 
 		$this->aggregated_repo
@@ -459,23 +429,18 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that the cap check uses the active report's period_start when available.
+	 * Test that the cap check uses report_id IS NULL (current unassigned period).
 	 *
-	 * When get_active() returns a report, the cap check should scope from
-	 * period_start through today, not just today through today.
+	 * The cap is scoped to the current period via report_id IS NULL, which automatically
+	 * resets after a freeze without any date arithmetic.
 	 *
 	 * @return void
 	 */
-	public function test_cap_uses_active_report_period_start(): void {
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( array( 'period_start' => '2026-03-15 00:00:00' ) );
-
+	public function test_cap_uses_report_scoped_query(): void {
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
-			->with( 'php_error', '2026-03-15', '2026-03-21' )
+			->with( 'php_error', null )
 			->andReturn( 0 );
 
 		$this->aggregated_repo
@@ -483,48 +448,11 @@ class ErrorTrackerTest extends TestCase {
 			->once()
 			->andReturn( true );
 
-		// Allow gmdate to pass through to the real function so that
-		// gmdate('Y-m-d', strtotime('2026-03-15 00:00:00')) returns '2026-03-15'
-		// rather than the setUp stub value '2026-03-21'.
-		Functions\when( 'gmdate' )->alias( 'gmdate' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$this->tracker->handle_error( E_WARNING, 'A warning', '/file.php', 1 );
 
-		// Mockery verifies the count_distinct_dimensions_for_date_range expectation in tearDown.
-		$this->addToAssertionCount( 1 );
-	}
-
-	/**
-	 * Test that the cap check falls back to today when there is no active report.
-	 *
-	 * When get_active() returns null, the cap check uses today as both the
-	 * date_from and date_to.
-	 *
-	 * @return void
-	 */
-	public function test_cap_falls_back_to_today_when_no_active_report(): void {
-		$this->report_repo
-			->shouldReceive( 'get_active' )
-			->once()
-			->andReturn( null );
-
-		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
-			->once()
-			->with( 'php_error', '2026-03-21', '2026-03-21' )
-			->andReturn( 0 );
-
-		$this->aggregated_repo
-			->shouldReceive( 'upsert' )
-			->once()
-			->andReturn( true );
-
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
-
-		$this->tracker->handle_error( E_NOTICE, 'A notice', '/file.php', 1 );
-
-		// Mockery verifies the count_distinct_dimensions_for_date_range expectation in tearDown.
+		// Mockery verifies the count_distinct_dimensions_for_report expectation in tearDown.
 		$this->addToAssertionCount( 1 );
 	}
 }

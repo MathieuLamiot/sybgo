@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sybgo\Events\Trackers;
 
-use Sybgo\Database\Report_Repository;
 use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
 
 /**
@@ -42,7 +41,7 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private const EVENT_TYPE = 'php_error';
 
 	/**
-	 * Maximum number of distinct error signatures stored per day.
+	 * Maximum number of distinct error signatures stored per report period.
 	 */
 	private const DAILY_CAP = 5;
 
@@ -108,30 +107,6 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private int $normal_error_reporting = 0;
 
 	/**
-	 * Report repository instance.
-	 *
-	 * Used to look up the active report's period_start on each error so the
-	 * cap check always reflects the current period even after a freeze.
-	 *
-	 * @var Report_Repository
-	 */
-	private Report_Repository $report_repo;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param \Sybgo\Database\Aggregated_Event_Repository $aggregated_repo Aggregated event repository.
-	 * @param Report_Repository                           $report_repo     Report repository.
-	 */
-	public function __construct(
-		\Sybgo\Database\Aggregated_Event_Repository $aggregated_repo,
-		Report_Repository $report_repo
-	) {
-		parent::__construct( $aggregated_repo );
-		$this->report_repo = $report_repo;
-	}
-
-	/**
 	 * Register WordPress hooks for this tracker.
 	 *
 	 * Installs the PHP error handler and stores the previously registered
@@ -192,7 +167,6 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 			$message_snippet = substr( $errstr, 0, 100 );
 			$signature       = md5( $errfile . ':' . $errline . ':' . $message_snippet );
 			$level_name      = self::ERROR_LEVELS[ $errno ];
-			$date            = gmdate( 'Y-m-d' );
 
 			$dimensions = array(
 				'level'     => $level_name,
@@ -200,17 +174,13 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 			);
 
 			// Enforce the per-period cap: only proceed if fewer than DAILY_CAP distinct
-			// signatures have been stored since the current report period started.
-			// Look up the active report each time so that a freeze is reflected
-			// immediately without requiring a plugin restart.
-			$active_report  = $this->report_repo->get_active();
-			$period_from    = ( null !== $active_report && isset( $active_report['period_start'] ) )
-				? gmdate( 'Y-m-d', (int) strtotime( (string) $active_report['period_start'] ) )
-				: $date;
-			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_date_range(
+			// signatures have been stored in the current (unassigned) period.
+			// report_id IS NULL identifies "current period" — exactly the same
+			// pattern used for singular events — so the cap resets automatically
+			// after a freeze without any additional bookkeeping.
+			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_report(
 				self::EVENT_TYPE,
-				$period_from,
-				$date
+				null
 			);
 
 			if ( $existing_count >= self::DAILY_CAP ) {

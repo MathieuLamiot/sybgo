@@ -14,7 +14,6 @@ namespace Sybgo\Events;
 
 use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
-use Sybgo\Database\Report_Repository;
 
 /**
  * Event Tracker class.
@@ -51,16 +50,6 @@ class Event_Tracker {
 	private Aggregated_Event_Repository $aggregated_repo;
 
 	/**
-	 * Report repository instance.
-	 *
-	 * Used to look up the active report's period start date so Error_Tracker
-	 * can scope its cap check to the current report period rather than a single day.
-	 *
-	 * @var Report_Repository
-	 */
-	private Report_Repository $report_repo;
-
-	/**
 	 * Array of tracker instances.
 	 *
 	 * @var array<string, object>
@@ -72,16 +61,13 @@ class Event_Tracker {
 	 *
 	 * @param Event_Repository            $event_repo      Event repository instance.
 	 * @param Aggregated_Event_Repository $aggregated_repo Aggregated event repository instance.
-	 * @param Report_Repository           $report_repo     Report repository instance.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
-		Aggregated_Event_Repository $aggregated_repo,
-		Report_Repository $report_repo
+		Aggregated_Event_Repository $aggregated_repo
 	) {
 		$this->event_repo      = $event_repo;
 		$this->aggregated_repo = $aggregated_repo;
-		$this->report_repo     = $report_repo;
 	}
 
 	/**
@@ -137,7 +123,7 @@ class Event_Tracker {
 			'user'    => new Trackers\User_Tracker( $this->event_repo ),
 			'update'  => new Trackers\Update_Tracker( $this->event_repo ),
 			'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
-			'error'   => new Trackers\Error_Tracker( $this->aggregated_repo, $this->report_repo ),
+			'error'   => new Trackers\Error_Tracker( $this->aggregated_repo ),
 		);
 	}
 

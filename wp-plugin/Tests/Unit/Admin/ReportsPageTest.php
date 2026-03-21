@@ -160,7 +160,7 @@ class ReportsPageTest extends TestCase {
 				'total_events' => 0,
 			)
 		);
-		$this->aggregated_repo->shouldReceive( 'get_rows_for_event_type_and_date_range' )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
@@ -193,7 +193,7 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 5 )->andReturn( $report );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 5 )->andReturn( $live_summary );
-		$this->aggregated_repo->shouldReceive( 'get_rows_for_event_type_and_date_range' )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 

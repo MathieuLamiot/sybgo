@@ -643,16 +643,10 @@ class Reports_Page {
 	 * @return void
 	 */
 	private function render_php_errors_table( array $report ): void {
-		$date_from = gmdate( 'Y-m-d', strtotime( $report['period_start'] ) );
-		$date_to   = ! empty( $report['period_end'] )
-			? gmdate( 'Y-m-d', strtotime( $report['period_end'] ) )
-			: gmdate( 'Y-m-d' );
-
-		$error_rows = $this->aggregated_repo->get_rows_for_event_type_and_date_range(
-			'php_error',
-			$date_from,
-			$date_to
-		);
+		// Use report_id IS NULL for the active (unassigned) period, or report_id = N
+		// for frozen/emailed reports — same pattern as singular events.
+		$report_id  = 'active' === $report['status'] ? null : (int) $report['id'];
+		$error_rows = $this->aggregated_repo->get_rows_for_report( 'php_error', $report_id );
 
 		if ( empty( $error_rows ) ) {
 			return;

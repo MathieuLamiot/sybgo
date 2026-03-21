@@ -208,6 +208,155 @@ class Aggregated_Event_Repository {
 	}
 
 	/**
+	 * Assign all unassigned rows within a date range to the given report.
+	 *
+	 * Called during the freeze process after singular events have been assigned.
+	 * Sets report_id on every row whose report_id IS NULL and whose date falls
+	 * within the period, matching the same bulk-assignment pattern used for
+	 * wp_sybgo_events.
+	 *
+	 * @param int    $report_id  The ID of the report to assign rows to.
+	 * @param string $date_from  Start date inclusive (Y-m-d).
+	 * @param string $date_to    End date inclusive (Y-m-d).
+	 * @return void
+	 */
+	public function assign_to_report( int $report_id, string $date_from, string $date_to ): void {
+		global $wpdb;
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$this->table}
+				 SET report_id = %d
+				 WHERE report_id IS NULL AND date BETWEEN %s AND %s",
+				$report_id,
+				$date_from,
+				$date_to
+			)
+		);
+	}
+
+	/**
+	 * Count distinct dimension sets for the current unassigned period (or a specific report).
+	 *
+	 * Passing null counts rows with report_id IS NULL (current active period).
+	 * Passing an integer counts rows assigned to that report.
+	 * Used by Error_Tracker to enforce the per-period cap of 5 distinct signatures.
+	 *
+	 * @param string   $event_type Event type identifier (e.g. 'php_error').
+	 * @param int|null $report_id  null = unassigned (current period); int = specific report.
+	 * @return int Number of distinct dimension hashes.
+	 */
+	public function count_distinct_dimensions_for_report( string $event_type, ?int $report_id ): int {
+		global $wpdb;
+
+		if ( null === $report_id ) {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(DISTINCT dimensions_hash) FROM {$this->table}
+					 WHERE event_type = %s AND report_id IS NULL",
+					$event_type
+				)
+			);
+		} else {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(DISTINCT dimensions_hash) FROM {$this->table}
+					 WHERE event_type = %s AND report_id = %d",
+					$event_type,
+					$report_id
+				)
+			);
+		}
+
+		return (int) $result;
+	}
+
+	/**
+	 * Sum all accumulated values for the current unassigned period (or a specific report).
+	 *
+	 * Passing null sums rows with report_id IS NULL (current active period).
+	 * Passing an integer sums rows assigned to that report.
+	 * Used by the dashboard widget to display total error occurrence counts.
+	 *
+	 * @param string   $event_type Event type identifier.
+	 * @param int|null $report_id  null = unassigned (current period); int = specific report.
+	 * @return float Total accumulated value, or 0.0 if no rows match.
+	 */
+	public function get_sum_for_report( string $event_type, ?int $report_id ): float {
+		global $wpdb;
+
+		if ( null === $report_id ) {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COALESCE(SUM(value), 0) FROM {$this->table}
+					 WHERE event_type = %s AND report_id IS NULL",
+					$event_type
+				)
+			);
+		} else {
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COALESCE(SUM(value), 0) FROM {$this->table}
+					 WHERE event_type = %s AND report_id = %d",
+					$event_type,
+					$report_id
+				)
+			);
+		}
+
+		return (float) $result;
+	}
+
+	/**
+	 * Retrieve rows grouped by dimension set for the current unassigned period (or a specific report).
+	 *
+	 * Passing null returns rows with report_id IS NULL (current active period).
+	 * Passing an integer returns rows assigned to that report.
+	 * Used by the dashboard PHP Errors section (top-5 slice) and the report detail view.
+	 *
+	 * Each result row contains:
+	 *   - dimensions (string): JSON-encoded dimension key→value pairs.
+	 *   - total       (string): Sum of value (cast to float by caller).
+	 *   - meta        (string): JSON context snapshot from the most recent upsert.
+	 *
+	 * @param string   $event_type Event type identifier (e.g. 'php_error').
+	 * @param int|null $report_id  null = unassigned (current period); int = specific report.
+	 * @return array<int, array<string, string>> Rows ordered by total descending.
+	 */
+	public function get_rows_for_report( string $event_type, ?int $report_id ): array {
+		global $wpdb;
+
+		if ( null === $report_id ) {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT dimensions, SUM(value) AS total, meta
+					 FROM {$this->table}
+					 WHERE event_type = %s AND report_id IS NULL
+					 GROUP BY dimensions_hash
+					 ORDER BY total DESC",
+					$event_type
+				),
+				ARRAY_A
+			);
+		} else {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT dimensions, SUM(value) AS total, meta
+					 FROM {$this->table}
+					 WHERE event_type = %s AND report_id = %d
+					 GROUP BY dimensions_hash
+					 ORDER BY total DESC",
+					$event_type,
+					$report_id
+				),
+				ARRAY_A
+			);
+		}
+
+		return $results ? $results : array();
+	}
+
+	/**
 	 * Encode dimensions array to canonical JSON.
 	 *
 	 * Keys are sorted alphabetically so the same set of dimensions always produces

@@ -180,9 +180,11 @@ class DatabaseManager {
 			dimensions LONGTEXT DEFAULT NULL,
 			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
 			value DECIMAL(20,4) NOT NULL DEFAULT 0,
+			report_id BIGINT UNSIGNED DEFAULT NULL,
 			date DATE NOT NULL,
 			meta LONGTEXT DEFAULT NULL,
 			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date),
+			INDEX idx_report_id (report_id),
 			INDEX idx_date (date),
 			INDEX idx_event_type (event_type)
 		) $charset_collate;";
