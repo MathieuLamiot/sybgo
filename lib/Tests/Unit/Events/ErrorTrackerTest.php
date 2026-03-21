@@ -47,6 +47,14 @@ class ErrorTrackerTest extends TestCase {
 		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
 		$this->tracker         = new Error_Tracker( $this->aggregated_repo );
 
+		// Seed normal_error_reporting with the ambient mask so the suppression
+		// check works in tests that simulate @ by calling error_reporting(0).
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
+		$ambient_mask = error_reporting();
+		$ref_normal   = new \ReflectionProperty( Error_Tracker::class, 'normal_error_reporting' );
+		$ref_normal->setAccessible( true );
+		$ref_normal->setValue( $this->tracker, $ambient_mask );
+
 		// Default gmdate stub for consistent date in cap checks.
 		Functions\when( 'gmdate' )->justReturn( '2026-03-21' );
 	}
@@ -98,9 +106,9 @@ class ErrorTrackerTest extends TestCase {
 	 */
 	public function test_handle_error_tracks_warning(): void {
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date' )
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
-			->with( 'php_error', '2026-03-21' )
+			->with( 'php_error', '2026-03-21', '2026-03-21' )
 			->andReturn( 0 );
 
 		$this->aggregated_repo
@@ -145,7 +153,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_skips_suppressed_error(): void {
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
@@ -167,7 +175,7 @@ class ErrorTrackerTest extends TestCase {
 	 */
 	public function test_handle_error_drops_when_cap_reached(): void {
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date' )
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
 			->andReturn( 5 ); // At cap.
 
@@ -185,7 +193,7 @@ class ErrorTrackerTest extends TestCase {
 	 */
 	public function test_handle_error_allows_when_under_cap(): void {
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date' )
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
 			->andReturn( 4 ); // One slot remaining.
 
@@ -211,7 +219,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_skips_fatal_errors(): void {
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		$result = $this->tracker->handle_error( E_ERROR, 'Fatal error', '/file.php', 1 );
@@ -228,7 +236,7 @@ class ErrorTrackerTest extends TestCase {
 		$long_message = str_repeat( 'x', 200 );
 
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date' )
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
 			->andReturn( 0 );
 
@@ -270,7 +278,7 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setAccessible( true );
 		$ref->setValue( null, true );
 
-		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date' );
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date_range' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
 		$result = $this->tracker->handle_error( E_WARNING, 'Re-entrant error', '/file.php', 1 );
@@ -397,7 +405,7 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setValue( $this->tracker, $mock_handler );
 
 		$this->aggregated_repo
-			->shouldReceive( 'count_distinct_dimensions_for_date' )
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
 			->andReturn( 0 );
 
@@ -414,5 +422,36 @@ class ErrorTrackerTest extends TestCase {
 		$this->assertNotNull( $called_with );
 		$this->assertSame( E_WARNING, $called_with[0] );
 		$this->assertSame( 'Test warning', $called_with[1] );
+	}
+
+	/**
+	 * Test that set_period_start() scopes the cap check to the report period.
+	 *
+	 * When a period start date is provided, the cap check should use
+	 * count_distinct_dimensions_for_date_range() with date_from = period_start
+	 * and date_to = today, rather than defaulting both to today.
+	 *
+	 * @return void
+	 */
+	public function test_set_period_start_scopes_cap_to_period(): void {
+		$this->tracker->set_period_start( '2026-03-15' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->once()
+			->with( 'php_error', '2026-03-15', '2026-03-21' )
+			->andReturn( 0 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->andReturn( true );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->tracker->handle_error( E_WARNING, 'A warning', '/file.php', 1 );
+
+		// Mockery verifies the count_distinct_dimensions_for_date_range expectation in tearDown.
+		$this->addToAssertionCount( 1 );
 	}
 }

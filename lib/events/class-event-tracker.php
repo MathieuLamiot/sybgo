@@ -14,6 +14,7 @@ namespace Sybgo\Events;
 
 use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
 
 /**
  * Event Tracker class.
@@ -50,6 +51,16 @@ class Event_Tracker {
 	private Aggregated_Event_Repository $aggregated_repo;
 
 	/**
+	 * Report repository instance.
+	 *
+	 * Used to look up the active report's period start date so Error_Tracker
+	 * can scope its cap check to the current report period rather than a single day.
+	 *
+	 * @var Report_Repository
+	 */
+	private Report_Repository $report_repo;
+
+	/**
 	 * Array of tracker instances.
 	 *
 	 * @var array<string, object>
@@ -61,10 +72,16 @@ class Event_Tracker {
 	 *
 	 * @param Event_Repository            $event_repo      Event repository instance.
 	 * @param Aggregated_Event_Repository $aggregated_repo Aggregated event repository instance.
+	 * @param Report_Repository           $report_repo     Report repository instance.
 	 */
-	public function __construct( Event_Repository $event_repo, Aggregated_Event_Repository $aggregated_repo ) {
+	public function __construct(
+		Event_Repository $event_repo,
+		Aggregated_Event_Repository $aggregated_repo,
+		Report_Repository $report_repo
+	) {
 		$this->event_repo      = $event_repo;
 		$this->aggregated_repo = $aggregated_repo;
+		$this->report_repo     = $report_repo;
 	}
 
 	/**
@@ -84,6 +101,14 @@ class Event_Tracker {
 
 		// Load tracker classes.
 		$this->load_trackers();
+
+		// Pass the active report's period start to Error_Tracker so its cap check
+		// is scoped to the current report period rather than the calendar day.
+		$active_report = $this->report_repo->get_active();
+		if ( null !== $active_report && isset( $active_report['period_start'] ) ) {
+			$period_start = gmdate( 'Y-m-d', (int) strtotime( (string) $active_report['period_start'] ) );
+			$this->trackers['error']->set_period_start( $period_start );
+		}
 
 		// Initialize each tracker.
 		foreach ( $this->trackers as $tracker ) {

@@ -189,6 +189,45 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
+	 * Test count_distinct_dimensions_for_date_range() returns the integer from wpdb.
+	 */
+	public function test_count_distinct_dimensions_for_date_range_returns_int(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'BETWEEN' )
+							&& false !== strpos( $sql, 'COUNT(DISTINCT dimensions_hash)' );
+					}
+				),
+				'php_error',
+				'2026-03-15',
+				'2026-03-21'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '3' );
+
+		$count = $this->repo->count_distinct_dimensions_for_date_range( 'php_error', '2026-03-15', '2026-03-21' );
+
+		$this->assertSame( 3, $count );
+	}
+
+	/**
+	 * Test count_distinct_dimensions_for_date_range() returns zero when wpdb returns null.
+	 */
+	public function test_count_distinct_dimensions_for_date_range_returns_zero_when_null(): void {
+		$this->wpdb->shouldReceive( 'prepare' )->once()->andReturn( 'PREPARED SQL' );
+		$this->wpdb->shouldReceive( 'get_var' )->once()->andReturn( null );
+
+		$count = $this->repo->count_distinct_dimensions_for_date_range( 'php_error', '2026-03-15', '2026-03-21' );
+
+		$this->assertSame( 0, $count );
+	}
+
+	/**
 	 * Test upsert() SQL uses value accumulation, not a fixed count increment.
 	 */
 	public function test_upsert_sql_accumulates_value() {

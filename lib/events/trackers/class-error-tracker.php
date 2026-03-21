@@ -95,6 +95,28 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private $previous_handler = null;
 
 	/**
+	 * The error_reporting() mask captured at handler registration time.
+	 *
+	 * Used to detect @ suppression: if the current mask differs from this
+	 * value at handler invocation time, the error was suppressed and should
+	 * be skipped. This is more reliable than checking for 0 or E_ERROR
+	 * directly across PHP versions.
+	 *
+	 * @var int
+	 */
+	private int $normal_error_reporting = 0;
+
+	/**
+	 * Start date of the current report period (Y-m-d), or null if unknown.
+	 *
+	 * When set, the daily-cap check is scoped to this date through today.
+	 * Falls back to today only when no period has been configured.
+	 *
+	 * @var string|null
+	 */
+	private ?string $period_start = null;
+
+	/**
 	 * Register WordPress hooks for this tracker.
 	 *
 	 * Installs the PHP error handler and stores the previously registered
@@ -105,7 +127,22 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	public function register_hooks(): void {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Intentional: this is the error tracking feature.
 		$this->previous_handler = set_error_handler( array( $this, 'handle_error' ) );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting -- Read-only: captures mask at registration for @ suppression detection.
+		$this->normal_error_reporting = error_reporting();
 		register_shutdown_function( array( $this, 'handle_shutdown' ) );
+	}
+
+	/**
+	 * Set the start date of the current report period.
+	 *
+	 * When set, the daily cap check is scoped from this date through today,
+	 * so that a report freeze does not carry over old signatures into the new period.
+	 *
+	 * @param string $date Start date in Y-m-d format.
+	 * @return void
+	 */
+	public function set_period_start( string $date ): void {
+		$this->period_start = $date;
 	}
 
 	/**
@@ -128,15 +165,12 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		int $errline = 0
 	): bool {
 		// Skip errors suppressed by the @ operator.
-		// In PHP 7.x, @ sets error_reporting() to 0.
-		// In PHP 8.0+, @ sets it to E_ERROR (value 1).
-		// We check for these specific suppression values rather than checking
-		// whether $errno is in the ambient mask — the ambient mask may legitimately
-		// exclude E_NOTICE or E_DEPRECATED on production sites, but we still want
-		// to capture those levels.
+		// When @ is used, PHP temporarily lowers error_reporting() during handler
+		// execution. By comparing against the mask captured at registration time,
+		// we detect suppression reliably across all PHP versions without needing to
+		// hard-code version-specific suppression values.
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting -- Read-only call to check @ suppression; we do not change the value.
-		$current_mask = error_reporting();
-		if ( 0 === $current_mask || ( PHP_MAJOR_VERSION >= 8 && E_ERROR === $current_mask ) ) {
+		if ( error_reporting() !== $this->normal_error_reporting ) {
 			return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
 		}
 
@@ -163,10 +197,13 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 				'signature' => $signature,
 			);
 
-			// Enforce the daily cap: only proceed if fewer than DAILY_CAP distinct
-			// signatures have been stored today.
-			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_date(
+			// Enforce the per-period cap: only proceed if fewer than DAILY_CAP distinct
+			// signatures have been stored since the current report period started.
+			// Falls back to the current date when no period start has been set.
+			$period_from    = null !== $this->period_start ? $this->period_start : $date;
+			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_date_range(
 				self::EVENT_TYPE,
+				$period_from,
 				$date
 			);
 

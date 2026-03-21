@@ -177,6 +177,37 @@ class Aggregated_Event_Repository {
 	}
 
 	/**
+	 * Count distinct dimension sets recorded for a given event type across a date range.
+	 *
+	 * Used by Error_Tracker to enforce the per-period cap of 5 distinct error signatures,
+	 * scoped to the current report period rather than a single calendar day.
+	 *
+	 * @param string $event_type Event type identifier (e.g. 'php_error').
+	 * @param string $date_from  Start date inclusive (Y-m-d).
+	 * @param string $date_to    End date inclusive (Y-m-d).
+	 * @return int Number of distinct dimension hashes recorded in the date range.
+	 */
+	public function count_distinct_dimensions_for_date_range(
+		string $event_type,
+		string $date_from,
+		string $date_to
+	): int {
+		global $wpdb;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT dimensions_hash) FROM {$this->table}
+				 WHERE event_type = %s AND date BETWEEN %s AND %s",
+				$event_type,
+				$date_from,
+				$date_to
+			)
+		);
+
+		return (int) $result;
+	}
+
+	/**
 	 * Encode dimensions array to canonical JSON.
 	 *
 	 * Keys are sorted alphabetically so the same set of dimensions always produces
