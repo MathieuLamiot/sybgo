@@ -56,7 +56,7 @@ class Report_Generator {
 	 * @return array<string, mixed> Summary data array.
 	 */
 	public function generate_summary( int $report_id ): array {
-		$events  = $this->event_repo->get_by_report( $report_id );
+		$events                = $this->event_repo->get_by_report( $report_id );
 		$summary               = $this->compute_report_data( $events, $report_id );
 		$summary['ai_summary'] = null;
 

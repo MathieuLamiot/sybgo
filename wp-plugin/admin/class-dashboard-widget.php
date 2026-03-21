@@ -436,7 +436,7 @@ class Dashboard_Widget {
 			$trends       = $live_summary['trends'];
 
 			ob_start();
-			$this->render_preview_content( $totals, $trends, $events );
+			$this->render_preview_content( $totals, $trends );
 			$html = ob_get_clean();
 
 			wp_send_json_success( array( 'html' => $html ) );
@@ -457,10 +457,9 @@ class Dashboard_Widget {
 	 *
 	 * @param array<string, int>                  $totals Event totals.
 	 * @param array<string, array<string, mixed>> $trends Trend data.
-	 * @param array<int, array<string, mixed>>    $events All events.
 	 * @return void
 	 */
-	private function render_preview_content( array $totals, array $trends, array $events ): void {
+	private function render_preview_content( array $totals, array $trends ): void {
 		?>
 		<div class="sybgo-preview">
 			<h3><?php esc_html_e( 'Activity Summary', 'sybgo' ); ?></h3>
