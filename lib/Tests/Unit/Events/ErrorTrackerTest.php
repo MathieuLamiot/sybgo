@@ -47,9 +47,6 @@ class ErrorTrackerTest extends TestCase {
 		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
 		$this->tracker         = new Error_Tracker( $this->aggregated_repo );
 
-		// Default: error_reporting returns full mask (errors not suppressed).
-		Functions\when( 'error_reporting' )->justReturn( E_ALL );
-
 		// Default gmdate stub for consistent date in cap checks.
 		Functions\when( 'gmdate' )->justReturn( '2026-03-21' );
 	}
@@ -73,19 +70,24 @@ class ErrorTrackerTest extends TestCase {
 	/**
 	 * Test that register_hooks() installs a PHP error handler.
 	 *
+	 * We call register_hooks() for real and then immediately restore the
+	 * previous handler with set_error_handler(null), which returns whatever
+	 * was registered last. That should be the Error_Tracker callback.
+	 *
 	 * @return void
 	 */
 	public function test_register_hooks_registers_error_handler(): void {
-		Functions\expect( 'set_error_handler' )
-			->once()
-			->with( array( $this->tracker, 'handle_error' ) )
-			->andReturn( null );
-
 		$this->tracker->register_hooks();
 
-		// Mockery verifies the expectation in tearDown; add assertion count so
-		// PHPUnit does not mark this test as risky.
-		$this->addToAssertionCount( 1 );
+		// Restore previous handler and capture what was set.
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler
+		$registered = set_error_handler( null );
+
+		// Clean up: remove the null handler we just registered.
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_restore_error_handler
+		restore_error_handler();
+
+		$this->assertSame( array( $this->tracker, 'handle_error' ), $registered );
 	}
 
 	/**
@@ -135,19 +137,24 @@ class ErrorTrackerTest extends TestCase {
 	/**
 	 * Test that errors suppressed with @ are not tracked.
 	 *
-	 * When error_reporting() returns 0 (PHP < 8.0 behaviour for @-suppressed errors),
-	 * the tracker should skip recording and defer to the previous handler.
+	 * We use the real error_reporting(0) to simulate the PHP < 8.0 behaviour
+	 * for @-suppressed errors, then restore the original mask afterwards.
+	 * This avoids mocking a PHP built-in, which is unreliable on PHP 7.4.
 	 *
 	 * @return void
 	 */
 	public function test_handle_error_skips_suppressed_error(): void {
-		// Override the default stub to return 0 (suppressed).
-		Functions\when( 'error_reporting' )->justReturn( 0 );
-
 		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_date' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
-		$result = $this->tracker->handle_error( E_WARNING, 'Suppressed warning', '/file.php', 1 );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
+		$original_mask = error_reporting( 0 );
+		try {
+			$result = $this->tracker->handle_error( E_WARNING, 'Suppressed warning', '/file.php', 1 );
+		} finally {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting
+			error_reporting( $original_mask );
+		}
 
 		$this->assertFalse( $result );
 	}
