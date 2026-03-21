@@ -116,7 +116,7 @@ class DB_Stats {
 				FROM information_schema.TABLES
 				WHERE TABLE_SCHEMA = %s
 				AND TABLE_NAME = %s',
-				DB_NAME,
+				$wpdb->dbname,
 				$table
 			)
 		);
