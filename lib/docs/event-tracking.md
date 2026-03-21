@@ -124,7 +124,15 @@ To prevent database bloat from error storms, at most **5 distinct error signatur
 
 ### Dashboard display
 
-The WordPress admin dashboard widget shows today's and this week's PHP error occurrence counts. The query uses `Aggregated_Event_Repository::get_sum_for_date_range()`. The section only renders when at least one error has been recorded.
+The WordPress admin dashboard widget includes a **PHP Errors** section that shows:
+
+- The number of distinct error signatures recorded during the current report period.
+- The total occurrence count for those signatures.
+- A top-5 list of errors, each entry showing a level emoji (warning/user_warning → ⚠️, notice/user_notice → ℹ️, deprecated/user_deprecated → 🔔, user_error → ❌), the error message, the file and line number, and the occurrence count.
+
+The section only renders when at least one error has been recorded in the period. Error counts use `Aggregated_Event_Repository::get_sum_for_date_range()` and the per-signature breakdown uses `Aggregated_Event_Repository::get_rows_for_event_type_and_date_range()`.
+
+The report details page (Sybgo Reports → View Details) also renders a **PHP Errors** table below the All Events table, with one row per distinct error signature. The table is populated by `Reports_Page::render_php_errors_table()` using the same `get_rows_for_event_type_and_date_range()` query scoped to the report's date range.
 
 ## Edit Magnitude Tracking
 
@@ -173,10 +181,9 @@ Set the minimum percentage change to track edit events:
 **Location:** WP Admin Dashboard → "Site Activity Digest" widget (sidebar)
 
 **Features:**
-- Last Week's Summary with highlights from the previous frozen report
-- This week's event count
-- Filter events by type (All, Posts, Users, Updates, Comments)
-- Preview this week's digest (with AI summary if configured)
+- Two action buttons at the top of the widget: "Preview This Week's Digest" (opens a modal via the `sybgo_preview_digest` AJAX action) and "View Previous Digest" (opens a modal via the `sybgo_preview_last_digest` AJAX action).
+- This week's event count with filter buttons (All, Posts, Users, Updates, Comments).
+- PHP Errors section showing distinct signature count, total occurrences, and a top-5 error list (see PHP Error Tracking above).
 
 ### Reports Page
 
@@ -187,6 +194,12 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 ### Database Inspection
 
 Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date)` so each `(event_type, dimension set, date)` combination has at most one row.
+
+`Aggregated_Event_Repository` exposes three read methods beyond `upsert`:
+
+- `count_distinct_dimensions_for_date(string $event_type, string $date): int` — counts distinct dimension sets recorded for a given event type and date. Used by `Error_Tracker` to enforce the daily 5-signature cap.
+- `get_sum_for_date_range(string $event_type, string $date_from, string $date_to): float` — sums all accumulated values across a date range. Used by the dashboard widget for total error occurrence counts.
+- `get_rows_for_event_type_and_date_range(string $event_type, string $date_from, string $date_to): array` — returns one row per distinct dimension set (grouped by `dimensions_hash`) with `SUM(value) AS total`, ordered by total descending. Each row contains `dimensions`, `total`, and `meta`. Used by the dashboard PHP Errors section (top-5 slice) and by the report detail view PHP Errors table.
 
 The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tables()`):
 
