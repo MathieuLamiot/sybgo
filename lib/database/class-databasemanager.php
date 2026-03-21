@@ -57,24 +57,60 @@ class DatabaseManager {
 	/**
 	 * Constructor for the DatabaseManager class.
 	 *
-	 * This method initializes the database manager and sets up all required tables.
-	 * Also handles migration from old crawling_results table.
+	 * Initializes table names only. Call maybe_create_tables() explicitly
+	 * when table creation is needed (e.g. on activation or first run).
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
+		$this->init_table_names();
+	}
+
+	/**
+	 * Initialize table name properties from the WordPress prefix.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function init_table_names(): void {
+		$table_names                   = $this->get_table_names();
+		$this->events_table            = $table_names['events'];
+		$this->reports_table           = $table_names['reports'];
+		$this->email_log_table         = $table_names['email_log'];
+		$this->aggregated_events_table = $table_names['aggregated_events'];
+	}
+
+	/**
+	 * Get all table names owned by the plugin.
+	 *
+	 * Single source of truth for plugin table names. Safe to call without
+	 * triggering any table creation (e.g. during uninstall).
+	 *
+	 * @return array<string, string> Table names keyed by identifier.
+	 * @since 1.0.0
+	 */
+	public function get_table_names(): array {
 		global $wpdb;
 
-		// Set table names.
-		$this->events_table            = $wpdb->prefix . 'sybgo_events';
-		$this->reports_table           = $wpdb->prefix . 'sybgo_reports';
-		$this->email_log_table         = $wpdb->prefix . 'sybgo_email_log';
-		$this->aggregated_events_table = $wpdb->prefix . 'sybgo_aggregated_events';
+		return array(
+			'events'            => $wpdb->prefix . 'sybgo_events',
+			'reports'           => $wpdb->prefix . 'sybgo_reports',
+			'email_log'         => $wpdb->prefix . 'sybgo_email_log',
+			'aggregated_events' => $wpdb->prefix . 'sybgo_aggregated_events',
+		);
+	}
 
-		// Create tables.
+	/**
+	 * Create or upgrade all plugin database tables, and run migrations.
+	 *
+	 * Must be called explicitly on plugin activation and on init (to handle
+	 * schema upgrades). Safe to call multiple times — dbDelta is idempotent.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function maybe_create_tables(): void {
 		$this->create_tables();
-
-		// Run migration.
 		$this->migrate_from_old_schema();
 	}
 
@@ -180,18 +216,16 @@ class DatabaseManager {
 	}
 
 	/**
-	 * Get table names.
+	 * Drop a single database table.
 	 *
-	 * @return array<string, string> Array of table names keyed by identifier.
+	 * @param string $table Fully-qualified table name (including prefix).
+	 * @return void
 	 * @since 1.0.0
 	 */
-	public function get_table_names(): array {
-		return array(
-			'events'            => $this->events_table,
-			'reports'           => $this->reports_table,
-			'email_log'         => $this->email_log_table,
-			'aggregated_events' => $this->aggregated_events_table,
-		);
+	public function drop_table( string $table ): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 
 	/**
