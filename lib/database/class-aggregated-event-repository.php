@@ -173,7 +173,7 @@ class Aggregated_Event_Repository {
 			ARRAY_A
 		);
 
-		return $results ?: array();
+		return $results ? $results : array();
 	}
 
 	/**
