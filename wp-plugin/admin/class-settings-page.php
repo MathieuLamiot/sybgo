@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Sybgo\Database\DB_Stats;
 use Sybgo\Events\Event_Registry;
 
 /**
@@ -42,11 +43,25 @@ class Settings_Page {
 	const LEGACY_OPTION_EMAIL_RECIPIENTS = 'sybgo_email_recipients';
 
 	/**
+	 * Default data retention period in days.
+	 *
+	 * @var int
+	 */
+	const DEFAULT_RETENTION_DAYS = 90;
+
+	/**
 	 * Event registry instance.
 	 *
 	 * @var Event_Registry
 	 */
 	private Event_Registry $event_registry;
+
+	/**
+	 * DB stats instance.
+	 *
+	 * @var DB_Stats
+	 */
+	private DB_Stats $db_stats;
 
 	/**
 	 * Get all WordPress option names owned by the plugin.
@@ -68,9 +83,11 @@ class Settings_Page {
 	 * Constructor.
 	 *
 	 * @param Event_Registry $event_registry Event registry.
+	 * @param DB_Stats       $db_stats       DB stats instance.
 	 */
-	public function __construct( Event_Registry $event_registry ) {
+	public function __construct( Event_Registry $event_registry, DB_Stats $db_stats ) {
 		$this->event_registry = $event_registry;
+		$this->db_stats       = $db_stats;
 	}
 
 	/**
@@ -200,6 +217,22 @@ class Settings_Page {
 			'sybgo-settings',
 			'sybgo_ai_section'
 		);
+
+		// Database Management Section.
+		add_settings_section(
+			'sybgo_database_section',
+			__( 'Database Management', 'sybgo' ),
+			array( $this, 'render_database_section_description' ),
+			'sybgo-settings'
+		);
+
+		add_settings_field(
+			'retention_days',
+			__( 'Data Retention Period', 'sybgo' ),
+			array( $this, 'render_retention_days_field' ),
+			'sybgo-settings',
+			'sybgo_database_section'
+		);
 	}
 
 	/**
@@ -247,6 +280,10 @@ class Settings_Page {
 		// Sanitize AI API key.
 		$sanitized['anthropic_api_key'] = isset( $input['anthropic_api_key'] ) ? sanitize_text_field( trim( $input['anthropic_api_key'] ) ) : '';
 
+		// Sanitize retention days.
+		$sanitized['retention_days'] = isset( $input['retention_days'] ) ? absint( $input['retention_days'] ) : self::DEFAULT_RETENTION_DAYS;
+		$sanitized['retention_days'] = max( 1, $sanitized['retention_days'] );
+
 		return $sanitized;
 	}
 
@@ -271,6 +308,22 @@ class Settings_Page {
 			);
 		}
 
+		// Check if cleanup was run.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display, no state change.
+		if ( isset( $_GET['cleanup-done'] ) ) {
+			$deleted = absint( $_GET['cleanup-done'] );
+			add_settings_error(
+				'sybgo_messages',
+				'sybgo_cleanup_done',
+				sprintf(
+					/* translators: %d: number of rows deleted */
+					_n( 'Cleanup complete: %d row deleted.', 'Cleanup complete: %d rows deleted.', $deleted, 'sybgo' ),
+					$deleted
+				),
+				'updated'
+			);
+		}
+
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -284,6 +337,8 @@ class Settings_Page {
 				submit_button( __( 'Save Settings', 'sybgo' ) );
 				?>
 			</form>
+
+			<?php $this->render_database_stats_panel(); ?>
 
 			<div class="sybgo-settings-help">
 				<h2><?php esc_html_e( 'Quick Help', 'sybgo' ); ?></h2>
@@ -498,6 +553,7 @@ class Settings_Page {
 			'enabled_event_types'      => $this->get_default_event_types(),
 			'edit_magnitude_threshold' => 5,
 			'send_empty_reports'       => false,
+			'retention_days'           => self::DEFAULT_RETENTION_DAYS,
 		);
 
 		return wp_parse_args( $settings, $defaults );
@@ -635,5 +691,120 @@ class Settings_Page {
 	public static function get_anthropic_api_key(): string {
 		$settings = get_option( self::OPTION_NAME, array() );
 		return $settings['anthropic_api_key'] ?? '';
+	}
+
+	/**
+	 * Render database section description.
+	 *
+	 * @return void
+	 */
+	public function render_database_section_description(): void {
+		?>
+		<p><?php esc_html_e( 'Control how long event data is retained in the database and monitor storage usage.', 'sybgo' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render retention days field.
+	 *
+	 * @return void
+	 */
+	public function render_retention_days_field(): void {
+		$settings       = $this->get_settings();
+		$retention_days = $settings['retention_days'] ?? self::DEFAULT_RETENTION_DAYS;
+
+		?>
+		<input
+			type="number"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[retention_days]"
+			value="<?php echo esc_attr( $retention_days ); ?>"
+			min="1"
+			step="1"
+			class="small-text"
+		/> <?php esc_html_e( 'days', 'sybgo' ); ?>
+		<p class="description">
+			<?php esc_html_e( 'Events and aggregated data older than this number of days will be deleted during cleanup. Default: 90 days.', 'sybgo' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Render database stats panel with per-table row counts and sizes.
+	 *
+	 * @return void
+	 */
+	public function render_database_stats_panel(): void {
+		$stats    = $this->db_stats->get_table_stats();
+		$total_mb = $this->db_stats->get_total_size_mb();
+
+		?>
+		<div class="sybgo-db-stats">
+			<h2><?php esc_html_e( 'Database Footprint', 'sybgo' ); ?></h2>
+			<table class="wp-list-table widefat fixed striped">
+				<thead>
+					<tr>
+						<th><?php esc_html_e( 'Table', 'sybgo' ); ?></th>
+						<th><?php esc_html_e( 'Rows', 'sybgo' ); ?></th>
+						<th><?php esc_html_e( 'Estimated Size', 'sybgo' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php foreach ( $stats as $table_stats ) : ?>
+						<tr>
+							<td><code><?php echo esc_html( $table_stats['table_name'] ); ?></code></td>
+							<td><?php echo esc_html( number_format_i18n( $table_stats['row_count'] ) ); ?></td>
+							<td>
+								<?php
+								if ( null !== $table_stats['size_mb'] ) {
+									/* translators: %s: table size in MB */
+									echo esc_html( sprintf( __( '%s MB', 'sybgo' ), number_format_i18n( $table_stats['size_mb'], 2 ) ) );
+								} else {
+									esc_html_e( 'N/A', 'sybgo' );
+								}
+								?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="2"><strong><?php esc_html_e( 'Total', 'sybgo' ); ?></strong></td>
+						<td>
+							<strong>
+								<?php
+								/* translators: %s: total size in MB */
+								echo esc_html( sprintf( __( '%s MB', 'sybgo' ), number_format_i18n( $total_mb, 2 ) ) );
+								?>
+							</strong>
+						</td>
+					</tr>
+				</tfoot>
+			</table>
+
+			<p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<?php wp_nonce_field( 'sybgo_run_cleanup', 'sybgo_cleanup_nonce' ); ?>
+					<input type="hidden" name="action" value="sybgo_run_cleanup">
+					<button type="submit" class="button button-secondary">
+						<?php esc_html_e( 'Run Cleanup Now', 'sybgo' ); ?>
+					</button>
+					<span class="description">
+						<?php esc_html_e( 'Immediately delete all events and aggregated data older than the configured retention period.', 'sybgo' ); ?>
+					</span>
+				</form>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Get data retention period in days.
+	 *
+	 * @return int Retention period in days.
+	 * @since 1.1.0
+	 */
+	public static function get_retention_days(): int {
+		$settings = get_option( self::OPTION_NAME, array() );
+		return $settings['retention_days'] ?? self::DEFAULT_RETENTION_DAYS;
 	}
 }
