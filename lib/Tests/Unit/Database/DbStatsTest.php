@@ -52,6 +52,7 @@ class DbStatsTest extends TestCase {
 		// Mock wpdb.
 		$this->wpdb         = Mockery::mock( '\wpdb' );
 		$this->wpdb->prefix = 'wp_';
+		$this->wpdb->dbname = 'wordpress_test';
 		$GLOBALS['wpdb']    = $this->wpdb;
 
 		// Mock DatabaseManager.
