@@ -319,7 +319,7 @@ class ErrorTrackerTest extends TestCase {
 					function ( $meta ) {
 						return '/var/www/html/wp-content/plugins/test/file.php' === $meta['file']
 							&& 99 === $meta['line']
-							&& str_starts_with( $meta['message'], 'Call to undefined function' );
+							&& 0 === strpos( $meta['message'], 'Call to undefined function' );
 					}
 				)
 			)
