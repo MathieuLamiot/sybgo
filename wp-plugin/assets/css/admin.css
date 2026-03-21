@@ -70,14 +70,14 @@
 }
 
 /* Filter Buttons */
-.sybgo-filter-buttons {
+.sybgo-filters {
 	margin: 12px 0;
 	display: flex;
 	gap: 6px;
 	flex-wrap: wrap;
 }
 
-.sybgo-filter-buttons button {
+.sybgo-filters .sybgo-filter-btn {
 	padding: 4px 10px;
 	font-size: 12px;
 	border: 1px solid #c3c4c7;
@@ -86,11 +86,11 @@
 	cursor: pointer;
 }
 
-.sybgo-filter-buttons button:hover {
+.sybgo-filters .sybgo-filter-btn:hover {
 	background: #f6f7f7;
 }
 
-.sybgo-filter-buttons button.active {
+.sybgo-filters .sybgo-filter-btn.active {
 	background: #2271b1;
 	color: #fff;
 	border-color: #2271b1;

@@ -18,7 +18,7 @@
 
 		bindEvents: function() {
 			// Filter buttons
-			$(document).on('click', '.sybgo-filter-buttons button', this.handleFilterClick);
+			$(document).on('click', '.sybgo-filters .sybgo-filter-btn', this.handleFilterClick);
 
 			// Preview button (this week)
 			$(document).on('click', '.sybgo-preview-btn', this.handlePreviewClick);
@@ -54,11 +54,11 @@
 			$eventsList.addClass('sybgo-loading');
 
 			$.ajax({
-				url: sybgoAdmin.ajaxUrl,
+				url: sybgoWidget.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'sybgo_filter_events',
-					nonce: sybgoAdmin.nonce,
+					nonce: sybgoWidget.nonce,
 					filter: filter
 				},
 				success: function(response) {

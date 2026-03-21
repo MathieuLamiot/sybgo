@@ -152,7 +152,8 @@ class Sybgo {
 		// Initialize event tracker.
 		$event_repo      = $this->factory->create_event_repository();
 		$aggregated_repo = $this->factory->create_aggregated_event_repository();
-		$event_tracker   = new Events\Event_Tracker( $event_repo, $aggregated_repo );
+		$report_repo     = $this->factory->create_report_repository();
+		$event_tracker   = new Events\Event_Tracker( $event_repo, $aggregated_repo, $report_repo );
 		$event_tracker->init();
 
 		// Store in factory for later use.
@@ -192,7 +193,7 @@ class Sybgo {
 		add_action( 'admin_post_sybgo_run_cleanup', array( $this, 'handle_manual_cleanup' ) );
 
 		// Enqueue admin assets.
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ), 5 );
 	}
 
 	/**
