@@ -229,28 +229,42 @@ class DatabaseManager {
 	}
 
 	/**
-	 * Cleanup old events (older than 1 year).
+	 * Cleanup old events and aggregated events older than the given number of days.
+	 *
+	 * Deletes from both sybgo_events (by event_timestamp) and sybgo_aggregated_events
+	 * (by date) using the same retention window. No foreign key constraints exist between
+	 * these tables and reports/email_log, so deletion order does not matter.
 	 *
 	 * This should be called by a daily cron job.
 	 *
-	 * @return int Number of events deleted.
+	 * @param int $days Retention period in days. Defaults to 90.
+	 * @return int Total number of rows deleted across both tables.
 	 * @since 1.0.0
 	 */
-	public function cleanup_old_events(): int {
+	public function cleanup_old_events( int $days = 90 ): int {
 		global $wpdb;
 
-		$one_year_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-1 year' ) );
+		$cutoff_datetime = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+		$cutoff_date     = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
 
-		$deleted = $wpdb->query(
+		$deleted_events = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$this->events_table} WHERE event_timestamp < %s",
-				$one_year_ago
+				$cutoff_datetime
+			)
+		);
+
+		$deleted_aggregated = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$this->aggregated_events_table} WHERE date < %s",
+				$cutoff_date
 			)
 		);
 
 		// Clear any cached data.
 		wp_cache_delete( 'sybgo_events', 'sybgo_cache' );
+		wp_cache_delete( 'sybgo_aggregated_events', 'sybgo_cache' );
 
-		return (int) $deleted;
+		return (int) $deleted_events + (int) $deleted_aggregated;
 	}
 }

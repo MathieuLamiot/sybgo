@@ -7,7 +7,7 @@
  * Plugin Name: Sybgo
  * Plugin URI: https://github.com/your-repo/sybgo
  * Description: Tracks meaningful WordPress events and sends weekly email digests. Since You've Been Gone - stay informed about what's happening on your site.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Author: MathieuLamiot
  * Author URI: https://mathieulamiot.com
  * License: GPL-2.0-or-later
@@ -188,6 +188,9 @@ class Sybgo {
 		$reports_page = $this->create_reports_page();
 		$reports_page->init();
 
+		// Register manual cleanup handler.
+		add_action( 'admin_post_sybgo_run_cleanup', array( $this, 'handle_manual_cleanup' ) );
+
 		// Enqueue admin assets.
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 	}
@@ -222,8 +225,9 @@ class Sybgo {
 	 */
 	private function create_settings_page(): Admin\Settings_Page {
 		$event_registry = $this->factory->create_event_registry();
+		$db_stats       = $this->factory->create_db_stats();
 
-		return new Admin\Settings_Page( $event_registry );
+		return new Admin\Settings_Page( $event_registry, $db_stats );
 	}
 
 	/**
@@ -376,12 +380,55 @@ class Sybgo {
 	 */
 	public function cleanup_old_events_callback(): void {
 		$db_manager = $this->factory->create_database_manager();
-		$deleted    = $db_manager->cleanup_old_events();
+		$days       = Admin\Settings_Page::get_retention_days();
+		$deleted    = $db_manager->cleanup_old_events( $days );
 
 		// Log cleanup action.
 		if ( $deleted > 0 ) {
-			Logger::info( sprintf( 'Cleaned up %d old events', $deleted ) );
+			Logger::info( sprintf( 'Cleaned up %d rows (retention: %d days)', $deleted, $days ) );
 		}
+	}
+
+	/**
+	 * Handle manual cleanup form submission.
+	 *
+	 * Verifies nonce and capability, runs cleanup with the configured retention period,
+	 * then redirects back to the settings page with the deletion count in the query string.
+	 *
+	 * @return void
+	 * @since 1.1.0
+	 */
+	public function handle_manual_cleanup(): void {
+		if (
+			! isset( $_POST['sybgo_cleanup_nonce'] ) ||
+			! wp_verify_nonce(
+				sanitize_text_field( wp_unslash( $_POST['sybgo_cleanup_nonce'] ) ),
+				'sybgo_run_cleanup'
+			)
+		) {
+			wp_die( esc_html__( 'Security check failed.', 'sybgo' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'sybgo' ) );
+		}
+
+		$days       = Admin\Settings_Page::get_retention_days();
+		$db_manager = $this->factory->create_database_manager();
+		$deleted    = $db_manager->cleanup_old_events( $days );
+
+		Logger::info( sprintf( 'Manual cleanup: deleted %d rows with %d-day retention', $deleted, $days ) );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'         => 'sybgo-settings',
+					'cleanup-done' => $deleted,
+				),
+				admin_url( 'options-general.php' )
+			)
+		);
+		exit;
 	}
 
 	/**

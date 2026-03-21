@@ -348,9 +348,11 @@ wp db query "SELECT JSON_PRETTY(event_data) FROM wp_sybgo_events WHERE id = 123"
 - 1-year retention = ~5,000-25,000 events (~5-25MB)
 
 **Automatic Cleanup:**
-- Events older than 1 year are automatically deleted
+- Events and aggregated data older than the configured retention period are automatically deleted (default: 90 days)
 - Runs daily at 3:00 AM via cron
+- The retention period is configurable via Settings → Sybgo → Database Management → Data Retention Period
 - Manually trigger: `wp cron event run sybgo_cleanup_old_events`
+- A "Run Cleanup Now" button is also available on the settings page for immediate on-demand cleanup
 
 **Caching:**
 - Event queries are cached for 1 hour
