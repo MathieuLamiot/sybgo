@@ -48,7 +48,7 @@ composer require --dev mockery/mockery
 
 ## Code Standards
 
-Sybgo follows WordPress Coding Standards and GroupOne technical standards.
+Sybgo follows WordPress Coding Standards and group.one technical standards.
 
 ### Check Code
 
@@ -330,7 +330,10 @@ sybgo/
 ├── admin/                        # WordPress admin
 │   ├── class-dashboard-widget.php
 │   ├── class-settings-page.php
-│   └── class-reports-page.php
+│   ├── class-reports-page.php
+│   └── class-uninstaller.php     # Plugin cleanup on uninstall
+│
+├── uninstall.php                 # WP uninstall entry point
 │
 ├── email/                        # Email system
 │   ├── class-email-manager.php
@@ -356,6 +359,20 @@ sybgo/
     │   └── Admin/
     └── Integration/
 ```
+
+## Plugin Uninstall
+
+When a user deletes the plugin from the WordPress admin, WordPress calls `uninstall.php` at the plugin root. This file bootstraps the autoloader and delegates all cleanup to `Sybgo\Admin\Uninstaller::run()`.
+
+`Uninstaller` performs three steps in order:
+
+1. **Drop database tables** — calls `DatabaseManager::get_table_names()` (static, no side effects) and issues `DROP TABLE IF EXISTS` for each table.
+2. **Clear cron events** — calls `Sybgo::get_cron_hooks()` and passes each hook to `wp_clear_scheduled_hook()`.
+3. **Delete options** — calls `Settings_Page::get_option_names()` and passes each name to `delete_option()`.
+
+Each of those static methods is the single source of truth for its identifiers, so adding a new table, hook, or option to the appropriate method is enough to ensure it is also cleaned up on uninstall.
+
+The deactivation hook (`Sybgo::deactivate()`) only clears cron events. Full data removal (tables, options) happens only on uninstall, not on deactivation.
 
 ## Adding New Event Types
 

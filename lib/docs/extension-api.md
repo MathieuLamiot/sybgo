@@ -105,12 +105,15 @@ add_filter( 'sybgo_event_types', function( array $types ): array {
 **Registration keys:**
 - `icon` - Emoji displayed in dashboard and emails
 - `stat_label` - Human-readable label for statistics
+- `category` - Storage strategy: `'singular'` (default, one row per event in `wp_sybgo_events`) or `'aggregated'` (daily count in `wp_sybgo_aggregated_events`). Readable via `Event_Registry::get_event_category()`.
 - `short_title` - Callable returning a short display title
 - `detailed_title` - Callable returning a detailed display title
 - `ai_description` - Callable providing context for AI summaries
 - `describe` - Callable returning a full schema description
 
 ## Hooks & Filters
+
+All Sybgo filters are dispatched via `wpm_apply_filters_typesafe()` (from the [`wp-media/apply-filters-typed`](https://github.com/wp-media/apply-filters-typed) package). If a filter callback returns a value of the wrong type, WordPress will trigger a `_doing_it_wrong()` notice. Each filter's expected return type matches the type of the default value passed to it (array, string, or bool — as indicated in the API Reference below).
 
 ### Modify Event Data Before Saving
 

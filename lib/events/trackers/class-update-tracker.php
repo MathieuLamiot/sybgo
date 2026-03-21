@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Sybgo\Events\Trackers;
 
 use Sybgo\Database\Event_Repository;
+use Sybgo\Events\Abstracts\Abstract_Singular_Event;
 
 /**
  * Update Tracker class.
@@ -22,26 +23,7 @@ use Sybgo\Database\Event_Repository;
  * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
-class Update_Tracker {
-	/**
-	 * Event repository instance.
-	 *
-	 * @var Event_Repository
-	 */
-	private Event_Repository $event_repo;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param Event_Repository $event_repo Event repository instance.
-	 */
-	public function __construct( Event_Repository $event_repo ) {
-		$this->event_repo = $event_repo;
-
-		// Register event types via filter.
-		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
-	}
-
+class Update_Tracker extends Abstract_Singular_Event {
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -319,13 +301,7 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'core_updated',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'core_updated', $event_data );
 
 		// Store current version for next update.
 		set_transient( 'sybgo_wp_version_before_update', $new_version, DAY_IN_SECONDS );
@@ -404,13 +380,7 @@ class Update_Tracker {
 				),
 			);
 
-			// Create event.
-			$this->event_repo->create(
-				array(
-					'event_type' => 'plugin_updated',
-					'event_data' => $event_data,
-				)
-			);
+			$this->record( 'plugin_updated', $event_data );
 
 			// Store current version.
 			set_transient( 'sybgo_plugin_version_' . $slug, $plugin_data['Version'], MONTH_IN_SECONDS );
@@ -452,13 +422,7 @@ class Update_Tracker {
 				),
 			);
 
-			// Create event.
-			$this->event_repo->create(
-				array(
-					'event_type' => 'theme_updated',
-					'event_data' => $event_data,
-				)
-			);
+			$this->record( 'theme_updated', $event_data );
 
 			// Store current version.
 			set_transient( 'sybgo_theme_version_' . $theme_slug, $theme->get( 'Version' ), MONTH_IN_SECONDS );
@@ -536,13 +500,7 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'plugin_installed',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'plugin_installed', $event_data );
 	}
 
 	/**
@@ -582,13 +540,7 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'plugin_activated',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'plugin_activated', $event_data );
 	}
 
 	/**
@@ -627,13 +579,7 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'plugin_deactivated',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'plugin_deactivated', $event_data );
 	}
 
 	/**
@@ -673,13 +619,7 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'theme_installed',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'theme_installed', $event_data );
 	}
 
 	/**
@@ -709,12 +649,6 @@ class Update_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'theme_switched',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'theme_switched', $event_data );
 	}
 }

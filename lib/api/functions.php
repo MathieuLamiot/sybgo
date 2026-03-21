@@ -87,7 +87,7 @@ function sybgo_track_event( string $event_type, array $event_data, string $sourc
 	 * @param array  $event_data Event data.
 	 * @param string $event_type Event type.
 	 */
-	$event_data = apply_filters( 'sybgo_before_track_event', $event_data, $event_type );
+	$event_data = wpm_apply_filters_typesafe( 'sybgo_before_track_event', $event_data, $event_type );
 
 	// Build create args.
 	$create_args = array(

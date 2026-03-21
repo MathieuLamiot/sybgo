@@ -411,16 +411,16 @@ class Dashboard_Widget {
 			// Get current week's events.
 			$events = $this->event_repo->get_by_report( null );
 
-			// Generate preview summary.
-			$totals = $this->count_events_by_type( $events );
-
 			// Try to get active report for trends, but don't fail if it doesn't exist.
 			$active_report = $this->report_repo->get_active();
-			$trends        = array();
 
-			if ( $active_report ) {
-				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
-			}
+			// Generate preview summary (totals + trends) without AI.
+			$live_summary = $this->report_generator->generate_live_summary(
+				$events,
+				$active_report ? (int) $active_report['id'] : 0
+			);
+			$totals       = $live_summary['totals'];
+			$trends       = $live_summary['trends'];
 
 			// Generate AI summary if transport is available.
 			$ai_summary = null;
@@ -534,27 +534,5 @@ class Dashboard_Widget {
 			</p>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Count events by type.
-	 *
-	 * @param array<int, array<string, mixed>> $events Events to count.
-	 * @return array<string, int> Counts by type.
-	 */
-	private function count_events_by_type( array $events ): array {
-		$counts = array();
-
-		foreach ( $events as $event ) {
-			$type = $event['event_type'];
-
-			if ( ! isset( $counts[ $type ] ) ) {
-				$counts[ $type ] = 0;
-			}
-
-			++$counts[ $type ];
-		}
-
-		return $counts;
 	}
 }

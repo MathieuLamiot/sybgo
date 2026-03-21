@@ -1,10 +1,10 @@
 === Sybgo - Activity Digest ===
-Contributors: groupone
+Contributors: MathieuLamiot
 Tags: activity, digest, email, notifications
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,3 @@ Sybgo tracks meaningful events (posts, users, updates, comments) and sends a wee
 3. Navigate to Settings > Sybgo to configure email recipients and options.
 
 == Changelog ==
-
-= 1.0.0 =
-* Initial release.

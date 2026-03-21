@@ -205,9 +205,9 @@ change_percent = ((current - previous) / previous) * 100
 ## Manual Operations
 
 ### Manual Freeze & Send
-You can manually trigger a freeze at any time:
+You can manually trigger a freeze at any time from the Reports admin page (`Sybgo Reports` in the WP admin menu).
 
-**Admin UI:** Sybgo Reports → "Freeze & Send Now" button
+The active report always appears as the first row in the reports table, showing the current period start date, a live event count, and a "Freeze & Send Now" action button. Clicking the button opens a confirmation modal before submitting. The form posts to `admin-post.php` with action `sybgo_freeze_now` (handled by `Reports_Page::handle_manual_freeze()`).
 
 This will:
 1. End the current week early
@@ -223,16 +223,26 @@ This will:
 ### Resend Email
 If email delivery failed or you need to send to additional recipients:
 
-**Admin UI:** Sybgo Reports → [View Report] → "Resend Email" button
+**Admin UI:** Sybgo Reports → "Resend Email" button on any frozen or emailed report row.
 
 ### View Past Reports
 **Admin UI:** Sybgo Reports (top-level admin menu)
 
-Table shows all frozen/emailed reports:
-- Date range
-- Total events
-- Status (active, frozen, emailed)
-- Actions (View, Resend)
+The table shows the active (ongoing) report first, followed by all frozen/emailed reports in reverse chronological order:
+- Date range (active row shows "Now" as end date)
+- Live or frozen event count
+- Status badge (Active, Frozen, Sent)
+- Actions (Freeze & Send Now for active row; View Details and Resend Email for past rows)
+
+### Active Report Details (Live Summary)
+
+Clicking **View Details** on the active report row opens the report details page. Because the active report has no frozen `summary_data` yet, Sybgo generates a **live summary** on the fly:
+
+1. Fetches all unassigned events (`report_id IS NULL`).
+2. Calls `Report_Generator::generate_live_summary()`, which runs the same computation pipeline as the freeze process (`totals → trends → highlights → top_authors`) — but skips the AI summarizer and does not persist anything.
+3. Renders the same summary cards and highlights UI as a frozen report.
+
+This gives an accurate, real-time preview of what the next frozen report will look like. The same `generate_live_summary()` method is used by the dashboard widget preview modal.
 
 ## Empty Reports
 

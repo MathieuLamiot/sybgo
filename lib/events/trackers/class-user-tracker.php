@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Sybgo\Events\Trackers;
 
 use Sybgo\Database\Event_Repository;
+use Sybgo\Events\Abstracts\Abstract_Singular_Event;
 
 /**
  * User Tracker class.
@@ -22,26 +23,7 @@ use Sybgo\Database\Event_Repository;
  * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
-class User_Tracker {
-	/**
-	 * Event repository instance.
-	 *
-	 * @var Event_Repository
-	 */
-	private Event_Repository $event_repo;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param Event_Repository $event_repo Event repository instance.
-	 */
-	public function __construct( Event_Repository $event_repo ) {
-		$this->event_repo = $event_repo;
-
-		// Register event types via filter.
-		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
-	}
-
+class User_Tracker extends Abstract_Singular_Event {
 	/**
 	 * Register WordPress hooks.
 	 *
@@ -185,13 +167,7 @@ class User_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'user_registered',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'user_registered', $event_data );
 	}
 
 	/**
@@ -229,13 +205,7 @@ class User_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'user_role_changed',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'user_role_changed', $event_data );
 	}
 
 	/**
@@ -271,12 +241,6 @@ class User_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'user_deleted',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'user_deleted', $event_data );
 	}
 }

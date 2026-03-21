@@ -35,11 +35,34 @@ class Settings_Page {
 	const OPTION_NAME = 'sybgo_settings';
 
 	/**
+	 * Legacy option name for email recipients (pre-1.0 setting, kept for backward compatibility).
+	 *
+	 * @var string
+	 */
+	const LEGACY_OPTION_EMAIL_RECIPIENTS = 'sybgo_email_recipients';
+
+	/**
 	 * Event registry instance.
 	 *
 	 * @var Event_Registry
 	 */
 	private Event_Registry $event_registry;
+
+	/**
+	 * Get all WordPress option names owned by the plugin.
+	 *
+	 * Single source of truth for option names, used both during normal operation
+	 * and during uninstall cleanup.
+	 *
+	 * @return array<string> List of WordPress option names.
+	 * @since 1.0.0
+	 */
+	public static function get_option_names(): array {
+		return array(
+			self::OPTION_NAME,
+			self::LEGACY_OPTION_EMAIL_RECIPIENTS,
+		);
+	}
 
 	/**
 	 * Constructor.

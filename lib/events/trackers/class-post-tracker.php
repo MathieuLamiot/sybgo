@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Sybgo\Events\Trackers;
 
 use Sybgo\Database\Event_Repository;
+use Sybgo\Events\Abstracts\Abstract_Singular_Event;
 
 /**
  * Post Tracker class.
@@ -22,32 +23,13 @@ use Sybgo\Database\Event_Repository;
  * @package Sybgo\Events\Trackers
  * @since   1.0.0
  */
-class Post_Tracker {
-	/**
-	 * Event repository instance.
-	 *
-	 * @var Event_Repository
-	 */
-	private Event_Repository $event_repo;
-
+class Post_Tracker extends Abstract_Singular_Event {
 	/**
 	 * Throttle period in seconds (1 hour).
 	 *
 	 * @var int
 	 */
 	private int $throttle_period = 3600;
-
-	/**
-	 * Constructor.
-	 *
-	 * @param Event_Repository $event_repo Event repository instance.
-	 */
-	public function __construct( Event_Repository $event_repo ) {
-		$this->event_repo = $event_repo;
-
-		// Register event types via filter.
-		add_filter( 'sybgo_event_types', array( $this, 'register_event_types' ) );
-	}
 
 	/**
 	 * Register WordPress hooks.
@@ -189,12 +171,8 @@ class Post_Tracker {
 		}
 
 		// Check throttling.
-		$last_event = $this->event_repo->get_last_event_for_object( 'post_published', $post->ID );
-		if ( $last_event ) {
-			$time_since = time() - strtotime( $last_event['event_timestamp'] );
-			if ( $time_since < $this->throttle_period ) {
-				return; // Skip, within throttle period.
-			}
+		if ( $this->is_throttled( 'post_published', $post->ID, $this->throttle_period ) ) {
+			return; // Skip, within throttle period.
 		}
 
 		// Build event data.
@@ -218,13 +196,7 @@ class Post_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'post_published',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'post_published', $event_data );
 	}
 
 	/**
@@ -252,12 +224,8 @@ class Post_Tracker {
 		}
 
 		// Check throttling (1 event per post per hour).
-		$last_event = $this->event_repo->get_last_event_for_object( 'post_edited', $post_id );
-		if ( $last_event ) {
-			$time_since = time() - strtotime( $last_event['event_timestamp'] );
-			if ( $time_since < $this->throttle_period ) {
-				return; // Skip, within throttle period.
-			}
+		if ( $this->is_throttled( 'post_edited', $post_id, $this->throttle_period ) ) {
+			return; // Skip, within throttle period.
 		}
 
 		// Calculate edit magnitude.
@@ -292,13 +260,7 @@ class Post_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'post_edited',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'post_edited', $event_data );
 	}
 
 	/**
@@ -328,13 +290,7 @@ class Post_Tracker {
 			),
 		);
 
-		// Create event.
-		$this->event_repo->create(
-			array(
-				'event_type' => 'post_deleted',
-				'event_data' => $event_data,
-			)
-		);
+		$this->record( 'post_deleted', $event_data );
 	}
 
 	/**

@@ -16,7 +16,7 @@ namespace Sybgo\Database;
  * DatabaseManager class.
  *
  * This class provides methods for managing database interactions for the Sybgo plugin.
- * Creates and manages three tables: events, reports, and email_log.
+ * Creates and manages four tables: events, reports, email_log, and aggregated_events.
  *
  * @package Sybgo\Database
  * @since   1.0.0
@@ -47,25 +47,70 @@ class DatabaseManager {
 	private string $email_log_table = '';
 
 	/**
+	 * Table name for storing aggregated event counts.
+	 *
+	 * @var string $aggregated_events_table The name of the aggregated events database table.
+	 * @since 1.0.0
+	 */
+	private string $aggregated_events_table = '';
+
+	/**
 	 * Constructor for the DatabaseManager class.
 	 *
-	 * This method initializes the database manager and sets up all required tables.
-	 * Also handles migration from old crawling_results table.
+	 * Initializes table names only. Call maybe_create_tables() explicitly
+	 * when table creation is needed (e.g. on activation or first run).
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
+		$this->init_table_names();
+	}
+
+	/**
+	 * Initialize table name properties from the WordPress prefix.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function init_table_names(): void {
+		$table_names                   = $this->get_table_names();
+		$this->events_table            = $table_names['events'];
+		$this->reports_table           = $table_names['reports'];
+		$this->email_log_table         = $table_names['email_log'];
+		$this->aggregated_events_table = $table_names['aggregated_events'];
+	}
+
+	/**
+	 * Get all table names owned by the plugin.
+	 *
+	 * Single source of truth for plugin table names. Safe to call without
+	 * triggering any table creation (e.g. during uninstall).
+	 *
+	 * @return array<string, string> Table names keyed by identifier.
+	 * @since 1.0.0
+	 */
+	public function get_table_names(): array {
 		global $wpdb;
 
-		// Set table names.
-		$this->events_table    = $wpdb->prefix . 'sybgo_events';
-		$this->reports_table   = $wpdb->prefix . 'sybgo_reports';
-		$this->email_log_table = $wpdb->prefix . 'sybgo_email_log';
+		return array(
+			'events'            => $wpdb->prefix . 'sybgo_events',
+			'reports'           => $wpdb->prefix . 'sybgo_reports',
+			'email_log'         => $wpdb->prefix . 'sybgo_email_log',
+			'aggregated_events' => $wpdb->prefix . 'sybgo_aggregated_events',
+		);
+	}
 
-		// Create tables.
+	/**
+	 * Create or upgrade all plugin database tables, and run migrations.
+	 *
+	 * Must be called explicitly on plugin activation and on init (to handle
+	 * schema upgrades). Safe to call multiple times — dbDelta is idempotent.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function maybe_create_tables(): void {
 		$this->create_tables();
-
-		// Run migration.
 		$this->migrate_from_old_schema();
 	}
 
@@ -125,10 +170,28 @@ class DatabaseManager {
 			INDEX idx_status (status)
 		) $charset_collate;";
 
+		// Aggregated events table - stores daily accumulated values per event type and dimension set.
+		// dimensions_hash is a MySQL generated column (SHA2 of the dimensions JSON blob) used in
+		// the UNIQUE KEY because LONGTEXT columns cannot be indexed directly.
+		// Empty dimensions are encoded as '{}' (not NULL) to produce a stable hash for global rows.
+		$aggregated_events_sql = "CREATE TABLE {$this->aggregated_events_table} (
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			event_type VARCHAR(100) NOT NULL,
+			dimensions LONGTEXT DEFAULT NULL,
+			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
+			value DECIMAL(20,4) NOT NULL DEFAULT 0,
+			date DATE NOT NULL,
+			meta LONGTEXT DEFAULT NULL,
+			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date),
+			INDEX idx_date (date),
+			INDEX idx_event_type (event_type)
+		) $charset_collate;";
+
 		// Execute table creation.
 		dbDelta( $events_sql );
 		dbDelta( $reports_sql );
 		dbDelta( $email_log_sql );
+		dbDelta( $aggregated_events_sql );
 	}
 
 	/**
@@ -153,17 +216,16 @@ class DatabaseManager {
 	}
 
 	/**
-	 * Get table names.
+	 * Drop a single database table.
 	 *
-	 * @return array<string, string> Array of table names keyed by identifier.
+	 * @param string $table Fully-qualified table name (including prefix).
+	 * @return void
 	 * @since 1.0.0
 	 */
-	public function get_table_names(): array {
-		return array(
-			'events'    => $this->events_table,
-			'reports'   => $this->reports_table,
-			'email_log' => $this->email_log_table,
-		);
+	public function drop_table( string $table ): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 
 	/**

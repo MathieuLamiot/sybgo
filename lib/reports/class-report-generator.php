@@ -66,43 +66,58 @@ class Report_Generator {
 	 * @return array<string, mixed> Summary data array.
 	 */
 	public function generate_summary( int $report_id ): array {
-		// Get all events for this report.
-		$events = $this->event_repo->get_by_report( $report_id );
+		$events  = $this->event_repo->get_by_report( $report_id );
+		$summary = $this->compute_report_data( $events, $report_id );
 
-		// Count events by type.
-		$totals = $this->count_events_by_type( $events );
-
-		// Get trend comparison with previous report.
-		$trends = $this->get_trend_comparison( $report_id, $totals );
-
-		// Generate highlights.
-		$highlights = $this->generate_highlights( $totals, $trends );
-
-		// Get top authors.
-		$top_authors = $this->get_top_authors( $events );
-
-		// Generate AI summary.
-		$ai_summary = null;
+		$summary['ai_summary'] = null;
 		if ( null !== $this->ai_summarizer ) {
-			$ai_summary = $this->ai_summarizer->generate_summary(
+			$summary['ai_summary'] = $this->ai_summarizer->generate_summary(
 				$events,
-				$totals,
-				$trends
+				$summary['totals'],
+				$summary['trends']
 			);
 		}
 
-		// Build summary data.
+		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
+	}
+
+	/**
+	 * Generate a live (unsaved) summary for the currently active period.
+	 *
+	 * Used when no frozen summary_data exists yet (active report details page,
+	 * widget preview). Does not call the AI summarizer.
+	 *
+	 * @param array<int, array<string, mixed>> $events           Unassigned events for the period.
+	 * @param int                              $active_report_id Active report ID (for trend comparison).
+	 * @return array<string, mixed> Summary array with totals, trends, highlights, top_authors, total_events.
+	 */
+	public function generate_live_summary( array $events, int $active_report_id ): array {
+		return $this->compute_report_data( $events, $active_report_id );
+	}
+
+	/**
+	 * Compute the core report data shared by generate_summary() and generate_live_summary().
+	 *
+	 * @param array<int, array<string, mixed>> $events    Events for the period.
+	 * @param int                              $report_id Report ID (used for trend comparison).
+	 * @return array<string, mixed> Data array with totals, trends, highlights, top_authors, total_events.
+	 */
+	private function compute_report_data( array $events, int $report_id ): array {
+		$totals      = $this->count_events_by_type( $events );
+		$trends      = $this->get_trend_comparison( $report_id, $totals );
+		$highlights  = $this->generate_highlights( $totals, $trends );
+		$top_authors = $this->get_top_authors( $events );
+
 		$summary = array(
 			'totals'       => $totals,
 			'trends'       => $trends,
 			'highlights'   => $highlights,
 			'top_authors'  => $top_authors,
 			'total_events' => count( $events ),
-			'ai_summary'   => $ai_summary,
 		);
 
 		// Allow filtering.
-		return apply_filters( 'sybgo_report_summary', $summary, $report_id );
+		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
 	}
 
 	/**
