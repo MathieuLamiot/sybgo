@@ -311,7 +311,7 @@ class Settings_Page {
 		// Check if cleanup was run.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display, no state change.
 		if ( isset( $_GET['cleanup-done'] ) ) {
-			$deleted = absint( $_GET['cleanup-done'] );
+			$deleted = absint( $_GET['cleanup-done'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display of cleanup result count; no state change occurs here.
 			add_settings_error(
 				'sybgo_messages',
 				'sybgo_cleanup_done',
