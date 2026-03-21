@@ -90,11 +90,16 @@ Automatically create human-readable highlights:
 If an Anthropic API key is configured in settings, an AI-generated summary is also produced via the Claude API and stored in `summary_data.ai_summary`.
 
 ### Step 5: Assign Events to Report
+
+Both singular events and aggregated rows are assigned to the new report in bulk:
+
 ```sql
-UPDATE wp_sybgo_events
-SET report_id = 123
-WHERE report_id IS NULL;
+UPDATE wp_sybgo_events SET report_id = 123 WHERE report_id IS NULL;
+UPDATE wp_sybgo_aggregated_events SET report_id = 123
+  WHERE report_id IS NULL AND date BETWEEN '2026-02-10' AND '2026-02-16';
 ```
+
+Assigning `report_id` on `wp_sybgo_aggregated_events` rows is what resets the PHP error cap and the dashboard widget's error display — after the freeze, `report_id IS NULL` returns an empty set and the new period starts clean. The `Aggregated_Event_Repository::assign_to_report()` method handles this step.
 
 ### Step 6: Save Report
 ```json
@@ -215,7 +220,7 @@ This will:
 3. Send email immediately
 4. Create new active report
 
-The new active report's `created_at` timestamp is used by the dashboard widget's PHP Errors section to detect a same-day freeze: when `created_at` falls on today's date, the widget uses tomorrow as the query floor so that pre-freeze errors (which share the same calendar date) are excluded from the new period's display.
+After a freeze, the dashboard widget's PHP Errors section automatically shows only errors from the new period because `Aggregated_Event_Repository` queries by `report_id IS NULL`. The freeze assigns a `report_id` to all existing aggregated rows, so the unassigned set is empty immediately after and the new period starts clean.
 
 **Use cases:**
 - Testing email template
