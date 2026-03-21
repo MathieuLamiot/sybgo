@@ -40,27 +40,16 @@ class ReportGeneratorTest extends TestCase {
 	private $report_repo;
 
 	/**
-	 * Mock AI summarizer.
-	 *
-	 * @var Mockery\MockInterface
-	 */
-	private $ai_summarizer;
-
-	/**
 	 * Set up test environment.
 	 */
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
 
-		$this->event_repo    = Mockery::mock( 'Sybgo\Database\Event_Repository' );
-		$this->report_repo   = Mockery::mock( 'Sybgo\Database\Report_Repository' );
-		$this->ai_summarizer = Mockery::mock( 'Sybgo\AI\AI_Summarizer' );
+		$this->event_repo  = Mockery::mock( 'Sybgo\Database\Event_Repository' );
+		$this->report_repo = Mockery::mock( 'Sybgo\Database\Report_Repository' );
 
-		// Mock AI summarizer to return null (no API key configured).
-		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( null );
-
-		$this->generator = new Report_Generator( $this->event_repo, $this->report_repo, $this->ai_summarizer );
+		$this->generator = new Report_Generator( $this->event_repo, $this->report_repo );
 
 		// Mock WordPress filters - apply_filters returns the value being filtered.
 		Functions\when( 'apply_filters' )->alias( function( $hook, $value ) {
@@ -125,6 +114,8 @@ class ReportGeneratorTest extends TestCase {
 		$this->assertEquals( 3, $summary['total_events'] );
 		$this->assertEquals( 2, $summary['totals']['post_published'] );
 		$this->assertEquals( 1, $summary['totals']['user_registered'] );
+		$this->assertArrayHasKey( 'ai_summary', $summary );
+		$this->assertNull( $summary['ai_summary'] );
 	}
 
 	/**
@@ -281,28 +272,6 @@ class ReportGeneratorTest extends TestCase {
 		$this->assertStringContainsString( '3 new users registered', $highlights[1] );
 		$this->assertStringContainsString( '↓', $highlights[1] );
 		$this->assertStringContainsString( '25.0%', $highlights[1] );
-	}
-
-	/**
-	 * Test generate_summary skips AI when summarizer is null.
-	 */
-	public function test_generate_summary_skips_ai_when_summarizer_is_null() {
-		$generator = new Report_Generator( $this->event_repo, $this->report_repo, null );
-
-		$this->event_repo->shouldReceive( 'get_by_report' )
-			->once()
-			->with( 1 )
-			->andReturn( array() );
-
-		$this->report_repo->shouldReceive( 'get_all_frozen' )
-			->once()
-			->andReturn( array() );
-
-		$summary = $generator->generate_summary( 1 );
-
-		$this->assertIsArray( $summary );
-		$this->assertArrayHasKey( 'ai_summary', $summary );
-		$this->assertNull( $summary['ai_summary'] );
 	}
 
 	/**

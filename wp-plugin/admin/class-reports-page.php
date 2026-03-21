@@ -22,6 +22,7 @@ use Sybgo\Reports\Report_Manager;
 use Sybgo\Reports\Report_Generator;
 use Sybgo\Email\Email_Manager;
 use Sybgo\Events\Event_Registry;
+use Sybgo\AI\AI_Summarizer;
 
 /**
  * Reports Page class.
@@ -75,14 +76,22 @@ class Reports_Page {
 	private Event_Registry $event_registry;
 
 	/**
+	 * AI summarizer instance.
+	 *
+	 * @var AI_Summarizer|null
+	 */
+	private ?AI_Summarizer $ai_summarizer;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Manager    $report_manager Report manager.
-	 * @param Report_Generator  $report_generator Report generator.
-	 * @param Email_Manager     $email_manager Email manager.
-	 * @param Event_Registry    $event_registry Event registry.
+	 * @param Event_Repository   $event_repo       Event repository.
+	 * @param Report_Repository  $report_repo      Report repository.
+	 * @param Report_Manager     $report_manager   Report manager.
+	 * @param Report_Generator   $report_generator Report generator.
+	 * @param Email_Manager      $email_manager    Email manager.
+	 * @param Event_Registry     $event_registry   Event registry.
+	 * @param AI_Summarizer|null $ai_summarizer    AI summarizer or null if unavailable.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
@@ -90,7 +99,8 @@ class Reports_Page {
 		Report_Manager $report_manager,
 		Report_Generator $report_generator,
 		Email_Manager $email_manager,
-		Event_Registry $event_registry
+		Event_Registry $event_registry,
+		?AI_Summarizer $ai_summarizer = null
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
@@ -98,6 +108,7 @@ class Reports_Page {
 		$this->report_generator = $report_generator;
 		$this->email_manager    = $email_manager;
 		$this->event_registry   = $event_registry;
+		$this->ai_summarizer    = $ai_summarizer;
 	}
 
 	/**
@@ -109,6 +120,7 @@ class Reports_Page {
 		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
 		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
 		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
+		add_action( 'wp_ajax_sybgo_generate_ai_summary', array( $this, 'ajax_generate_ai_summary' ) );
 	}
 
 	/**
@@ -532,6 +544,70 @@ class Reports_Page {
 							<?php endforeach; ?>
 						</ul>
 					<?php endif; ?>
+
+					<?php if ( 'active' !== $report['status'] ) : ?>
+						<div class="sybgo-ai-summary-section" style="margin-top: 20px;">
+							<h3><?php esc_html_e( 'AI Summary', 'sybgo' ); ?></h3>
+
+							<div
+								id="sybgo-ai-summary-box"
+								class="sybgo-ai-summary-box"
+								style="<?php echo ! empty( $summary['ai_summary'] ) ? '' : 'display:none;'; ?>background: #f0f6fc; border-left: 4px solid #0073aa; padding: 15px; margin-bottom: 15px; border-radius: 4px;"
+							>
+								<p id="sybgo-ai-summary-text" style="margin: 0; line-height: 1.6; color: #23282d;">
+									<?php echo esc_html( $summary['ai_summary'] ?? '' ); ?>
+								</p>
+							</div>
+
+							<button
+								type="button"
+								id="sybgo-generate-ai-btn"
+								class="button button-secondary sybgo-generate-ai-btn"
+								data-report-id="<?php echo esc_attr( (string) $report_id ); ?>"
+								<?php if ( null === $this->ai_summarizer ) : ?>
+									disabled
+									title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
+								<?php endif; ?>
+							>
+								<?php
+								if ( ! empty( $summary['ai_summary'] ) ) {
+									esc_html_e( 'Regenerate AI Summary', 'sybgo' );
+								} else {
+									esc_html_e( 'Generate AI Summary', 'sybgo' );
+								}
+								?>
+							</button>
+
+							<script>
+							jQuery( document ).ready( function( $ ) {
+								$( '#sybgo-generate-ai-btn' ).on( 'click', function() {
+									var reportId = $( this ).data( 'report-id' );
+									var $btn = $( this );
+									$btn.prop( 'disabled', true ).text( '<?php echo esc_js( __( 'Generating…', 'sybgo' ) ); ?>' );
+									$.post(
+										sybgoAdmin.ajaxUrl,
+										{
+											action: 'sybgo_generate_ai_summary',
+											nonce: sybgoAdmin.nonce,
+											report_id: reportId
+										},
+										function( response ) {
+											if ( response.success ) {
+												$( '#sybgo-ai-summary-text' ).text( response.data.summary );
+												$( '#sybgo-ai-summary-box' ).show();
+												$btn.text( '<?php echo esc_js( __( 'Regenerate AI Summary', 'sybgo' ) ); ?>' );
+											} else {
+												// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+												alert( response.data && response.data.message ? response.data.message : '<?php echo esc_js( __( 'Could not generate summary. Please try again.', 'sybgo' ) ); ?>' );
+											}
+											$btn.prop( 'disabled', false );
+										}
+									);
+								} );
+							} );
+							</script>
+						</div>
+					<?php endif; ?>
 				</div>
 			<?php endif; ?>
 
@@ -762,5 +838,54 @@ class Reports_Page {
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * AJAX handler: generate and persist an AI summary for a specific report.
+	 *
+	 * Requires nonce `sybgo_admin_nonce` and `manage_options` capability.
+	 * Returns JSON with `success: true` and `summary` string on success.
+	 *
+	 * @return void
+	 */
+	public function ajax_generate_ai_summary(): void {
+		check_ajax_referer( 'sybgo_admin_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'sybgo' ) ) );
+			return;
+		}
+
+		if ( null === $this->ai_summarizer ) {
+			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
+			return;
+		}
+
+		$report_id = isset( $_POST['report_id'] ) ? absint( $_POST['report_id'] ) : 0;
+
+		if ( ! $report_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid report ID.', 'sybgo' ) ) );
+			return;
+		}
+
+		$report = $this->report_repo->get_by_id( $report_id );
+
+		if ( ! $report ) {
+			wp_send_json_error( array( 'message' => __( 'Report not found.', 'sybgo' ) ) );
+			return;
+		}
+
+		$events       = $this->event_repo->get_by_report( $report_id );
+		$live_summary = $this->report_generator->generate_live_summary( $events, $report_id );
+		$ai_summary   = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+
+		if ( null === $ai_summary ) {
+			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
+			return;
+		}
+
+		$this->report_repo->set_ai_summary( $report_id, $ai_summary );
+
+		wp_send_json_success( array( 'summary' => $ai_summary ) );
 	}
 }

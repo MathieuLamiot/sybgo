@@ -1,0 +1,186 @@
+<?php
+/**
+ * Dashboard Widget Unit Tests
+ *
+ * @package Sybgo\Tests\Unit\Admin
+ */
+
+declare(strict_types=1);
+
+namespace Sybgo\Tests\Unit\Admin;
+
+use Sybgo\Admin\Dashboard_Widget;
+use Sybgo\Database\Event_Repository;
+use Sybgo\Database\Report_Repository;
+use Sybgo\Reports\Report_Generator;
+use Sybgo\AI\AI_Summarizer;
+use Sybgo\Events\Event_Registry;
+use Brain\Monkey;
+use Brain\Monkey\Functions;
+use Mockery;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Test Dashboard_Widget rendering and AJAX methods.
+ */
+class DashboardWidgetTest extends TestCase {
+
+	/**
+	 * @var \Mockery\MockInterface&Event_Repository
+	 */
+	private $event_repo;
+
+	/**
+	 * @var \Mockery\MockInterface&Report_Repository
+	 */
+	private $report_repo;
+
+	/**
+	 * @var \Mockery\MockInterface&Report_Generator
+	 */
+	private $report_generator;
+
+	/**
+	 * @var \Mockery\MockInterface&AI_Summarizer
+	 */
+	private $ai_summarizer;
+
+	/**
+	 * @var Dashboard_Widget
+	 */
+	private Dashboard_Widget $widget;
+
+	/**
+	 * Set up test environment.
+	 */
+	protected function setUp(): void {
+		parent::setUp();
+		Monkey\setUp();
+
+		$this->event_repo       = Mockery::mock( Event_Repository::class );
+		$this->report_repo      = Mockery::mock( Report_Repository::class );
+		$this->report_generator = Mockery::mock( Report_Generator::class );
+		$this->ai_summarizer    = Mockery::mock( AI_Summarizer::class );
+
+		$this->widget = new Dashboard_Widget(
+			$this->event_repo,
+			$this->report_repo,
+			$this->report_generator,
+			$this->ai_summarizer,
+			Mockery::mock( Event_Registry::class )
+		);
+
+		Functions\when( 'esc_html' )->returnArg();
+		Functions\when( 'esc_attr' )->returnArg();
+		Functions\when( 'esc_url' )->returnArg();
+		Functions\when( '__' )->returnArg();
+		Functions\when( 'esc_html_e' )->alias(
+			function ( string $text ) {
+				echo $text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			}
+		);
+		Functions\when( 'esc_attr_e' )->alias(
+			function ( string $text ) {
+				echo $text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			}
+		);
+		Functions\when( 'human_time_diff' )->justReturn( '1 hour' );
+		Functions\when( 'admin_url' )->returnArg();
+	}
+
+	/**
+	 * Tear down test environment.
+	 */
+	protected function tearDown(): void {
+		Monkey\tearDown();
+		Mockery::close();
+		parent::tearDown();
+	}
+
+	/**
+	 * Capture output from a public rendering method.
+	 */
+	private function capture( string $method, array $args = [] ): string {
+		$ref = new \ReflectionMethod( Dashboard_Widget::class, $method );
+		$ref->setAccessible( true );
+		ob_start();
+		$ref->invokeArgs( $this->widget, $args );
+		return (string) ob_get_clean();
+	}
+
+	// -------------------------------------------------------------------------
+	// render_widget() — "Get AI Summary" button
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Widget should render the "Get AI Summary" button when AI summarizer is available.
+	 */
+	public function test_render_widget_shows_get_ai_summary_button_when_summarizer_available(): void {
+		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+
+		$output = $this->capture( 'render_widget' );
+
+		$this->assertStringContainsString( 'sybgo-widget-ai-btn', $output );
+		$this->assertStringContainsString( 'Get AI Summary', $output );
+		// Button should NOT be disabled when summarizer is available.
+		$this->assertStringNotContainsString( 'Requires WordPress 7', $output );
+	}
+
+	/**
+	 * Widget should render a disabled "Get AI Summary" button when AI summarizer is null.
+	 */
+	public function test_render_widget_disables_get_ai_summary_button_when_no_summarizer(): void {
+		$event_repo  = Mockery::mock( Event_Repository::class );
+		$report_repo = Mockery::mock( Report_Repository::class );
+
+		$widget_no_ai = new Dashboard_Widget(
+			$event_repo,
+			$report_repo,
+			$this->report_generator,
+			null,
+			Mockery::mock( Event_Registry::class )
+		);
+
+		$report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
+		$event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+
+		$ref = new \ReflectionMethod( Dashboard_Widget::class, 'render_widget' );
+		$ref->setAccessible( true );
+		ob_start();
+		$ref->invokeArgs( $widget_no_ai, [] );
+		$output = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'sybgo-widget-ai-btn', $output );
+		$this->assertStringContainsString( 'disabled', $output );
+		$this->assertStringContainsString( 'AI summaries require WordPress 7', $output );
+	}
+
+	// -------------------------------------------------------------------------
+	// ajax_preview_digest() — no longer calls AI
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Preview digest AJAX must not call AI summarizer.
+	 */
+	public function test_ajax_preview_digest_does_not_call_ai_summarizer(): void {
+		Functions\when( 'check_ajax_referer' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'wp_send_json_success' )->justReturn();
+		Functions\when( 'wp_send_json_error' )->justReturn();
+		Functions\when( 'absint' )->alias( 'absint' );
+
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( null );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->andReturn( array( 'totals' => array(), 'trends' => array() ) );
+
+		// AI summarizer must NOT be called.
+		$this->ai_summarizer->shouldNotReceive( 'generate_summary' );
+
+		$this->widget->ajax_preview_digest();
+
+		// Mockery expectation is the assertion; add count so PHPUnit doesn't flag as risky.
+		$this->addToAssertionCount( 1 );
+	}
+}

@@ -257,6 +257,36 @@ class Report_Repository {
 	}
 
 	/**
+	 * Set or update the AI summary for a report.
+	 *
+	 * Reads the existing summary_data JSON, merges in the ai_summary string,
+	 * and persists the updated JSON back to the database.
+	 *
+	 * @param int    $report_id Report ID.
+	 * @param string $summary   AI-generated summary text.
+	 * @return bool True on success, false if the report was not found or update failed.
+	 */
+	public function set_ai_summary( int $report_id, string $summary ): bool {
+		$report = $this->get_by_id( $report_id );
+
+		if ( ! $report ) {
+			return false;
+		}
+
+		$existing = ! empty( $report['summary_data'] )
+			? json_decode( $report['summary_data'], true )
+			: array();
+
+		if ( ! is_array( $existing ) ) {
+			$existing = array();
+		}
+
+		$existing['ai_summary'] = $summary;
+
+		return $this->update( $report_id, array( 'summary_data' => $existing ) );
+	}
+
+	/**
 	 * Get the table name.
 	 *
 	 * @return string Table name.
