@@ -271,6 +271,7 @@ class AggregatedEventRepositoryTest extends TestCase {
 					function ( $sql ) {
 						return false !== strpos( $sql, 'report_id IS NULL' )
 							&& false !== strpos( $sql, 'SET report_id' )
+							&& false !== strpos( $sql, 'is_assigned' )
 							&& false !== strpos( $sql, 'BETWEEN' );
 					}
 				),

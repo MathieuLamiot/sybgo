@@ -68,8 +68,8 @@ class Aggregated_Event_Repository {
 
 		$result = $wpdb->query(
 			$wpdb->prepare(
-				"INSERT INTO {$this->table} (event_type, dimensions, value, date, meta)
-				VALUES (%s, %s, %f, %s, %s)
+				"INSERT INTO {$this->table} (event_type, dimensions, value, date, meta, is_assigned)
+				VALUES (%s, %s, %f, %s, %s, 0)
 				ON DUPLICATE KEY UPDATE value = value + VALUES(value), meta = VALUES(meta)",
 				$event_type,
 				$dimensions_json,
@@ -226,7 +226,7 @@ class Aggregated_Event_Repository {
 		$wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$this->table}
-				 SET report_id = %d
+				 SET report_id = %d, is_assigned = 1
 				 WHERE report_id IS NULL AND date BETWEEN %s AND %s",
 				$report_id,
 				$date_from,

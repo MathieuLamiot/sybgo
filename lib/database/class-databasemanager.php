@@ -112,6 +112,7 @@ class DatabaseManager {
 	public function maybe_create_tables(): void {
 		$this->create_tables();
 		$this->migrate_from_old_schema();
+		$this->migrate_aggregated_events_is_assigned();
 	}
 
 	/**
@@ -174,6 +175,9 @@ class DatabaseManager {
 		// dimensions_hash is a MySQL generated column (SHA2 of the dimensions JSON blob) used in
 		// the UNIQUE KEY because LONGTEXT columns cannot be indexed directly.
 		// Empty dimensions are encoded as '{}' (not NULL) to produce a stable hash for global rows.
+		// is_assigned is 0 for rows belonging to the current unassigned period, 1 after freeze.
+		// It is part of the UNIQUE KEY so that a post-freeze upsert for the same signature creates
+		// a fresh row (is_assigned=0) rather than incrementing the already-frozen row (is_assigned=1).
 		$aggregated_events_sql = "CREATE TABLE {$this->aggregated_events_table} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			event_type VARCHAR(100) NOT NULL,
@@ -181,9 +185,10 @@ class DatabaseManager {
 			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
 			value DECIMAL(20,4) NOT NULL DEFAULT 0,
 			report_id BIGINT UNSIGNED DEFAULT NULL,
+			is_assigned TINYINT(1) NOT NULL DEFAULT 0,
 			date DATE NOT NULL,
 			meta LONGTEXT DEFAULT NULL,
-			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date),
+			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, is_assigned),
 			INDEX idx_report_id (report_id),
 			INDEX idx_date (date),
 			INDEX idx_event_type (event_type)
@@ -215,6 +220,34 @@ class DatabaseManager {
 			// Drop old table.
 			$wpdb->query( "DROP TABLE IF EXISTS $old_table" );
 		}
+	}
+
+	/**
+	 * Add the is_assigned column and update the UNIQUE KEY on wp_sybgo_aggregated_events.
+	 *
+	 * DbDelta cannot drop or rename an existing unique key, so this migration runs an
+	 * explicit ALTER TABLE. It is guarded by checking whether the is_assigned column already
+	 * exists, making it safe to call multiple times.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function migrate_aggregated_events_is_assigned(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$this->aggregated_events_table} LIKE %s", 'is_assigned' ) );
+		if ( ! empty( $col ) ) {
+			return; // Already migrated.
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$this->aggregated_events_table}
+			 ADD COLUMN is_assigned TINYINT(1) NOT NULL DEFAULT 0,
+			 DROP INDEX uq_event_dim_date,
+			 ADD UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, is_assigned)"
+		);
 	}
 
 	/**
