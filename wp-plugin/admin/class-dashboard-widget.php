@@ -143,23 +143,11 @@ class Dashboard_Widget {
 			return;
 		}
 
-		wp_enqueue_style(
-			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.css', __DIR__ ),
-			array(),
-			'1.0.0'
-		);
-
-		wp_enqueue_script(
-			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.js', __DIR__ ),
-			array( 'jquery' ),
-			'1.0.0',
-			true
-		);
-
+		// Localize sybgoWidget onto the sybgo-admin script already enqueued by
+		// Sybgo::enqueue_admin_assets(). We do not register a separate JS file
+		// here to avoid duplicate event bindings that cause multiple modals.
 		wp_localize_script(
-			'sybgo-dashboard-widget',
+			'sybgo-admin',
 			'sybgoWidget',
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
