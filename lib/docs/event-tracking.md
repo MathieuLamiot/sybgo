@@ -106,7 +106,7 @@ To prevent database bloat from frequent auto-saves, Sybgo throttles edit events:
 
 The following PHP error levels are captured: `E_WARNING`, `E_NOTICE`, `E_USER_ERROR`, `E_USER_WARNING`, `E_USER_NOTICE`, `E_DEPRECATED`, `E_USER_DEPRECATED`. Fatal levels (`E_ERROR`, `E_PARSE`, etc.) cannot be intercepted by a user-defined handler and are not tracked.
 
-Errors suppressed with the `@` operator are detected by checking `error_reporting() & $errno` and silently skipped.
+Errors suppressed with the `@` operator are detected by comparing `error_reporting()` at handler invocation time against the mask captured at handler registration time. Any difference indicates `@`-suppression and the error is silently skipped. This approach works reliably across all PHP versions.
 
 ### Error signatures and dimensions
 
@@ -114,9 +114,9 @@ Each error occurrence is identified by a **signature**: an md5 hash of `file:lin
 
 The `meta` column stores a snapshot: `file`, `line`, and the first 100 characters of the message, for display purposes.
 
-### Daily cap
+### Per-period cap
 
-To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per day. Once 5 distinct rows exist for `event_type = 'php_error'` on a given date, new signatures are dropped. Already-known signatures continue to accumulate. The cap check uses `Aggregated_Event_Repository::count_distinct_dimensions_for_date()`.
+To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` calls `Report_Repository::get_active()` (cached for 5 minutes) to determine the current period start date, then queries `Aggregated_Event_Repository::count_distinct_dimensions_for_date_range()` from that date through today. Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. Because `get_active()` is called on every error rather than once at boot, the cap automatically reflects the new period immediately after a manual freeze.
 
 ### Handler chaining
 
@@ -197,7 +197,7 @@ Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggreg
 
 `Aggregated_Event_Repository` exposes three read methods beyond `upsert`:
 
-- `count_distinct_dimensions_for_date(string $event_type, string $date): int` — counts distinct dimension sets recorded for a given event type and date. Used by `Error_Tracker` to enforce the daily 5-signature cap.
+- `count_distinct_dimensions_for_date_range(string $event_type, string $date_from, string $date_to): int` — counts distinct dimension sets recorded for a given event type across a date range. Used by `Error_Tracker` to enforce the 5-signature-per-period cap.
 - `get_sum_for_date_range(string $event_type, string $date_from, string $date_to): float` — sums all accumulated values across a date range. Used by the dashboard widget for total error occurrence counts.
 - `get_rows_for_event_type_and_date_range(string $event_type, string $date_from, string $date_to): array` — returns one row per distinct dimension set (grouped by `dimensions_hash`) with `SUM(value) AS total`, ordered by total descending. Each row contains `dimensions`, `total`, and `meta`. Used by the dashboard PHP Errors section (top-5 slice) and by the report detail view PHP Errors table.
 

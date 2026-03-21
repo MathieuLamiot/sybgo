@@ -215,6 +215,8 @@ This will:
 3. Send email immediately
 4. Create new active report
 
+The new active report's `created_at` timestamp is used by the dashboard widget's PHP Errors section to detect a same-day freeze: when `created_at` falls on today's date, the widget uses tomorrow as the query floor so that pre-freeze errors (which share the same calendar date) are excluded from the new period's display.
+
 **Use cases:**
 - Testing email template
 - Sending mid-week updates
