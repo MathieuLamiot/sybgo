@@ -4,12 +4,12 @@
  *
  * @package Sybgo
  *
- * Plugin Name: Sybgo - Activity Digest
+ * Plugin Name: Sybgo
  * Plugin URI: https://github.com/your-repo/sybgo
  * Description: Tracks meaningful WordPress events and sends weekly email digests. Since You've Been Gone - stay informed about what's happening on your site.
- * Version: 1.0.0
- * Author: GroupOne
- * Author URI: https://groupone.dev
+ * Version: 0.1.0
+ * Author: MathieuLamiot
+ * Author URI: https://mathieulamiot.com
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: sybgo

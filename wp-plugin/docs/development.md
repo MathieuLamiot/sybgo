@@ -48,7 +48,7 @@ composer require --dev mockery/mockery
 
 ## Code Standards
 
-Sybgo follows WordPress Coding Standards and GroupOne technical standards.
+Sybgo follows WordPress Coding Standards and group.one technical standards.
 
 ### Check Code
 

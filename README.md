@@ -1,6 +1,6 @@
 # Sybgo - Monorepo
 
-**Since You've Been Gone** — WordPress activity digest plugin and its PHP library, managed as a monorepo.
+**Since You've Been Gone** — Sybgo plugin and its PHP library, managed as a monorepo.
 
 ## Repository Structure
 
