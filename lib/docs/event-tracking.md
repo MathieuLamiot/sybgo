@@ -104,7 +104,7 @@ To prevent database bloat from frequent auto-saves, Sybgo throttles edit events:
 
 ### What is captured
 
-The following PHP error levels are captured: `E_WARNING`, `E_NOTICE`, `E_USER_ERROR`, `E_USER_WARNING`, `E_USER_NOTICE`, `E_DEPRECATED`, `E_USER_DEPRECATED`. Fatal levels (`E_ERROR`, `E_PARSE`, etc.) cannot be intercepted by a user-defined handler and are not tracked.
+Non-fatal PHP errors are captured via `set_error_handler()`: `E_WARNING`, `E_NOTICE`, `E_USER_ERROR`, `E_USER_WARNING`, `E_USER_NOTICE`, `E_DEPRECATED`, `E_USER_DEPRECATED`. Fatal levels (`E_ERROR`, `E_PARSE`, `E_CORE_ERROR`, `E_COMPILE_ERROR`) bypass `set_error_handler()` and are captured instead via a `register_shutdown_function()` callback that inspects `error_get_last()`. The daily cap (see below) is not enforced for fatals, since a fatal terminates the request immediately and cannot produce a loop.
 
 Errors suppressed with the `@` operator are detected by comparing `error_reporting()` at handler invocation time against the mask captured at handler registration time. Any difference indicates `@`-suppression and the error is silently skipped. This approach works reliably across all PHP versions.
 
@@ -116,7 +116,7 @@ The `meta` column stores a snapshot: `file`, `line`, and the first 100 character
 
 ### Per-period cap
 
-To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` calls `Report_Repository::get_active()` (cached for 5 minutes) to determine the current period start date, then queries `Aggregated_Event_Repository::count_distinct_dimensions_for_date_range()` from that date through today. Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. Because `get_active()` is called on every error rather than once at boot, the cap automatically reflects the new period immediately after a manual freeze.
+To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows whose `report_id IS NULL` (i.e. the current, not-yet-frozen period). Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. The cap resets automatically after a freeze because the freeze operation assigns a `report_id` to existing rows, making the unassigned set empty again.
 
 ### Handler chaining
 
@@ -128,11 +128,11 @@ The WordPress admin dashboard widget includes a **PHP Errors** section that show
 
 - The number of distinct error signatures recorded during the current report period.
 - The total occurrence count for those signatures.
-- A top-5 list of errors, each entry showing a level emoji (warning/user_warning → ⚠️, notice/user_notice → ℹ️, deprecated/user_deprecated → 🔔, user_error → ❌), the error message, the file and line number, and the occurrence count.
+- A top-5 list of errors, each entry showing a level emoji (warning/user_warning → ⚠️, notice/user_notice → ℹ️, deprecated/user_deprecated → 🔔, user_error → ❌), the error message, the filename and line number, and the occurrence count.
 
-The section only renders when at least one error has been recorded in the period. Error counts use `Aggregated_Event_Repository::get_sum_for_date_range()` and the per-signature breakdown uses `Aggregated_Event_Repository::get_rows_for_event_type_and_date_range()`.
+The section only renders when at least one error has been recorded in the period. Both the total count and the per-signature breakdown are fetched using the report-scoped repository methods (`get_sum_for_report` and `get_rows_for_report` with `report_id = null`), which scope the query to unassigned rows rather than a calendar date range.
 
-The report details page (Sybgo Reports → View Details) also renders a **PHP Errors** table below the All Events table, with one row per distinct error signature. The table is populated by `Reports_Page::render_php_errors_table()` using the same `get_rows_for_event_type_and_date_range()` query scoped to the report's date range.
+The report details page (Sybgo Reports → View Details) also renders a **PHP Errors** table below the All Events table, with one row per distinct error signature. The table is populated by `Reports_Page::render_php_errors_table()` using `Aggregated_Event_Repository::get_rows_for_report()` — passing `null` for the active report or the numeric `report_id` for frozen/emailed reports.
 
 ## Edit Magnitude Tracking
 
@@ -195,11 +195,13 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 
 Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date)` so each `(event_type, dimension set, date)` combination has at most one row.
 
-`Aggregated_Event_Repository` exposes three read methods beyond `upsert`:
+`Aggregated_Event_Repository` exposes read methods beyond `upsert`. The primary query interface is report-scoped — passing `null` targets unassigned rows (current active period); passing an integer targets a specific frozen report:
 
-- `count_distinct_dimensions_for_date_range(string $event_type, string $date_from, string $date_to): int` — counts distinct dimension sets recorded for a given event type across a date range. Used by `Error_Tracker` to enforce the 5-signature-per-period cap.
-- `get_sum_for_date_range(string $event_type, string $date_from, string $date_to): float` — sums all accumulated values across a date range. Used by the dashboard widget for total error occurrence counts.
-- `get_rows_for_event_type_and_date_range(string $event_type, string $date_from, string $date_to): array` — returns one row per distinct dimension set (grouped by `dimensions_hash`) with `SUM(value) AS total`, ordered by total descending. Each row contains `dimensions`, `total`, and `meta`. Used by the dashboard PHP Errors section (top-5 slice) and by the report detail view PHP Errors table.
+- `count_distinct_dimensions_for_report(string $event_type, ?int $report_id): int` — counts distinct dimension sets for the current or a past period. Used by `Error_Tracker` to enforce the 5-signature-per-period cap.
+- `get_sum_for_report(string $event_type, ?int $report_id): float` — sums all accumulated values for the period. Used by the dashboard widget for total error occurrence counts.
+- `get_rows_for_report(string $event_type, ?int $report_id): array` — returns one row per distinct dimension set (grouped by `dimensions_hash`) with `SUM(value) AS total`, ordered by total descending. Each row contains `dimensions`, `total`, and `meta`. Used by the dashboard PHP Errors section and by the report detail view.
+
+Date-range variants (`count_distinct_dimensions_for_date_range`, `get_sum_for_date_range`, `get_rows_for_event_type_and_date_range`) are also available for cases where a calendar range is needed rather than a report boundary.
 
 The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tables()`):
 
@@ -210,6 +212,7 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 | `dimensions` | LONGTEXT | JSON blob of breakdown axes, e.g. `{"role":"editor","product_id":42}`. Empty = `'{}'` (global row). |
 | `dimensions_hash` | VARCHAR(64) | SHA2-256 of `dimensions`, computed by MySQL automatically. Used in the UNIQUE KEY. |
 | `value` | DECIMAL(20,4) | Accumulated value for the day (count or sum). Default 0. |
+| `report_id` | BIGINT UNSIGNED | Foreign key to `wp_sybgo_reports`. NULL = current unassigned period. Set during freeze via `assign_to_report()`. |
 | `date` | DATE | Date of the aggregation (Y-m-d) |
 | `meta` | LONGTEXT | Optional JSON context snapshot (overwritten on conflict, not accumulated) |
 
