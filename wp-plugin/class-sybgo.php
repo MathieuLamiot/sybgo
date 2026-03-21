@@ -150,8 +150,9 @@ class Sybgo {
 	 */
 	private function init_event_tracking(): void {
 		// Initialize event tracker.
-		$event_repo    = $this->factory->create_event_repository();
-		$event_tracker = new Events\Event_Tracker( $event_repo );
+		$event_repo      = $this->factory->create_event_repository();
+		$aggregated_repo = $this->factory->create_aggregated_event_repository();
+		$event_tracker   = new Events\Event_Tracker( $event_repo, $aggregated_repo );
 		$event_tracker->init();
 
 		// Store in factory for later use.
@@ -201,6 +202,7 @@ class Sybgo {
 		$report_repo      = $this->factory->create_report_repository();
 		$event_registry   = $this->factory->create_event_registry();
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
+		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
 		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
 
 		return new Admin\Dashboard_Widget(
@@ -208,7 +210,8 @@ class Sybgo {
 			$report_repo,
 			$report_generator,
 			$ai_summarizer,
-			$event_registry
+			$event_registry,
+			$aggregated_repo
 		);
 	}
 

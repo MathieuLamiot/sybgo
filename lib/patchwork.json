@@ -1,0 +1,7 @@
+{
+    "redefinable-internals": [
+        "error_reporting",
+        "gmdate",
+        "set_error_handler"
+    ]
+}

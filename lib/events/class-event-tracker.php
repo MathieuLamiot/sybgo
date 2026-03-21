@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Sybgo\Events;
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 
 /**
@@ -40,6 +41,15 @@ class Event_Tracker {
 	private Event_Repository $event_repo;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * Passed to trackers that accumulate daily values (e.g. Error_Tracker).
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
 	 * Array of tracker instances.
 	 *
 	 * @var array<string, object>
@@ -49,10 +59,12 @@ class Event_Tracker {
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository $event_repo Event repository instance.
+	 * @param Event_Repository            $event_repo      Event repository instance.
+	 * @param Aggregated_Event_Repository $aggregated_repo Aggregated event repository instance.
 	 */
-	public function __construct( Event_Repository $event_repo ) {
-		$this->event_repo = $event_repo;
+	public function __construct( Event_Repository $event_repo, Aggregated_Event_Repository $aggregated_repo ) {
+		$this->event_repo      = $event_repo;
+		$this->aggregated_repo = $aggregated_repo;
 	}
 
 	/**
@@ -92,6 +104,7 @@ class Event_Tracker {
 			'class-user-tracker.php',
 			'class-update-tracker.php',
 			'class-comment-tracker.php',
+			'class-error-tracker.php',
 		);
 
 		foreach ( $tracker_files as $file ) {
@@ -107,6 +120,7 @@ class Event_Tracker {
 			'user'    => new Trackers\User_Tracker( $this->event_repo ),
 			'update'  => new Trackers\Update_Tracker( $this->event_repo ),
 			'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
+			'error'   => new Trackers\Error_Tracker( $this->aggregated_repo ),
 		);
 	}
 

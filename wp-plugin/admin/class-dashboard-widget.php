@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Generator;
@@ -67,26 +68,38 @@ class Dashboard_Widget {
 	private Event_Registry $event_registry;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * Used to query PHP error counts for the dashboard display.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Generator  $report_generator Report generator.
-	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
-	 * @param Event_Registry    $event_registry Event registry.
+	 * @param Event_Repository            $event_repo      Event repository.
+	 * @param Report_Repository           $report_repo     Report repository.
+	 * @param Report_Generator            $report_generator Report generator.
+	 * @param AI_Summarizer               $ai_summarizer   AI summarizer.
+	 * @param Event_Registry              $event_registry  Event registry.
+	 * @param Aggregated_Event_Repository $aggregated_repo Aggregated event repository.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
 		Report_Generator $report_generator,
 		AI_Summarizer $ai_summarizer,
-		Event_Registry $event_registry
+		Event_Registry $event_registry,
+		Aggregated_Event_Repository $aggregated_repo
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
 		$this->report_generator = $report_generator;
 		$this->ai_summarizer    = $ai_summarizer;
 		$this->event_registry   = $event_registry;
+		$this->aggregated_repo  = $aggregated_repo;
 	}
 
 	/**
@@ -199,6 +212,42 @@ class Dashboard_Widget {
 					<h2><?php esc_html_e( 'Digest Preview', 'sybgo' ); ?></h2>
 					<div class="sybgo-modal-body"></div>
 				</div>
+			</div>
+		</div>
+
+		<?php $this->render_php_errors_section(); ?>
+		<?php
+	}
+
+	/**
+	 * Render PHP errors summary section.
+	 *
+	 * Displays today's and this week's PHP error occurrence counts sourced from
+	 * the aggregated_events table. Shows nothing when no errors have been recorded.
+	 *
+	 * @return void
+	 */
+	private function render_php_errors_section(): void {
+		$today      = gmdate( 'Y-m-d' );
+		$week_start = gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
+
+		$today_count = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $today, $today );
+		$week_count  = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $week_start, $today );
+
+		if ( 0.0 === $today_count && 0.0 === $week_count ) {
+			return;
+		}
+
+		?>
+		<div class="sybgo-php-errors">
+			<h3><?php esc_html_e( 'PHP Errors', 'sybgo' ); ?></h3>
+			<div class="sybgo-stat-item">
+				<span class="sybgo-stat-label"><?php esc_html_e( 'Today', 'sybgo' ); ?></span>
+				<span class="sybgo-stat-value"><?php echo esc_html( (string) (int) $today_count ); ?></span>
+			</div>
+			<div class="sybgo-stat-item">
+				<span class="sybgo-stat-label"><?php esc_html_e( 'This Week', 'sybgo' ); ?></span>
+				<span class="sybgo-stat-value"><?php echo esc_html( (string) (int) $week_count ); ?></span>
 			</div>
 		</div>
 		<?php

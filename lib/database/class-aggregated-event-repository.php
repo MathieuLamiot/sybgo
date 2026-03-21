@@ -83,6 +83,59 @@ class Aggregated_Event_Repository {
 	}
 
 	/**
+	 * Count distinct dimension sets recorded for a given event type and date.
+	 *
+	 * Uses the pre-computed dimensions_hash column to efficiently count unique
+	 * dimension sets. Used by Error_Tracker to enforce the daily cap of 5 distinct
+	 * error signatures.
+	 *
+	 * @param string $event_type Event type identifier (e.g. 'php_error').
+	 * @param string $date       Date string in Y-m-d format.
+	 * @return int Number of distinct dimension hashes recorded for that day.
+	 */
+	public function count_distinct_dimensions_for_date( string $event_type, string $date ): int {
+		global $wpdb;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT dimensions_hash) FROM {$this->table}
+				 WHERE event_type = %s AND date = %s",
+				$event_type,
+				$date
+			)
+		);
+
+		return (int) $result;
+	}
+
+	/**
+	 * Sum all accumulated values for a given event type across a date range.
+	 *
+	 * Used by the dashboard widget to display total error counts for today
+	 * or the current week.
+	 *
+	 * @param string $event_type Event type identifier.
+	 * @param string $date_from  Start date inclusive (Y-m-d).
+	 * @param string $date_to    End date inclusive (Y-m-d).
+	 * @return float Total accumulated value, or 0.0 if no rows match.
+	 */
+	public function get_sum_for_date_range( string $event_type, string $date_from, string $date_to ): float {
+		global $wpdb;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COALESCE(SUM(value), 0) FROM {$this->table}
+				 WHERE event_type = %s AND date BETWEEN %s AND %s",
+				$event_type,
+				$date_from,
+				$date_to
+			)
+		);
+
+		return (float) $result;
+	}
+
+	/**
 	 * Encode dimensions array to canonical JSON.
 	 *
 	 * Keys are sorted alphabetically so the same set of dimensions always produces
