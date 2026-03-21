@@ -68,7 +68,7 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that register_hooks() installs a PHP error handler.
+	 * Test that register_hooks() installs a PHP error handler and a shutdown function.
 	 *
 	 * We call register_hooks() for real and then immediately restore the
 	 * previous handler with set_error_handler(null), which returns whatever
@@ -77,6 +77,10 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_register_hooks_registers_error_handler(): void {
+		Functions\expect( 'register_shutdown_function' )
+			->once()
+			->with( array( $this->tracker, 'handle_shutdown' ) );
+
 		$this->tracker->register_hooks();
 
 		// Restore previous handler and capture what was set.
@@ -275,6 +279,107 @@ class ErrorTrackerTest extends TestCase {
 		$result = $this->tracker->handle_error( E_WARNING, 'Re-entrant error', '/file.php', 1 );
 
 		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that handle_shutdown() records a fatal error.
+	 *
+	 * @return void
+	 */
+	public function test_handle_shutdown_records_fatal_error(): void {
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+
+		$tracker->shouldReceive( 'get_last_error' )
+			->once()
+			->andReturn(
+				array(
+					'type'    => E_ERROR,
+					'message' => 'Call to undefined function foo()',
+					'file'    => '/var/www/html/wp-content/plugins/test/file.php',
+					'line'    => 99,
+				)
+			);
+
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->with(
+				'php_error',
+				Mockery::any(),
+				1.0,
+				Mockery::on(
+					function ( $dimensions ) {
+						return 'fatal_error' === $dimensions['level']
+							&& 32 === strlen( $dimensions['signature'] );
+					}
+				),
+				Mockery::on(
+					function ( $meta ) {
+						return '/var/www/html/wp-content/plugins/test/file.php' === $meta['file']
+							&& 99 === $meta['line']
+							&& str_starts_with( $meta['message'], 'Call to undefined function' );
+					}
+				)
+			)
+			->andReturn( true );
+
+		Functions\when( 'gmdate' )->justReturn( '2026-03-21' );
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$tracker->handle_shutdown();
+
+		$this->addToAssertionCount( 1 ); // Mockery verifies upsert in tearDown.
+	}
+
+	/**
+	 * Test that handle_shutdown() ignores non-fatal errors.
+	 *
+	 * @return void
+	 */
+	public function test_handle_shutdown_ignores_non_fatal(): void {
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+
+		$tracker->shouldReceive( 'get_last_error' )
+			->once()
+			->andReturn(
+				array(
+					'type'    => E_WARNING,
+					'message' => 'A regular warning',
+					'file'    => '/file.php',
+					'line'    => 1,
+				)
+			);
+
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		$tracker->handle_shutdown();
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test that handle_shutdown() does nothing when there is no last error.
+	 *
+	 * @return void
+	 */
+	public function test_handle_shutdown_ignores_null(): void {
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+
+		$tracker->shouldReceive( 'get_last_error' )
+			->once()
+			->andReturn( null );
+
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		$tracker->handle_shutdown();
+
+		$this->addToAssertionCount( 1 );
 	}
 
 	/**

@@ -46,10 +46,7 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private const DAILY_CAP = 5;
 
 	/**
-	 * PHP error levels this tracker captures, mapped to human-readable names.
-	 *
-	 * Fatal levels (E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR) are excluded
-	 * because they cannot be intercepted by a user-defined error handler.
+	 * PHP error levels this tracker captures via set_error_handler(), mapped to human-readable names.
 	 *
 	 * @var array<int, string>
 	 */
@@ -61,6 +58,21 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		E_USER_NOTICE     => 'user_notice',
 		E_DEPRECATED      => 'deprecated',
 		E_USER_DEPRECATED => 'user_deprecated',
+	);
+
+	/**
+	 * PHP error levels captured only via the shutdown handler.
+	 *
+	 * These levels bypass set_error_handler() and can only be detected via
+	 * error_get_last() in a shutdown function.
+	 *
+	 * @var array<int, string>
+	 */
+	private const FATAL_LEVELS = array(
+		E_ERROR         => 'fatal_error',
+		E_PARSE         => 'parse_error',
+		E_CORE_ERROR    => 'core_error',
+		E_COMPILE_ERROR => 'compile_error',
 	);
 
 	/**
@@ -93,6 +105,7 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	public function register_hooks(): void {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Intentional: this is the error tracking feature.
 		$this->previous_handler = set_error_handler( array( $this, 'handle_error' ) );
+		register_shutdown_function( array( $this, 'handle_shutdown' ) );
 	}
 
 	/**
@@ -115,10 +128,15 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		int $errline = 0
 	): bool {
 		// Skip errors suppressed by the @ operator.
-		// In PHP < 8.0 the mask is 0; in PHP 8.0+ it is a specific bitmask.
-		// Either way, if the current errno is not set in error_reporting(), skip.
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting -- Read-only call to check suppression; we do not change the value.
-		if ( ! ( error_reporting() & $errno ) ) {
+		// In PHP 7.x, @ sets error_reporting() to 0.
+		// In PHP 8.0+, @ sets it to E_ERROR (value 1).
+		// We check for these specific suppression values rather than checking
+		// whether $errno is in the ambient mask — the ambient mask may legitimately
+		// exclude E_NOTICE or E_DEPRECATED on production sites, but we still want
+		// to capture those levels.
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting -- Read-only call to check @ suppression; we do not change the value.
+		$current_mask = error_reporting();
+		if ( 0 === $current_mask || ( PHP_MAJOR_VERSION >= 8 && E_ERROR === $current_mask ) ) {
 			return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
 		}
 
@@ -168,6 +186,58 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		}
 
 		return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
+	}
+
+	/**
+	 * Shutdown handler: captures fatal errors that bypass set_error_handler().
+	 *
+	 * Called by PHP on every request end. Checks error_get_last() and records
+	 * the error if it is a fatal level (E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR).
+	 * The daily cap is not applied here — fatal errors terminate the request
+	 * immediately and cannot loop, so they are always worth recording.
+	 *
+	 * @return void
+	 */
+	public function handle_shutdown(): void {
+		$error = $this->get_last_error();
+
+		if ( null === $error ) {
+			return;
+		}
+
+		if ( ! isset( self::FATAL_LEVELS[ $error['type'] ] ) ) {
+			return;
+		}
+
+		$message_snippet = substr( $error['message'], 0, 100 );
+		$signature       = md5( $error['file'] . ':' . $error['line'] . ':' . $message_snippet );
+		$level_name      = self::FATAL_LEVELS[ $error['type'] ];
+
+		$dimensions = array(
+			'level'     => $level_name,
+			'signature' => $signature,
+		);
+
+		$meta = array(
+			'file'    => $error['file'],
+			'line'    => $error['line'],
+			'message' => $message_snippet,
+		);
+
+		$this->increment( self::EVENT_TYPE, 1.0, $dimensions, $meta );
+	}
+
+	/**
+	 * Return the last PHP error, if any.
+	 *
+	 * Extracted as a protected method so unit tests can override it without
+	 * needing to trigger a real fatal error.
+	 *
+	 * @return array{type: int, message: string, file: string, line: int}|null
+	 */
+	protected function get_last_error(): ?array {
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_get_last
+		return error_get_last();
 	}
 
 	/**
