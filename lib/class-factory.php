@@ -14,12 +14,14 @@ namespace Sybgo;
 
 // Require database classes.
 require_once __DIR__ . '/database/class-databasemanager.php';
+require_once __DIR__ . '/database/class-db-stats.php';
 require_once __DIR__ . '/database/class-event-repository.php';
 require_once __DIR__ . '/database/class-report-repository.php';
 require_once __DIR__ . '/database/class-aggregated-event-repository.php';
 require_once __DIR__ . '/events/class-event-registry.php';
 
 use Sybgo\Database\DatabaseManager;
+use Sybgo\Database\DB_Stats;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Database\Aggregated_Event_Repository;
@@ -101,6 +103,13 @@ class Factory {
 	 * @var Event_Registry|null
 	 */
 	private static ?Event_Registry $event_registry_instance = null;
+
+	/**
+	 * DB Stats instance.
+	 *
+	 * @var DB_Stats|null
+	 */
+	private static ?DB_Stats $db_stats_instance = null;
 
 	/**
 	 * Constructor.
@@ -198,6 +207,19 @@ class Factory {
 			self::$event_registry_instance = new Event_Registry();
 		}
 		return self::$event_registry_instance;
+	}
+
+	/**
+	 * Create DB Stats instance.
+	 *
+	 * @return DB_Stats
+	 * @since 1.1.0
+	 */
+	public function create_db_stats(): DB_Stats {
+		if ( null === self::$db_stats_instance ) {
+			self::$db_stats_instance = new DB_Stats( $this->create_database_manager() );
+		}
+		return self::$db_stats_instance;
 	}
 
 	/**

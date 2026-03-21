@@ -387,7 +387,7 @@ All times are in WordPress timezone (Settings → General):
 |-----------|----------|---------|
 | `sybgo_freeze_weekly_report` | Sunday 23:55 | Freeze current week's report |
 | `sybgo_send_report_emails` | Monday 00:05 | Send digest emails |
-| `sybgo_cleanup_old_events` | Daily 03:00 | Delete events >1 year old |
+| `sybgo_cleanup_old_events` | Daily 03:00 | Delete events and aggregated data older than the configured retention period (default: 90 days) |
 | `sybgo_retry_failed_emails` | Daily 09:00 | Retry failed email deliveries |
 
 ## Performance

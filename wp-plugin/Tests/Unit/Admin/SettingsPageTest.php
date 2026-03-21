@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Sybgo\Tests\Unit\Admin;
 
 use Sybgo\Admin\Settings_Page;
+use Sybgo\Database\DB_Stats;
 use Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
@@ -35,6 +36,13 @@ class SettingsPageTest extends TestCase {
 	private $event_registry;
 
 	/**
+	 * DB Stats mock.
+	 *
+	 * @var DB_Stats
+	 */
+	private $db_stats;
+
+	/**
 	 * Set up test environment.
 	 *
 	 * @return void
@@ -44,7 +52,8 @@ class SettingsPageTest extends TestCase {
 		Monkey\setUp();
 
 		$this->event_registry = Mockery::mock( Event_Registry::class );
-		$this->settings_page  = new Settings_Page( $this->event_registry );
+		$this->db_stats       = Mockery::mock( DB_Stats::class );
+		$this->settings_page  = new Settings_Page( $this->event_registry, $this->db_stats );
 
 		// Mock WordPress functions.
 		Functions\when( 'esc_html' )->returnArg();
