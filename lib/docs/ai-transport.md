@@ -56,16 +56,7 @@ if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
 }
 ```
 
-Callers handle nullable AI_Summarizer:
-
-```php
-$ai_summarizer = $factory->create_ai_summarizer(); // ?AI_Summarizer
-if ( null !== $ai_summarizer ) {
-    $summary = $ai_summarizer->generate_summary( $events, $totals, $trends );
-}
-```
-
-`Report_Generator` also accepts `?AI_Summarizer` and skips AI generation when null.
+Callers handle nullable AI_Summarizer. The factory returns `null` on WP < 7; callers (such as `Dashboard_Widget` and `Reports_Page`) check for null before calling `generate_summary()`.
 
 ## WordPress 7 Ability API
 

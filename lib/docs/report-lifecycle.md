@@ -81,13 +81,13 @@ $trends = [
 ];
 ```
 
-### Step 4: Generate Highlights & AI Summary
+### Step 4: Generate Highlights
 Automatically create human-readable highlights:
 - "12 new posts published ↑ 20%"
 - "WordPress updated to 6.5"
 - "3 new users registered ↓ 40%"
 
-On WordPress 7 and later, an AI-generated summary is also produced via the WordPress native AI provider API (`wp_ai_client_prompt`) and stored in `summary_data.ai_summary`. On WordPress < 7, the `ai_summary` field is `null` and omitted from the digest. See [AI Transport Layer](ai-transport.md) for details.
+The `ai_summary` field in `summary_data` is set to `null` at freeze time. AI summaries are generated on demand after freezing — see [AI Summary (On-Demand)](#ai-summary-on-demand) below.
 
 ### Step 5: Assign Events to Report
 ```sql
@@ -110,7 +110,7 @@ WHERE report_id IS NULL;
         "trends": { ... },
         "highlights": [ ... ],
         "top_authors": [ ... ],
-        "ai_summary": "A busy week with 12 new posts..."
+        "ai_summary": null
     }
 }
 ```
@@ -243,6 +243,22 @@ Clicking **View Details** on the active report row opens the report details page
 3. Renders the same summary cards and highlights UI as a frozen report.
 
 This gives an accurate, real-time preview of what the next frozen report will look like. The same `generate_live_summary()` method is used by the dashboard widget preview modal.
+
+## AI Summary (On-Demand)
+
+After a report is frozen, an AI-generated prose summary can be added to it on demand. This is separate from the automatic freeze process — the AI is never called at freeze time.
+
+On the report detail page (**Sybgo Reports → View Details** for any frozen report), a "Generate AI Summary" button is available when WordPress 7 is active. Clicking it calls the AJAX action `sybgo_generate_ai_summary`, which:
+
+1. Recomputes a live summary (totals and trends) for the report's events.
+2. Calls `AI_Summarizer::generate_summary()` via the WP7 native AI API.
+3. Persists the result via `Report_Repository::set_ai_summary()`, which merges the text into `summary_data.ai_summary` without overwriting other fields.
+
+Once generated, the button label changes to "Regenerate AI Summary" and the text is shown inline on the detail page.
+
+The dashboard widget offers a similar "Get AI Summary" button that calls `sybgo_widget_ai_summary`. That summary is ephemeral — it reflects the current week's live events and is never persisted.
+
+The button is disabled (with an explanatory tooltip) when the WP7 AI API is unavailable. See [AI Transport Layer](ai-transport.md) and [AJAX Actions](../wp-plugin/docs/ajax-actions.md) for technical details.
 
 ## Empty Reports
 
