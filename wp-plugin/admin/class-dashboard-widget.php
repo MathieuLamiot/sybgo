@@ -511,7 +511,7 @@ class Dashboard_Widget {
 
 		$summary = ! empty( $last_report['summary_data'] ) ? json_decode( $last_report['summary_data'], true ) : null;
 
-		if ( ! $summary || empty( $summary['totals'] ) ) {
+		if ( ! $summary ) {
 			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
 		}
 
