@@ -30,6 +30,9 @@ Sybgo tracks 16 different event types across 4 categories:
 - **`comment_posted`** - New comment submitted
 - **`comment_approved`** - Comment approved/unapproved/marked spam
 
+### PHP Errors
+- **`php_error`** - A PHP warning, notice, or deprecation was captured by the site (aggregated; see below)
+
 ## How Event Tracking Works
 
 When you perform an action in WordPress (publish a post, approve a comment, etc.), Sybgo's tracker classes listen for the corresponding WordPress hook and create an event record. Each tracker registers its event types via the `sybgo_event_types` filter and hooks into WordPress actions to capture events.
@@ -94,6 +97,34 @@ To prevent database bloat from frequent auto-saves, Sybgo throttles edit events:
 10:30 AM - Edit again → Skipped (within 1 hour)
 11:20 AM - Edit again → Event recorded (>1 hour passed)
 ```
+
+## PHP Error Tracking
+
+`Error_Tracker` (`lib/events/trackers/class-error-tracker.php`) registers a custom PHP error handler via `set_error_handler()` at plugin init. It captures non-fatal PHP errors — warnings, notices, user errors, deprecations — as aggregated events stored in `wp_sybgo_aggregated_events` with `event_type = 'php_error'`.
+
+### What is captured
+
+The following PHP error levels are captured: `E_WARNING`, `E_NOTICE`, `E_USER_ERROR`, `E_USER_WARNING`, `E_USER_NOTICE`, `E_DEPRECATED`, `E_USER_DEPRECATED`. Fatal levels (`E_ERROR`, `E_PARSE`, etc.) cannot be intercepted by a user-defined handler and are not tracked.
+
+Errors suppressed with the `@` operator are detected by checking `error_reporting() & $errno` and silently skipped.
+
+### Error signatures and dimensions
+
+Each error occurrence is identified by a **signature**: an md5 hash of `file:line:message_excerpt` (first 100 characters of the message). The signature and the error level are stored as `dimensions`, so each distinct error location gets its own row in `wp_sybgo_aggregated_events`. Repeated occurrences of the same error just increment the `value` counter on that row.
+
+The `meta` column stores a snapshot: `file`, `line`, and the first 100 characters of the message, for display purposes.
+
+### Daily cap
+
+To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per day. Once 5 distinct rows exist for `event_type = 'php_error'` on a given date, new signatures are dropped. Already-known signatures continue to accumulate. The cap check uses `Aggregated_Event_Repository::count_distinct_dimensions_for_date()`.
+
+### Handler chaining
+
+`Error_Tracker` stores the previously registered error handler and always calls it after its own logic, so existing error handling (WordPress's own handler, third-party plugins) is unaffected.
+
+### Dashboard display
+
+The WordPress admin dashboard widget shows today's and this week's PHP error occurrence counts. The query uses `Aggregated_Event_Repository::get_sum_for_date_range()`. The section only renders when at least one error has been recorded.
 
 ## Edit Magnitude Tracking
 
@@ -174,7 +205,7 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 | Use case | `event_type` | `dimensions` | `value` delta |
 |---|---|---|---|
 | Page visits per page | `page_view` | `{"post_id": 42}` | 1.0 |
-| PHP errors per error type | `php_error` | `{"error_code": "E_WARNING"}` | 1.0 |
+| PHP errors per location | `php_error` | `{"level":"warning","signature":"<md5>"}` | 1.0 |
 | WooCommerce units per product | `woo_sale_units` | `{"product_id": 99}` | 1.0 |
 | WooCommerce revenue per product | `woo_sale_revenue` | `{"product_id": 99}` | 249.95 |
 | User registrations per role | `user_registered` | `{"role": "editor"}` | 1.0 |
