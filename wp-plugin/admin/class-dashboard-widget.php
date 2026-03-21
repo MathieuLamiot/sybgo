@@ -217,15 +217,23 @@ class Dashboard_Widget {
 	private function render_php_errors_section(): void {
 		$today = gmdate( 'Y-m-d' );
 
-		// Use the active report's period_start for the date range; fall back to Monday.
+		// Determine date_from for the query.
+		// After a same-day freeze, the new active report's created_at timestamp is today,
+		// but pre-freeze errors also have date = today. Use tomorrow as the floor so only
+		// new-period errors are shown (correctly 0 until a new error is tracked).
 		$active_report = $this->report_repo->get_active();
-		$period_start  = $active_report
-			? gmdate( 'Y-m-d', strtotime( $active_report['period_start'] ) )
-			: gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
+		if ( $active_report ) {
+			$report_created_date = gmdate( 'Y-m-d', strtotime( $active_report['created_at'] ) );
+			$date_from           = ( $report_created_date === $today )
+				? gmdate( 'Y-m-d', strtotime( '+1 day' ) )
+				: gmdate( 'Y-m-d', strtotime( $active_report['period_start'] ) );
+		} else {
+			$date_from = gmdate( 'Y-m-d', (int) strtotime( 'monday this week' ) );
+		}
 
-		$total_count    = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $period_start, $today );
+		$total_count    = $this->aggregated_repo->get_sum_for_date_range( 'php_error', $date_from, $today );
 		$top_errors     = array_slice(
-			$this->aggregated_repo->get_rows_for_event_type_and_date_range( 'php_error', $period_start, $today ),
+			$this->aggregated_repo->get_rows_for_event_type_and_date_range( 'php_error', $date_from, $today ),
 			0,
 			5
 		);
@@ -308,7 +316,7 @@ class Dashboard_Widget {
 			<?php foreach ( $filters as $filter => $label ) : ?>
 				<button
 					type="button"
-					class="sybgo-filter-btn <?php echo 'all' === $filter ? 'active' : ''; ?>"
+					class="button sybgo-filter-btn <?php echo 'all' === $filter ? 'active' : ''; ?>"
 					data-filter="<?php echo esc_attr( $filter ); ?>"
 				>
 					<?php echo esc_html( $label ); ?>

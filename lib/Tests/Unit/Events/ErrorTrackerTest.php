@@ -14,6 +14,7 @@ use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
 use Sybgo\Database\Aggregated_Event_Repository;
+use Sybgo\Database\Report_Repository;
 use Sybgo\Events\Trackers\Error_Tracker;
 
 /**
@@ -27,6 +28,13 @@ class ErrorTrackerTest extends TestCase {
 	 * @var Aggregated_Event_Repository&\Mockery\MockInterface
 	 */
 	private $aggregated_repo;
+
+	/**
+	 * Report repository mock.
+	 *
+	 * @var Report_Repository&\Mockery\MockInterface
+	 */
+	private $report_repo;
 
 	/**
 	 * Error tracker instance.
@@ -45,7 +53,8 @@ class ErrorTrackerTest extends TestCase {
 		Monkey\setUp();
 
 		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
-		$this->tracker         = new Error_Tracker( $this->aggregated_repo );
+		$this->report_repo     = Mockery::mock( Report_Repository::class );
+		$this->tracker         = new Error_Tracker( $this->aggregated_repo, $this->report_repo );
 
 		// Seed normal_error_reporting with the ambient mask so the suppression
 		// check works in tests that simulate @ by calling error_reporting(0).
@@ -105,6 +114,11 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_tracks_warning(): void {
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
@@ -174,6 +188,11 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_drops_when_cap_reached(): void {
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
@@ -192,6 +211,11 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_allows_when_under_cap(): void {
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
@@ -234,6 +258,11 @@ class ErrorTrackerTest extends TestCase {
 	 */
 	public function test_handle_error_truncates_message_to_100_chars(): void {
 		$long_message = str_repeat( 'x', 200 );
+
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
 
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
@@ -292,7 +321,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_records_fatal_error(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -344,7 +373,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_ignores_non_fatal(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -372,7 +401,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_shutdown_ignores_null(): void {
-		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+		$tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo, $this->report_repo ) )
 			->makePartial()
 			->shouldAllowMockingProtectedMethods();
 
@@ -404,6 +433,11 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setAccessible( true );
 		$ref->setValue( $this->tracker, $mock_handler );
 
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
 			->once()
@@ -425,16 +459,18 @@ class ErrorTrackerTest extends TestCase {
 	}
 
 	/**
-	 * Test that set_period_start() scopes the cap check to the report period.
+	 * Test that the cap check uses the active report's period_start when available.
 	 *
-	 * When a period start date is provided, the cap check should use
-	 * count_distinct_dimensions_for_date_range() with date_from = period_start
-	 * and date_to = today, rather than defaulting both to today.
+	 * When get_active() returns a report, the cap check should scope from
+	 * period_start through today, not just today through today.
 	 *
 	 * @return void
 	 */
-	public function test_set_period_start_scopes_cap_to_period(): void {
-		$this->tracker->set_period_start( '2026-03-15' );
+	public function test_cap_uses_active_report_period_start(): void {
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( array( 'period_start' => '2026-03-15 00:00:00' ) );
 
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
@@ -447,9 +483,46 @@ class ErrorTrackerTest extends TestCase {
 			->once()
 			->andReturn( true );
 
+		// Allow gmdate to pass through to the real function so that
+		// gmdate('Y-m-d', strtotime('2026-03-15 00:00:00')) returns '2026-03-15'
+		// rather than the setUp stub value '2026-03-21'.
+		Functions\when( 'gmdate' )->alias( 'gmdate' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$this->tracker->handle_error( E_WARNING, 'A warning', '/file.php', 1 );
+
+		// Mockery verifies the count_distinct_dimensions_for_date_range expectation in tearDown.
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test that the cap check falls back to today when there is no active report.
+	 *
+	 * When get_active() returns null, the cap check uses today as both the
+	 * date_from and date_to.
+	 *
+	 * @return void
+	 */
+	public function test_cap_falls_back_to_today_when_no_active_report(): void {
+		$this->report_repo
+			->shouldReceive( 'get_active' )
+			->once()
+			->andReturn( null );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_date_range' )
+			->once()
+			->with( 'php_error', '2026-03-21', '2026-03-21' )
+			->andReturn( 0 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->andReturn( true );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->tracker->handle_error( E_NOTICE, 'A notice', '/file.php', 1 );
 
 		// Mockery verifies the count_distinct_dimensions_for_date_range expectation in tearDown.
 		$this->addToAssertionCount( 1 );

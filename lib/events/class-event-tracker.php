@@ -102,14 +102,6 @@ class Event_Tracker {
 		// Load tracker classes.
 		$this->load_trackers();
 
-		// Pass the active report's period start to Error_Tracker so its cap check
-		// is scoped to the current report period rather than the calendar day.
-		$active_report = $this->report_repo->get_active();
-		if ( null !== $active_report && isset( $active_report['period_start'] ) ) {
-			$period_start = gmdate( 'Y-m-d', (int) strtotime( (string) $active_report['period_start'] ) );
-			$this->trackers['error']->set_period_start( $period_start );
-		}
-
 		// Initialize each tracker.
 		foreach ( $this->trackers as $tracker ) {
 			if ( method_exists( $tracker, 'register_hooks' ) ) {
@@ -145,7 +137,7 @@ class Event_Tracker {
 			'user'    => new Trackers\User_Tracker( $this->event_repo ),
 			'update'  => new Trackers\Update_Tracker( $this->event_repo ),
 			'comment' => new Trackers\Comment_Tracker( $this->event_repo ),
-			'error'   => new Trackers\Error_Tracker( $this->aggregated_repo ),
+			'error'   => new Trackers\Error_Tracker( $this->aggregated_repo, $this->report_repo ),
 		);
 	}
 

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sybgo\Events\Trackers;
 
+use Sybgo\Database\Report_Repository;
 use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
 
 /**
@@ -107,14 +108,28 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private int $normal_error_reporting = 0;
 
 	/**
-	 * Start date of the current report period (Y-m-d), or null if unknown.
+	 * Report repository instance.
 	 *
-	 * When set, the daily-cap check is scoped to this date through today.
-	 * Falls back to today only when no period has been configured.
+	 * Used to look up the active report's period_start on each error so the
+	 * cap check always reflects the current period even after a freeze.
 	 *
-	 * @var string|null
+	 * @var Report_Repository
 	 */
-	private ?string $period_start = null;
+	private Report_Repository $report_repo;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param \Sybgo\Database\Aggregated_Event_Repository $aggregated_repo Aggregated event repository.
+	 * @param Report_Repository                           $report_repo     Report repository.
+	 */
+	public function __construct(
+		\Sybgo\Database\Aggregated_Event_Repository $aggregated_repo,
+		Report_Repository $report_repo
+	) {
+		parent::__construct( $aggregated_repo );
+		$this->report_repo = $report_repo;
+	}
 
 	/**
 	 * Register WordPress hooks for this tracker.
@@ -130,19 +145,6 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.prevent_path_disclosure_error_reporting,WordPress.PHP.DiscouragedPHPFunctions.runtime_configuration_error_reporting -- Read-only: captures mask at registration for @ suppression detection.
 		$this->normal_error_reporting = error_reporting();
 		register_shutdown_function( array( $this, 'handle_shutdown' ) );
-	}
-
-	/**
-	 * Set the start date of the current report period.
-	 *
-	 * When set, the daily cap check is scoped from this date through today,
-	 * so that a report freeze does not carry over old signatures into the new period.
-	 *
-	 * @param string $date Start date in Y-m-d format.
-	 * @return void
-	 */
-	public function set_period_start( string $date ): void {
-		$this->period_start = $date;
 	}
 
 	/**
@@ -199,8 +201,12 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 
 			// Enforce the per-period cap: only proceed if fewer than DAILY_CAP distinct
 			// signatures have been stored since the current report period started.
-			// Falls back to the current date when no period start has been set.
-			$period_from    = null !== $this->period_start ? $this->period_start : $date;
+			// Look up the active report each time so that a freeze is reflected
+			// immediately without requiring a plugin restart.
+			$active_report  = $this->report_repo->get_active();
+			$period_from    = ( null !== $active_report && isset( $active_report['period_start'] ) )
+				? gmdate( 'Y-m-d', (int) strtotime( (string) $active_report['period_start'] ) )
+				: $date;
 			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_date_range(
 				self::EVENT_TYPE,
 				$period_from,
