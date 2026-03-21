@@ -103,34 +103,7 @@ $wpdb->prepare( "SELECT * FROM table WHERE id = %d", $id );
 
 ## Testing
 
-### Run All Tests
-
-```bash
-# All tests (unit + integration)
-composer run-tests
-
-# Unit tests only
-composer test-unit
-
-# Integration tests only
-composer test-integration
-
-# With coverage report
-composer test-coverage
-```
-
-### Run Specific Tests
-
-```bash
-# Single test class
-vendor/bin/phpunit --filter PostTrackerTest
-
-# Single test method
-vendor/bin/phpunit --filter test_track_post_publish
-
-# Specific file
-vendor/bin/phpunit Tests/Unit/Events/PostTrackerTest.php
-```
+See `CLAUDE.md` at the repo root for the exact commands to run unit tests, PHPCS, and PHPStan across `lib/` and `wp-plugin/`, including the symlink fix for PHPStan.
 
 ### Writing Tests
 
@@ -490,77 +463,6 @@ class MediaTrackerTest extends TestCase {
     }
 }
 ```
-
-## Monorepo: lib ↔ wp-plugin Dependency
-
-`wp-plugin` depends on `wp-media/sybgo-lib` declared as a local path repository in `composer.json`. Understanding how Composer manages this dependency is critical for running tests and PHPCS/PHPStan correctly.
-
-### How the dependency works
-
-```
-sybgo/
-├── lib/           ← the library (wp-media/sybgo-lib)
-└── wp-plugin/     ← the plugin, depends on lib via path repository
-    └── vendor/wp-media/sybgo-lib/  ← symlink → ../../lib  (after reinstall)
-```
-
-When you run `composer install` for the first time inside `wp-plugin/`, Composer creates a **copy** of `lib/` (not a symlink) based on the git-tracked files at that moment. Changes you make to `lib/` source files are **not** automatically reflected in `wp-plugin/vendor`.
-
-### Activating the symlink (required for development)
-
-Run this once from `wp-plugin/` after cloning, or whenever `vendor/wp-media/sybgo-lib` becomes stale:
-
-```bash
-cd wp-plugin
-composer reinstall wp-media/sybgo-lib
-```
-
-This replaces the copy with a symlink (`vendor/wp-media/sybgo-lib → ../../lib`). After this, any edit to a file in `lib/` is instantly visible to the plugin autoloader and to PHPStan — no extra commands needed.
-
-**Verify it's a symlink:**
-```bash
-ls -la wp-plugin/vendor/wp-media/sybgo-lib
-# Should show: sybgo-lib -> ../../../../lib  (or similar relative path)
-```
-
-### Running lib unit tests
-
-The `lib/` directory has its own `phpunit.xml.dist` and `Tests/` folder but **no vendored PHPUnit**. Use the one from `wp-plugin/vendor`:
-
-```bash
-cd wp-plugin
-vendor/bin/phpunit \
-  -c ../lib/phpunit.xml.dist \
-  --bootstrap ../lib/Tests/bootstrap-unit.php \
-  --testsuite=Unit
-```
-
-> **Important:** Do not mix this command with `composer test-unit` from the `wp-plugin/` root in the same shell invocation — that would load two autoloaders and cause function-redeclaration errors. Run lib tests and wp-plugin tests in separate commands.
-
-### Running wp-plugin unit tests
-
-```bash
-cd wp-plugin
-vendor/bin/phpunit --testsuite=Unit
-```
-
-### Running PHPCS on lib from wp-plugin
-
-`lib/` has no vendored PHPCS. Use the one from `wp-plugin/vendor`:
-
-```bash
-cd wp-plugin
-vendor/bin/phpcs ../lib --standard=../lib/phpcs.xml.dist
-```
-
-### When things go wrong
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| PHPStan `method.notFound` for a lib method you just added | `vendor/wp-media/sybgo-lib` is a copy, not a symlink | `composer reinstall wp-media/sybgo-lib` |
-| Tests import lib classes but use stale method signatures | Same as above | Same fix |
-| `function redeclared` error when running all tests at once | Two autoloaders loaded (lib + wp-plugin) | Run lib and wp-plugin tests in separate commands |
-| `vendor/bin/phpunit: no such file` in `lib/` | lib has no vendored PHPUnit | Run from `wp-plugin/vendor/bin/phpunit` as shown above |
 
 ## Troubleshooting
 
