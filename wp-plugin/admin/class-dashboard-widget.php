@@ -515,12 +515,12 @@ class Dashboard_Widget {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		if ( null === $this->ai_summarizer ) {
 			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		$events        = $this->event_repo->get_by_report( null );
@@ -534,7 +534,7 @@ class Dashboard_Widget {
 
 		if ( null === $summary ) {
 			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		wp_send_json_success( array( 'summary' => $summary ) );

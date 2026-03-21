@@ -853,26 +853,26 @@ class Reports_Page {
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		if ( null === $this->ai_summarizer ) {
 			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		$report_id = isset( $_POST['report_id'] ) ? absint( $_POST['report_id'] ) : 0;
 
 		if ( ! $report_id ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid report ID.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		$report = $this->report_repo->get_by_id( $report_id );
 
 		if ( ! $report ) {
 			wp_send_json_error( array( 'message' => __( 'Report not found.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		$events       = $this->event_repo->get_by_report( $report_id );
@@ -881,7 +881,7 @@ class Reports_Page {
 
 		if ( null === $ai_summary ) {
 			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
-			return;
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
 		$this->report_repo->set_ai_summary( $report_id, $ai_summary );
