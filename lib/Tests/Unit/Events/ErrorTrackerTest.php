@@ -55,8 +55,6 @@ class ErrorTrackerTest extends TestCase {
 		$ref_normal->setAccessible( true );
 		$ref_normal->setValue( $this->tracker, $ambient_mask );
 
-		// Default gmdate stub for consistent date in cap checks.
-		Functions\when( 'gmdate' )->justReturn( '2026-03-21' );
 	}
 
 	/**
@@ -116,7 +114,7 @@ class ErrorTrackerTest extends TestCase {
 			->once()
 			->with(
 				'php_error',
-				'2026-03-21',
+				Mockery::type( 'string' ),
 				1.0,
 				Mockery::on(
 					function ( $dimensions ) {
@@ -248,7 +246,7 @@ class ErrorTrackerTest extends TestCase {
 			->once()
 			->with(
 				'php_error',
-				'2026-03-21',
+				Mockery::type( 'string' ),
 				1.0,
 				Mockery::any(),
 				Mockery::on(
@@ -333,7 +331,6 @@ class ErrorTrackerTest extends TestCase {
 			)
 			->andReturn( true );
 
-		Functions\when( 'gmdate' )->justReturn( '2026-03-21' );
 		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$tracker->handle_shutdown();

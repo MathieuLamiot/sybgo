@@ -79,12 +79,12 @@ class Dashboard_Widget {
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository             $event_repo          Event repository.
-	 * @param Report_Repository            $report_repo         Report repository.
-	 * @param Report_Generator             $report_generator 	Report generator.
-	 * @param AI_Summarizer|null           $ai_summarizer      	AI summarizer or null if unavailable.
-	 * @param Event_Registry               $event_registry    	Event registry.
-	 * @param Aggregated_Event_Repository  $aggregated_repo 		Aggregated event repository.
+	 * @param Event_Repository            $event_repo          Event repository.
+	 * @param Report_Repository           $report_repo         Report repository.
+	 * @param Report_Generator            $report_generator    Report generator.
+	 * @param AI_Summarizer|null          $ai_summarizer       AI summarizer or null if unavailable.
+	 * @param Event_Registry              $event_registry      Event registry.
+	 * @param Aggregated_Event_Repository $aggregated_repo         Aggregated event repository.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
