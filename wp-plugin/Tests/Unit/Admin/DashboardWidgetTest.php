@@ -194,6 +194,94 @@ class DashboardWidgetTest extends TestCase {
 	// ajax_preview_digest() — no longer calls AI
 	// -------------------------------------------------------------------------
 
+	// -------------------------------------------------------------------------
+	// ajax_widget_ai_summary() — persistence
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Widget AJAX must persist summary via save_summary_data() when active report exists.
+	 */
+	public function test_ajax_widget_ai_summary_persists_summary_when_active_report_exists(): void {
+		Functions\when( 'check_ajax_referer' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'wp_send_json_success' )->justReturn();
+		Functions\when( 'wp_send_json_error' )->justReturn();
+		Functions\when( '__' )->returnArg();
+
+		$active_report = array( 'id' => '5', 'status' => 'active' );
+		$live_summary  = array(
+			'totals'       => array( 'post_published' => 2 ),
+			'trends'       => array(),
+			'highlights'   => array(),
+			'top_authors'  => array(),
+			'total_events' => 2,
+			'ai_summary'   => null,
+		);
+
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( $active_report );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->with( array(), 5 )
+			->andReturn( $live_summary );
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( 'Widget summary.' );
+
+		// Must persist the full object.
+		$this->report_repo->shouldReceive( 'save_summary_data' )
+			->once()
+			->with(
+				5,
+				Mockery::on(
+					function ( $data ) {
+						return isset( $data['ai_summary'] ) && 'Widget summary.' === $data['ai_summary']
+							&& isset( $data['totals'] );
+					}
+				)
+			)
+			->andReturn( true );
+
+		$this->widget->ajax_widget_ai_summary();
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Widget AJAX must NOT call save_summary_data() when no active report exists.
+	 */
+	public function test_ajax_widget_ai_summary_does_not_persist_when_no_active_report(): void {
+		Functions\when( 'check_ajax_referer' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'wp_send_json_success' )->justReturn();
+		Functions\when( 'wp_send_json_error' )->justReturn();
+		Functions\when( '__' )->returnArg();
+
+		$live_summary = array(
+			'totals'       => array(),
+			'trends'       => array(),
+			'highlights'   => array(),
+			'top_authors'  => array(),
+			'total_events' => 0,
+			'ai_summary'   => null,
+		);
+
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( null );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->with( array(), 0 )
+			->andReturn( $live_summary );
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( 'No active report summary.' );
+
+		// Must NOT persist.
+		$this->report_repo->shouldNotReceive( 'save_summary_data' );
+
+		$this->widget->ajax_widget_ai_summary();
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	// -------------------------------------------------------------------------
+	// ajax_preview_digest() — no longer calls AI
+	// -------------------------------------------------------------------------
+
 	/**
 	 * Preview digest AJAX must not call AI summarizer.
 	 */

@@ -70,6 +70,45 @@ class ReportRepositoryTest extends TestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// save_summary_data()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * save_summary_data() should persist the full summary array via update() and return true.
+	 */
+	public function test_save_summary_data_persists_full_array(): void {
+		$full_summary = array(
+			'totals'       => array( 'post_published' => 5 ),
+			'trends'       => array(),
+			'highlights'   => array( '5 new posts published' ),
+			'top_authors'  => array(),
+			'total_events' => 5,
+			'ai_summary'   => 'A great week!',
+		);
+
+		$this->wpdb->shouldReceive( 'update' )
+			->once()
+			->with(
+				'wp_sybgo_reports',
+				Mockery::on(
+					function ( $data ) use ( $full_summary ) {
+						$decoded = json_decode( $data['summary_data'], true );
+						return isset( $decoded['ai_summary'] )
+							&& 'A great week!' === $decoded['ai_summary']
+							&& isset( $decoded['totals'] )
+							&& 5 === $decoded['totals']['post_published'];
+					}
+				),
+				array( 'id' => 55 )
+			)
+			->andReturn( 1 );
+
+		$result = $this->report_repo->save_summary_data( 55, $full_summary );
+
+		$this->assertTrue( $result );
+	}
+
+	// -------------------------------------------------------------------------
 	// set_ai_summary()
 	// -------------------------------------------------------------------------
 

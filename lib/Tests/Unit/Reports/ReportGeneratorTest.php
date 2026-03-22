@@ -119,6 +119,22 @@ class ReportGeneratorTest extends TestCase {
 	}
 
 	/**
+	 * generate_live_summary() must include ai_summary => null so the shape matches
+	 * generate_summary() and templates can safely access $summary['ai_summary'].
+	 */
+	public function test_generate_live_summary_includes_ai_summary_null(): void {
+		$this->report_repo->shouldReceive( 'get_all_frozen' )
+			->once()
+			->with( 2 )
+			->andReturn( array() );
+
+		$summary = $this->generator->generate_live_summary( array(), 1 );
+
+		$this->assertArrayHasKey( 'ai_summary', $summary );
+		$this->assertNull( $summary['ai_summary'] );
+	}
+
+	/**
 	 * Test trend calculation with increase.
 	 */
 	public function test_get_trend_comparison_increase() {

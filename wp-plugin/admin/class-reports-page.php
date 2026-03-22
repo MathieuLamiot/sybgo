@@ -941,7 +941,8 @@ class Reports_Page {
 			return; // @phpstan-ignore deadCode.unreachable
 		}
 
-		$events       = $this->event_repo->get_by_report( $report_id );
+		$is_active    = 'active' === $report['status'];
+		$events       = $this->event_repo->get_by_report( $is_active ? null : $report_id );
 		$live_summary = $this->report_generator->generate_live_summary( $events, $report_id );
 		$ai_summary   = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
 
@@ -950,7 +951,13 @@ class Reports_Page {
 			return; // @phpstan-ignore deadCode.unreachable
 		}
 
-		$this->report_repo->set_ai_summary( $report_id, $ai_summary );
+		if ( $is_active ) {
+			$full_summary               = $live_summary;
+			$full_summary['ai_summary'] = $ai_summary;
+			$this->report_repo->save_summary_data( $report_id, $full_summary );
+		} else {
+			$this->report_repo->set_ai_summary( $report_id, $ai_summary );
+		}
 
 		wp_send_json_success( array( 'summary' => $ai_summary ) );
 	}

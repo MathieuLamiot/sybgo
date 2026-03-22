@@ -127,13 +127,14 @@
 				success: function(response) {
 					if (response.success) {
 						$result.text(response.data.summary).show();
+						$btn.text('Regenerate AI Summary');
 					} else {
 						// eslint-disable-next-line no-alert
 						alert(response.data && response.data.message ? response.data.message : 'Could not generate summary. Please try again.');
 					}
 				},
 				complete: function() {
-					$btn.prop('disabled', false).text('Get AI Summary');
+					$btn.prop('disabled', false);
 				}
 			});
 		},

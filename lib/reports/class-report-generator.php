@@ -74,7 +74,9 @@ class Report_Generator {
 	 * @return array<string, mixed> Summary array with totals, trends, highlights, top_authors, total_events.
 	 */
 	public function generate_live_summary( array $events, int $active_report_id ): array {
-		return $this->compute_report_data( $events, $active_report_id );
+		$data               = $this->compute_report_data( $events, $active_report_id );
+		$data['ai_summary'] = null;
+		return $data;
 	}
 
 	/**

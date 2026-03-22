@@ -584,7 +584,7 @@ class Dashboard_Widget {
 	 * AJAX handler for on-demand AI summary in the dashboard widget.
 	 *
 	 * Generates a live AI summary for the current week's events and returns it as JSON.
-	 * The summary is NOT persisted — it is ephemeral for the current page view.
+	 * If an active report exists, the summary is persisted to it via save_summary_data().
 	 *
 	 * @return void
 	 */
@@ -613,6 +613,12 @@ class Dashboard_Widget {
 		if ( null === $summary ) {
 			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
 			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( $active_report ) {
+			$full_summary               = $live_summary;
+			$full_summary['ai_summary'] = $summary;
+			$this->report_repo->save_summary_data( (int) $active_report['id'], $full_summary );
 		}
 
 		wp_send_json_success( array( 'summary' => $summary ) );

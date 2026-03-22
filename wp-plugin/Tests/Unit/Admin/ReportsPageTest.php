@@ -465,6 +465,63 @@ class ReportsPageTest extends TestCase {
 	}
 
 	/**
+	 * For an active report, AJAX must fetch events via get_by_report(null) and persist
+	 * the full summary (stats + AI text) via save_summary_data().
+	 */
+	public function test_ajax_generate_ai_summary_active_report_uses_null_and_saves_full_summary(): void {
+		$report = array(
+			'id'           => 30,
+			'status'       => 'active',
+			'period_start' => '2026-03-15 00:00:00',
+			'period_end'   => null,
+			'summary_data' => null,
+		);
+
+		$live_summary = array(
+			'totals'       => array( 'post_published' => 4 ),
+			'trends'       => array(),
+			'highlights'   => array( '4 new posts published' ),
+			'top_authors'  => array(),
+			'total_events' => 4,
+			'ai_summary'   => null,
+		);
+
+		$_POST['nonce']     = 'valid_nonce';
+		$_POST['report_id'] = '30';
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 30 )->andReturn( $report );
+
+		// Must use null (unassigned events), NOT 30.
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->with( array(), 30 )
+			->andReturn( $live_summary );
+
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )
+			->andReturn( 'Active week summary.' );
+
+		// Must call save_summary_data (full object), not set_ai_summary.
+		$this->report_repo->shouldReceive( 'save_summary_data' )
+			->once()
+			->with(
+				30,
+				Mockery::on(
+					function ( $data ) {
+						return isset( $data['ai_summary'] ) && 'Active week summary.' === $data['ai_summary']
+							&& isset( $data['totals'] );
+					}
+				)
+			)
+			->andReturn( true );
+		$this->report_repo->shouldNotReceive( 'set_ai_summary' );
+
+		$this->reports_page->ajax_generate_ai_summary();
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
 	 * AJAX handler should not call set_ai_summary when AI summarizer is null.
 	 */
 	public function test_ajax_generate_ai_summary_skips_set_when_no_summarizer(): void {

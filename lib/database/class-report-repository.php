@@ -287,6 +287,23 @@ class Report_Repository {
 	}
 
 	/**
+	 * Save (overwrite) the full summary_data for a report.
+	 *
+	 * Unlike set_ai_summary(), which merges only the AI text into an existing
+	 * summary_data object, this method replaces the entire summary_data column
+	 * with the provided array.  Use this when you have a complete stats + AI
+	 * summary object that should be persisted atomically (e.g. for active
+	 * reports where no frozen summary_data exists yet).
+	 *
+	 * @param int                  $report_id Report ID.
+	 * @param array<string, mixed> $summary   Full summary data array to persist.
+	 * @return bool True on success, false on failure.
+	 */
+	public function save_summary_data( int $report_id, array $summary ): bool {
+		return $this->update( $report_id, array( 'summary_data' => $summary ) );
+	}
+
+	/**
 	 * Get the table name.
 	 *
 	 * @return string Table name.
