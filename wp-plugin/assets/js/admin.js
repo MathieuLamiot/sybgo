@@ -63,7 +63,7 @@
 				success: function(response) {
 					if (response.success) {
 						$eventsList.html(response.data.html);
-						$('.sybgo-event-stats strong').text(response.data.count);
+						$('.sybgo-events-list').prev('.sybgo-event-stats').find('strong').text(response.data.count);
 					}
 				},
 				complete: function() {
