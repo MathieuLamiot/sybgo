@@ -18,7 +18,7 @@
 
 		bindEvents: function() {
 			// Filter buttons
-			$(document).on('click', '.sybgo-filter-buttons button', this.handleFilterClick);
+			$(document).on('click', '.sybgo-filters .sybgo-filter-btn', this.handleFilterClick);
 
 			// Preview button
 			$(document).on('click', '.sybgo-preview-digest', this.handlePreviewClick);
@@ -44,23 +44,23 @@
 		},
 
 		filterEvents: function(filter) {
-			const $widget = $('#sybgo_activity_digest');
-			const $eventsList = $widget.find('.recent-events');
+			const $eventsList = $('.sybgo-events-list');
 
 			// Add loading state
 			$eventsList.addClass('sybgo-loading');
 
 			$.ajax({
-				url: sybgoAdmin.ajaxUrl,
+				url: sybgoWidget.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'sybgo_filter_events',
-					nonce: sybgoAdmin.nonce,
+					nonce: sybgoWidget.nonce,
 					filter: filter
 				},
 				success: function(response) {
 					if (response.success) {
 						$eventsList.html(response.data.html);
+						$('.sybgo-event-stats strong').text(response.data.count);
 					}
 				},
 				complete: function() {
