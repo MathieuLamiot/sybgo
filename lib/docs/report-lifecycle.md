@@ -23,7 +23,7 @@ Every report progresses through three states:
 ### 1. Active Report
 - **When:** Monday 00:06 - Sunday 23:55
 - **Status:** `active`
-- **Events:** New events have `report_id = NULL` (unassigned)
+- **Events:** New singular events have `report_id = NULL`; new aggregated rows use `report_id = 0` (sentinel)
 - **Behavior:** Collecting events throughout the week
 
 ### 2. Frozen Report
@@ -90,11 +90,18 @@ Automatically create human-readable highlights:
 The `ai_summary` field in `summary_data` is set to `null` at freeze time. AI summaries are generated on demand after freezing — see [AI Summary (On-Demand)](#ai-summary-on-demand) below.
 
 ### Step 5: Assign Events to Report
+
+Both singular events and aggregated rows are assigned to the new report in bulk:
+
 ```sql
-UPDATE wp_sybgo_events
-SET report_id = 123
-WHERE report_id IS NULL;
+UPDATE wp_sybgo_events SET report_id = 123 WHERE report_id IS NULL;
+UPDATE wp_sybgo_aggregated_events SET report_id = 123
+  WHERE report_id = 0 AND date BETWEEN '2026-02-10' AND '2026-02-16';
 ```
+
+For aggregated rows, `report_id = 0` is the sentinel for "current unassigned period". Updating it to the real report ID vacates the sentinel slot, resetting the PHP error cap and the dashboard widget's error display — the `report_id = 0` set is empty immediately after and the new period starts clean. The `Aggregated_Event_Repository::assign_to_report()` method handles this step.
+
+Using `report_id` itself (rather than a separate boolean column) as the period discriminator means the UNIQUE KEY `(event_type, dimensions_hash, date, report_id)` can accommodate multiple freeze cycles on the same calendar day without collision: each freeze produces a row with a distinct `report_id` value.
 
 ### Step 6: Save Report
 ```json
@@ -215,6 +222,8 @@ This will:
 3. Send email immediately
 4. Create new active report
 
+After a freeze, the dashboard widget's PHP Errors section automatically shows only errors from the new period because `Aggregated_Event_Repository` queries by `report_id = 0` (the sentinel for the current period). The freeze sets `report_id` to the real report ID on all sentinel rows, so the `report_id = 0` set is empty immediately after and the new period starts clean.
+
 **Use cases:**
 - Testing email template
 - Sending mid-week updates
@@ -238,7 +247,7 @@ The table shows the active (ongoing) report first, followed by all frozen/emaile
 
 Clicking **View Details** on the active report row opens the report details page. Because the active report has no frozen `summary_data` yet, Sybgo generates a **live summary** on the fly:
 
-1. Fetches all unassigned events (`report_id IS NULL`).
+1. Fetches all unassigned events (singular: `report_id IS NULL`; aggregated: `report_id = 0`).
 2. Calls `Report_Generator::generate_live_summary()`, which runs the same computation pipeline as the freeze process (`totals → trends → highlights → top_authors`) — but skips the AI summarizer and does not persist anything.
 3. Renders the same summary cards and highlights UI as a frozen report.
 

@@ -14,6 +14,7 @@ use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Generator;
 use Sybgo\AI\AI_Summarizer;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Events\Event_Registry;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
@@ -46,6 +47,11 @@ class DashboardWidgetTest extends TestCase {
 	private $ai_summarizer;
 
 	/**
+	 * @var \Mockery\MockInterface&Aggregated_Event_Repository
+	 */
+	private $aggregated_repo;
+
+	/**
 	 * @var Dashboard_Widget
 	 */
 	private Dashboard_Widget $widget;
@@ -61,13 +67,15 @@ class DashboardWidgetTest extends TestCase {
 		$this->report_repo      = Mockery::mock( Report_Repository::class );
 		$this->report_generator = Mockery::mock( Report_Generator::class );
 		$this->ai_summarizer    = Mockery::mock( AI_Summarizer::class );
+		$this->aggregated_repo  = Mockery::mock( Aggregated_Event_Repository::class );
 
 		$this->widget = new Dashboard_Widget(
 			$this->event_repo,
 			$this->report_repo,
 			$this->report_generator,
 			$this->ai_summarizer,
-			Mockery::mock( Event_Registry::class )
+			Mockery::mock( Event_Registry::class ),
+			$this->aggregated_repo
 		);
 
 		Functions\when( 'esc_html' )->returnArg();
@@ -118,6 +126,8 @@ class DashboardWidgetTest extends TestCase {
 	public function test_render_widget_shows_get_ai_summary_button_when_summarizer_available(): void {
 		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		$output = $this->capture( 'render_widget' );
 
@@ -134,16 +144,21 @@ class DashboardWidgetTest extends TestCase {
 		$event_repo  = Mockery::mock( Event_Repository::class );
 		$report_repo = Mockery::mock( Report_Repository::class );
 
+		$aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
+
 		$widget_no_ai = new Dashboard_Widget(
 			$event_repo,
 			$report_repo,
 			$this->report_generator,
 			null,
-			Mockery::mock( Event_Registry::class )
+			Mockery::mock( Event_Registry::class ),
+			$aggregated_repo
 		);
 
 		$report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
 		$event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
+		$aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		$ref = new \ReflectionMethod( Dashboard_Widget::class, 'render_widget' );
 		$ref->setAccessible( true );

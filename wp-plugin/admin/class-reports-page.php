@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Manager;
@@ -76,6 +77,15 @@ class Reports_Page {
 	private Event_Registry $event_registry;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * Used to query PHP error rows for the report detail view.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
 	 * AI summarizer instance.
 	 *
 	 * @var AI_Summarizer|null
@@ -85,13 +95,14 @@ class Reports_Page {
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository   $event_repo       Event repository.
-	 * @param Report_Repository  $report_repo      Report repository.
-	 * @param Report_Manager     $report_manager   Report manager.
-	 * @param Report_Generator   $report_generator Report generator.
-	 * @param Email_Manager      $email_manager    Email manager.
-	 * @param Event_Registry     $event_registry   Event registry.
-	 * @param AI_Summarizer|null $ai_summarizer    AI summarizer or null if unavailable.
+	 * @param Event_Repository            $event_repo       Event repository.
+	 * @param Report_Repository           $report_repo      Report repository.
+	 * @param Report_Manager              $report_manager   Report manager.
+	 * @param Report_Generator            $report_generator Report generator.
+	 * @param Email_Manager               $email_manager    Email manager.
+	 * @param Event_Registry              $event_registry   Event registry.
+	 * @param Aggregated_Event_Repository $aggregated_repo  Aggregated event repository.
+	 * @param AI_Summarizer|null          $ai_summarizer    AI summarizer or null if unavailable.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
@@ -100,6 +111,7 @@ class Reports_Page {
 		Report_Generator $report_generator,
 		Email_Manager $email_manager,
 		Event_Registry $event_registry,
+		Aggregated_Event_Repository $aggregated_repo,
 		?AI_Summarizer $ai_summarizer = null
 	) {
 		$this->event_repo       = $event_repo;
@@ -108,6 +120,7 @@ class Reports_Page {
 		$this->report_generator = $report_generator;
 		$this->email_manager    = $email_manager;
 		$this->event_registry   = $event_registry;
+		$this->aggregated_repo  = $aggregated_repo;
 		$this->ai_summarizer    = $ai_summarizer;
 	}
 
@@ -618,6 +631,8 @@ class Reports_Page {
 			<?php else : ?>
 				<?php $this->render_events_table( $events ); ?>
 			<?php endif; ?>
+
+			<?php $this->render_php_errors_table( $report ); ?>
 		</div>
 
 		<style>
@@ -689,6 +704,88 @@ class Reports_Page {
 			margin-bottom: 8px;
 		}
 		</style>
+		<?php
+	}
+
+	/**
+	 * Render PHP errors table for a report.
+	 *
+	 * Queries aggregated error rows for the report's date range and renders a
+	 * wp-list-table with one row per distinct error signature, showing the error
+	 * level emoji, message + file:line, and occurrence count.
+	 * Renders nothing if no errors were recorded in the period.
+	 *
+	 * @param array<string, mixed> $report Report data (period_start, period_end, status).
+	 * @return void
+	 */
+	private function render_php_errors_table( array $report ): void {
+		// Use report_id IS NULL for the active (unassigned) period, or report_id = N
+		// for frozen/emailed reports — same pattern as singular events.
+		$report_id  = 'active' === $report['status'] ? null : (int) $report['id'];
+		$error_rows = $this->aggregated_repo->get_rows_for_report( 'php_error', $report_id );
+
+		if ( empty( $error_rows ) ) {
+			return;
+		}
+
+		$level_emoji = array(
+			'warning'         => '⚠️',
+			'user_warning'    => '⚠️',
+			'notice'          => 'ℹ️',
+			'user_notice'     => 'ℹ️',
+			'deprecated'      => '🔔',
+			'user_deprecated' => '🔔',
+			'user_error'      => '❌',
+		);
+
+		?>
+		<h3>
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: %d: number of distinct PHP error signatures */
+					__( 'PHP Errors (%d)', 'sybgo' ),
+					count( $error_rows )
+				)
+			);
+			?>
+		</h3>
+
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th style="width: 50px;"><?php esc_html_e( 'Type', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Description', 'sybgo' ); ?></th>
+					<th style="width: 80px;"><?php esc_html_e( 'Count', 'sybgo' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $error_rows as $row ) : ?>
+					<?php
+					$dims    = json_decode( $row['dimensions'], true );
+					$meta    = json_decode( $row['meta'], true );
+					$level   = $dims['level'] ?? 'warning';
+					$emoji   = $level_emoji[ $level ] ?? '⚠️';
+					$message = $meta['message'] ?? '';
+					$file    = $meta['file'] ?? '';
+					$line    = $meta['line'] ?? '';
+					$count   = (int) $row['total'];
+					?>
+					<tr>
+						<td style="text-align: center; font-size: 20px;">
+							<?php echo esc_html( $emoji ); ?>
+						</td>
+						<td>
+							<strong><?php echo esc_html( $message ); ?></strong>
+							<?php if ( $file ) : ?>
+								<br><code><?php echo esc_html( $file . ':' . $line ); ?></code>
+							<?php endif; ?>
+						</td>
+						<td><?php echo esc_html( (string) $count ); ?></td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 

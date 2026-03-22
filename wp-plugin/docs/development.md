@@ -103,34 +103,7 @@ $wpdb->prepare( "SELECT * FROM table WHERE id = %d", $id );
 
 ## Testing
 
-### Run All Tests
-
-```bash
-# All tests (unit + integration)
-composer run-tests
-
-# Unit tests only
-composer test-unit
-
-# Integration tests only
-composer test-integration
-
-# With coverage report
-composer test-coverage
-```
-
-### Run Specific Tests
-
-```bash
-# Single test class
-vendor/bin/phpunit --filter PostTrackerTest
-
-# Single test method
-vendor/bin/phpunit --filter test_track_post_publish
-
-# Specific file
-vendor/bin/phpunit Tests/Unit/Events/PostTrackerTest.php
-```
+See `CLAUDE.md` at the repo root for the exact commands to run unit tests, PHPCS, and PHPStan across `lib/` and `wp-plugin/`, including the symlink fix for PHPStan.
 
 ### Writing Tests
 
@@ -359,6 +332,26 @@ sybgo/
     │   └── Admin/
     └── Integration/
 ```
+
+## Admin AJAX Actions
+
+The dashboard widget registers three AJAX actions, all protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body). All three require the `read` capability.
+
+| Action | Handler | Success response | Error response |
+|--------|---------|-----------------|----------------|
+| `sybgo_filter_events` | `Dashboard_Widget::ajax_filter_events()` | `{html: string, count: int}` | — |
+| `sybgo_preview_digest` | `Dashboard_Widget::ajax_preview_digest()` | `{html: string}` | `{message, file, line, trace}` |
+| `sybgo_preview_last_digest` | `Dashboard_Widget::ajax_preview_last_digest()` | `{html: string}` | `{message: string}` |
+
+`sybgo_preview_last_digest` fetches the most recently frozen report via `Report_Repository::get_last_frozen()`, reads its `summary_data` JSON (fields: `totals`, `trends`, `ai_summary`), and renders the same preview modal used by `sybgo_preview_digest`. It returns an error if no frozen report exists or if `summary_data` is absent.
+
+The nonce value and `ajaxUrl` are available in the `sybgoWidget` JS object (localized by `Dashboard_Widget::enqueue_assets()`).
+
+## Admin Classes: Constructor Dependencies
+
+`Reports_Page` accepts `Aggregated_Event_Repository` as its 7th constructor argument. This repository is used by `render_php_errors_table()` to query PHP error rows for a report's date range. When instantiating `Reports_Page` directly (e.g., in tests), pass an `Aggregated_Event_Repository` instance as the final argument.
+
+Similarly, `Dashboard_Widget` accepts `Aggregated_Event_Repository` as its 6th constructor argument for the PHP Errors widget section.
 
 ## Plugin Uninstall
 

@@ -26,7 +26,12 @@ You are a senior developer opening a pull request for the sybgo project. Fill ev
 
 Fill every section of `.github/PULL_REQUEST_TEMPLATE.md`. Never leave placeholder text or empty sections.
 
-**Description**: 1-2 sentences of user/developer impact. Always link the fixing issue: `Fixes: #N`
+**Description**: 1-2 sentences of user/developer impact. Always link closing issues using one `Closes #N` per line — never a bullet list under `Fixes:` and never a colon-then-list. GitHub only auto-closes issues when the keyword and issue number are on the same line. Example:
+```
+Closes #8
+Closes #29
+Closes #30
+```
 
 **Type of change**: Tick the correct checkbox(es). Never leave all unchecked.
 

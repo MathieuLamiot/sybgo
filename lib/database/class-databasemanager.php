@@ -112,6 +112,8 @@ class DatabaseManager {
 	public function maybe_create_tables(): void {
 		$this->create_tables();
 		$this->migrate_from_old_schema();
+		$this->migrate_aggregated_events_is_assigned();
+		$this->migrate_aggregated_events_report_id_key();
 	}
 
 	/**
@@ -174,15 +176,21 @@ class DatabaseManager {
 		// dimensions_hash is a MySQL generated column (SHA2 of the dimensions JSON blob) used in
 		// the UNIQUE KEY because LONGTEXT columns cannot be indexed directly.
 		// Empty dimensions are encoded as '{}' (not NULL) to produce a stable hash for global rows.
+		// report_id uses 0 as a sentinel for "unassigned / current period" rows (NULL cannot be part
+		// of a UNIQUE KEY in MySQL since NULLs are never equal, which would break upsert deduplication).
+		// After a freeze, report_id is set to the actual report ID (always > 0), vacating the
+		// sentinel slot so the next upsert for the same signature creates a fresh row.
 		$aggregated_events_sql = "CREATE TABLE {$this->aggregated_events_table} (
 			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			event_type VARCHAR(100) NOT NULL,
 			dimensions LONGTEXT DEFAULT NULL,
 			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
 			value DECIMAL(20,4) NOT NULL DEFAULT 0,
+			report_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
 			date DATE NOT NULL,
 			meta LONGTEXT DEFAULT NULL,
-			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date),
+			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, report_id),
+			INDEX idx_report_id (report_id),
 			INDEX idx_date (date),
 			INDEX idx_event_type (event_type)
 		) $charset_collate;";
@@ -213,6 +221,71 @@ class DatabaseManager {
 			// Drop old table.
 			$wpdb->query( "DROP TABLE IF EXISTS $old_table" );
 		}
+	}
+
+	/**
+	 * Add the is_assigned column and update the UNIQUE KEY on wp_sybgo_aggregated_events.
+	 *
+	 * DbDelta cannot drop or rename an existing unique key, so this migration runs an
+	 * explicit ALTER TABLE. It is guarded by checking whether the is_assigned column already
+	 * exists, making it safe to call multiple times.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function migrate_aggregated_events_is_assigned(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$this->aggregated_events_table} LIKE %s", 'is_assigned' ) );
+		if ( ! empty( $col ) ) {
+			return; // Already migrated.
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$this->aggregated_events_table}
+			 ADD COLUMN is_assigned TINYINT(1) NOT NULL DEFAULT 0,
+			 DROP INDEX uq_event_dim_date,
+			 ADD UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, is_assigned)"
+		);
+	}
+
+	/**
+	 * Migrate aggregated_events from is_assigned discriminator to report_id=0 sentinel.
+	 *
+	 * Replaces the binary is_assigned column with report_id=0 as the "unassigned" sentinel
+	 * so that multiple freezes on the same calendar day no longer collide on the unique key.
+	 * The new UNIQUE KEY is (event_type, dimensions_hash, date, report_id).
+	 *
+	 * Guard: skips if is_assigned column no longer exists (already migrated).
+	 * Safe to call multiple times.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function migrate_aggregated_events_report_id_key(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$this->aggregated_events_table} LIKE %s", 'is_assigned' ) );
+		if ( empty( $col ) ) {
+			return; // Already migrated.
+		}
+
+		// Step 1: convert NULL report_id to sentinel 0 before altering the column to NOT NULL.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "UPDATE {$this->aggregated_events_table} SET report_id = 0 WHERE report_id IS NULL" );
+
+		// Step 2: swap schema — drop old key and is_assigned column, add new key, make report_id NOT NULL.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$this->aggregated_events_table}
+			 DROP INDEX uq_event_dim_date,
+			 DROP COLUMN is_assigned,
+			 MODIFY COLUMN report_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			 ADD UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, report_id)"
+		);
 	}
 
 	/**

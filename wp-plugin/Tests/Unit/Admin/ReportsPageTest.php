@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Sybgo\Tests\Unit\Admin;
 
 use Sybgo\Admin\Reports_Page;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Manager;
@@ -48,6 +49,11 @@ class ReportsPageTest extends TestCase {
 	private $ai_summarizer;
 
 	/**
+	 * @var \Mockery\MockInterface&Aggregated_Event_Repository
+	 */
+	private $aggregated_repo;
+
+	/**
 	 * Reports_Page instance.
 	 *
 	 * @var Reports_Page
@@ -66,7 +72,8 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo      = Mockery::mock( Report_Repository::class );
 		$this->event_repo       = Mockery::mock( Event_Repository::class );
 		$this->report_generator = Mockery::mock( Report_Generator::class );
-		$this->ai_summarizer    = Mockery::mock( AI_Summarizer::class );
+		$this->ai_summarizer   = Mockery::mock( AI_Summarizer::class );
+		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
 
 		$this->reports_page = new Reports_Page(
 			$this->event_repo,
@@ -75,6 +82,7 @@ class ReportsPageTest extends TestCase {
 			$this->report_generator,
 			Mockery::mock( Email_Manager::class ),
 			Mockery::mock( Event_Registry::class ),
+			$this->aggregated_repo,
 			$this->ai_summarizer
 		);
 
@@ -171,6 +179,7 @@ class ReportsPageTest extends TestCase {
 				'total_events' => 0,
 			)
 		);
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
@@ -203,6 +212,7 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 5 )->andReturn( $report );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 5 )->andReturn( $live_summary );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
@@ -323,6 +333,7 @@ class ReportsPageTest extends TestCase {
 
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 10 )->andReturn( $report );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( 10 )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 		Functions\when( 'esc_js' )->returnArg();
@@ -358,6 +369,7 @@ class ReportsPageTest extends TestCase {
 
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 11 )->andReturn( $report );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( 11 )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 		Functions\when( 'esc_js' )->returnArg();
@@ -390,6 +402,8 @@ class ReportsPageTest extends TestCase {
 				'total_events' => 0,
 			)
 		);
+
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 		Functions\when( 'esc_js' )->returnArg();
@@ -454,6 +468,7 @@ class ReportsPageTest extends TestCase {
 			$this->report_generator,
 			Mockery::mock( Email_Manager::class ),
 			Mockery::mock( Event_Registry::class ),
+			$this->aggregated_repo,
 			null
 		);
 

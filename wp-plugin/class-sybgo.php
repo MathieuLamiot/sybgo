@@ -7,7 +7,7 @@
  * Plugin Name: Sybgo
  * Plugin URI: https://github.com/your-repo/sybgo
  * Description: Tracks meaningful WordPress events and sends weekly email digests. Since You've Been Gone - stay informed about what's happening on your site.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: MathieuLamiot
  * Author URI: https://mathieulamiot.com
  * License: GPL-2.0-or-later
@@ -150,8 +150,9 @@ class Sybgo {
 	 */
 	private function init_event_tracking(): void {
 		// Initialize event tracker.
-		$event_repo    = $this->factory->create_event_repository();
-		$event_tracker = new Events\Event_Tracker( $event_repo );
+		$event_repo      = $this->factory->create_event_repository();
+		$aggregated_repo = $this->factory->create_aggregated_event_repository();
+		$event_tracker   = new Events\Event_Tracker( $event_repo, $aggregated_repo );
 		$event_tracker->init();
 
 		// Store in factory for later use.
@@ -191,7 +192,7 @@ class Sybgo {
 		add_action( 'admin_post_sybgo_run_cleanup', array( $this, 'handle_manual_cleanup' ) );
 
 		// Enqueue admin assets.
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ), 5 );
 	}
 
 	/**
@@ -204,6 +205,7 @@ class Sybgo {
 		$report_repo      = $this->factory->create_report_repository();
 		$event_registry   = $this->factory->create_event_registry();
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
+		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
 		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
 
 		return new Admin\Dashboard_Widget(
@@ -211,7 +213,8 @@ class Sybgo {
 			$report_repo,
 			$report_generator,
 			$ai_summarizer,
-			$event_registry
+			$event_registry,
+			$aggregated_repo
 		);
 	}
 
@@ -240,6 +243,7 @@ class Sybgo {
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
 		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
 		$email_manager    = $this->factory->create_email_manager();
+		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
 
 		return new Admin\Reports_Page(
 			$event_repo,
@@ -248,6 +252,7 @@ class Sybgo {
 			$report_generator,
 			$email_manager,
 			$event_registry,
+			$aggregated_repo,
 			$ai_summarizer
 		);
 	}
