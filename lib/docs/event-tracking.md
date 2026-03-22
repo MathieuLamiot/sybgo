@@ -30,6 +30,9 @@ Sybgo tracks 16 different event types across 4 categories:
 - **`comment_posted`** - New comment submitted
 - **`comment_approved`** - Comment approved/unapproved/marked spam
 
+### PHP Errors
+- **`php_error`** - A PHP warning, notice, or deprecation was captured by the site (aggregated; see below)
+
 ## How Event Tracking Works
 
 When you perform an action in WordPress (publish a post, approve a comment, etc.), Sybgo's tracker classes listen for the corresponding WordPress hook and create an event record. Each tracker registers its event types via the `sybgo_event_types` filter and hooks into WordPress actions to capture events.
@@ -95,6 +98,42 @@ To prevent database bloat from frequent auto-saves, Sybgo throttles edit events:
 11:20 AM - Edit again → Event recorded (>1 hour passed)
 ```
 
+## PHP Error Tracking
+
+`Error_Tracker` (`lib/events/trackers/class-error-tracker.php`) registers a custom PHP error handler via `set_error_handler()` at plugin init. It captures non-fatal PHP errors — warnings, notices, user errors, deprecations — as aggregated events stored in `wp_sybgo_aggregated_events` with `event_type = 'php_error'`.
+
+### What is captured
+
+Non-fatal PHP errors are captured via `set_error_handler()`: `E_WARNING`, `E_NOTICE`, `E_USER_ERROR`, `E_USER_WARNING`, `E_USER_NOTICE`, `E_DEPRECATED`, `E_USER_DEPRECATED`. Fatal levels (`E_ERROR`, `E_PARSE`, `E_CORE_ERROR`, `E_COMPILE_ERROR`) bypass `set_error_handler()` and are captured instead via a `register_shutdown_function()` callback that inspects `error_get_last()`. The daily cap (see below) is not enforced for fatals, since a fatal terminates the request immediately and cannot produce a loop.
+
+Errors suppressed with the `@` operator are detected by comparing `error_reporting()` at handler invocation time against the mask captured at handler registration time. Any difference indicates `@`-suppression and the error is silently skipped. This approach works reliably across all PHP versions.
+
+### Error signatures and dimensions
+
+Each error occurrence is identified by a **signature**: an md5 hash of `file:line:message_excerpt` (first 100 characters of the message). The signature and the error level are stored as `dimensions`, so each distinct error location gets its own row in `wp_sybgo_aggregated_events`. Repeated occurrences of the same error just increment the `value` counter on that row.
+
+The `meta` column stores a snapshot: `file`, `line`, and the first 100 characters of the message, for display purposes.
+
+### Per-period cap
+
+To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows with `report_id = 0` (the sentinel for the current, not-yet-frozen period). Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. The cap resets automatically after a freeze because the freeze operation sets `report_id` to the real report ID on all sentinel rows, making the `report_id = 0` set empty again.
+
+### Handler chaining
+
+`Error_Tracker` stores the previously registered error handler and always calls it after its own logic, so existing error handling (WordPress's own handler, third-party plugins) is unaffected.
+
+### Dashboard display
+
+The WordPress admin dashboard widget includes a **PHP Errors** section that shows:
+
+- The number of distinct error signatures recorded during the current report period.
+- The total occurrence count for those signatures.
+- A top-5 list of errors, each entry showing a level emoji (warning/user_warning → ⚠️, notice/user_notice → ℹ️, deprecated/user_deprecated → 🔔, user_error → ❌), the error message, the filename and line number, and the occurrence count.
+
+The section only renders when at least one error has been recorded in the period. Both the total count and the per-signature breakdown are fetched using the report-scoped repository methods (`get_sum_for_report` and `get_rows_for_report` with `report_id = null`), which scope the query to unassigned rows rather than a calendar date range.
+
+The report details page (Sybgo Reports → View Details) also renders a **PHP Errors** table below the All Events table, with one row per distinct error signature. The table is populated by `Reports_Page::render_php_errors_table()` using `Aggregated_Event_Repository::get_rows_for_report()` — passing `null` for the active report or the numeric `report_id` for frozen/emailed reports.
+
 ## Edit Magnitude Tracking
 
 When you edit a post, Sybgo calculates what percentage of the content changed:
@@ -142,10 +181,9 @@ Set the minimum percentage change to track edit events:
 **Location:** WP Admin Dashboard → "Site Activity Digest" widget (sidebar)
 
 **Features:**
-- Last Week's Summary with highlights from the previous frozen report
-- This week's event count
-- Filter events by type (All, Posts, Users, Updates, Comments)
-- Preview this week's digest (with AI summary if configured)
+- Two action buttons at the top of the widget: "Preview This Week's Digest" (opens a modal via the `sybgo_preview_digest` AJAX action) and "View Previous Digest" (opens a modal via the `sybgo_preview_last_digest` AJAX action).
+- This week's event count with filter buttons (All, Posts, Users, Updates, Comments).
+- PHP Errors section showing distinct signature count, total occurrences, and a top-5 error list (see PHP Error Tracking above).
 
 ### Reports Page
 
@@ -155,7 +193,15 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 
 ### Database Inspection
 
-Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date)` so each `(event_type, dimension set, date)` combination has at most one row.
+Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date, report_id)` so upserts accumulate into the correct period slot.
+
+`Aggregated_Event_Repository` exposes read methods beyond `upsert`. The primary query interface is report-scoped — passing `null` targets unassigned rows (current active period, `report_id = 0`); passing an integer targets a specific frozen report:
+
+- `count_distinct_dimensions_for_report(string $event_type, ?int $report_id): int` — counts distinct dimension sets for the current or a past period. Used by `Error_Tracker` to enforce the 5-signature-per-period cap.
+- `get_sum_for_report(string $event_type, ?int $report_id): float` — sums all accumulated values for the period. Used by the dashboard widget for total error occurrence counts.
+- `get_rows_for_report(string $event_type, ?int $report_id): array` — returns one row per distinct dimension set (grouped by `dimensions_hash`) with `SUM(value) AS total`, ordered by total descending. Each row contains `dimensions`, `total`, and `meta`. Used by the dashboard PHP Errors section and by the report detail view.
+
+Date-range variants (`count_distinct_dimensions_for_date_range`, `get_sum_for_date_range`, `get_rows_for_event_type_and_date_range`) are also available for cases where a calendar range is needed rather than a report boundary.
 
 The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tables()`):
 
@@ -166,6 +212,7 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 | `dimensions` | LONGTEXT | JSON blob of breakdown axes, e.g. `{"role":"editor","product_id":42}`. Empty = `'{}'` (global row). |
 | `dimensions_hash` | VARCHAR(64) | SHA2-256 of `dimensions`, computed by MySQL automatically. Used in the UNIQUE KEY. |
 | `value` | DECIMAL(20,4) | Accumulated value for the day (count or sum). Default 0. |
+| `report_id` | BIGINT UNSIGNED NOT NULL | `0` = current unassigned period (sentinel). Set to the actual report ID during freeze via `assign_to_report()`. Including `report_id` in the unique key allows multiple freeze cycles on the same calendar day without collision. |
 | `date` | DATE | Date of the aggregation (Y-m-d) |
 | `meta` | LONGTEXT | Optional JSON context snapshot (overwritten on conflict, not accumulated) |
 
@@ -174,7 +221,7 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 | Use case | `event_type` | `dimensions` | `value` delta |
 |---|---|---|---|
 | Page visits per page | `page_view` | `{"post_id": 42}` | 1.0 |
-| PHP errors per error type | `php_error` | `{"error_code": "E_WARNING"}` | 1.0 |
+| PHP errors per location | `php_error` | `{"level":"warning","signature":"<md5>"}` | 1.0 |
 | WooCommerce units per product | `woo_sale_units` | `{"product_id": 99}` | 1.0 |
 | WooCommerce revenue per product | `woo_sale_revenue` | `{"product_id": 99}` | 249.95 |
 | User registrations per role | `user_registered` | `{"role": "editor"}` | 1.0 |
@@ -189,7 +236,7 @@ LIMIT 10;
 -- Count events by type
 SELECT event_type, COUNT(*) as total
 FROM wp_sybgo_events
-WHERE report_id IS NULL  -- Current week only
+WHERE report_id IS NULL  -- Current period (singular events still use NULL)
 GROUP BY event_type;
 
 -- Top 10 pages by visits today

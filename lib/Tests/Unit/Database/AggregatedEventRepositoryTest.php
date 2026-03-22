@@ -189,6 +189,45 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
+	 * Test count_distinct_dimensions_for_date_range() returns the integer from wpdb.
+	 */
+	public function test_count_distinct_dimensions_for_date_range_returns_int(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'BETWEEN' )
+							&& false !== strpos( $sql, 'COUNT(DISTINCT dimensions_hash)' );
+					}
+				),
+				'php_error',
+				'2026-03-15',
+				'2026-03-21'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '3' );
+
+		$count = $this->repo->count_distinct_dimensions_for_date_range( 'php_error', '2026-03-15', '2026-03-21' );
+
+		$this->assertSame( 3, $count );
+	}
+
+	/**
+	 * Test count_distinct_dimensions_for_date_range() returns zero when wpdb returns null.
+	 */
+	public function test_count_distinct_dimensions_for_date_range_returns_zero_when_null(): void {
+		$this->wpdb->shouldReceive( 'prepare' )->once()->andReturn( 'PREPARED SQL' );
+		$this->wpdb->shouldReceive( 'get_var' )->once()->andReturn( null );
+
+		$count = $this->repo->count_distinct_dimensions_for_date_range( 'php_error', '2026-03-15', '2026-03-21' );
+
+		$this->assertSame( 0, $count );
+	}
+
+	/**
 	 * Test upsert() SQL uses value accumulation, not a fixed count increment.
 	 */
 	public function test_upsert_sql_accumulates_value() {
@@ -218,5 +257,242 @@ class AggregatedEventRepositoryTest extends TestCase {
 
 		$this->assertStringContainsString( 'value = value + VALUES(value)', $captured_sql );
 		$this->assertStringNotContainsString( 'count = count + 1', $captured_sql );
+	}
+
+	/**
+	 * Test assign_to_report() issues an UPDATE targeting sentinel rows (report_id = 0) in date range.
+	 */
+	public function test_assign_to_report_updates_sentinel_rows_in_date_range(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = 0' )
+							&& false !== strpos( $sql, 'SET report_id' )
+							&& false !== strpos( $sql, 'BETWEEN' );
+					}
+				),
+				7,
+				'2026-02-10',
+				'2026-02-16'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'query' )->once()->with( 'PREPARED SQL' )->andReturn( 5 );
+
+		$this->repo->assign_to_report( 7, '2026-02-10', '2026-02-16' );
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test assign_to_report() SQL does not reference is_assigned or report_id IS NULL.
+	 *
+	 * Regression guard: the old schema used IS NULL + is_assigned which caused a unique key
+	 * collision on the second freeze for same-day signatures. The new schema uses report_id=0
+	 * as a sentinel so the unique key (event_type, dimensions_hash, date, report_id) can
+	 * accommodate multiple freezes on the same calendar day without collision.
+	 */
+	public function test_assign_to_report_sql_uses_sentinel_not_null(): void {
+		$captured_sql = '';
+
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) use ( &$captured_sql ) {
+						$captured_sql = $sql;
+						return true;
+					}
+				),
+				Mockery::any(),
+				Mockery::any(),
+				Mockery::any()
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
+
+		$this->repo->assign_to_report( 1, '2026-03-21', '2026-03-21' );
+
+		$this->assertStringContainsString( 'report_id = 0', $captured_sql );
+		$this->assertStringNotContainsString( 'IS NULL', $captured_sql );
+		$this->assertStringNotContainsString( 'is_assigned', $captured_sql );
+	}
+
+	/**
+	 * Test count_distinct_dimensions_for_report() with null uses report_id = 0 sentinel.
+	 */
+	public function test_count_distinct_dimensions_for_report_null_uses_sentinel(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = 0' )
+							&& false !== strpos( $sql, 'COUNT(DISTINCT dimensions_hash)' );
+					}
+				),
+				'php_error'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '3' );
+
+		$count = $this->repo->count_distinct_dimensions_for_report( 'php_error', null );
+
+		$this->assertSame( 3, $count );
+	}
+
+	/**
+	 * Test count_distinct_dimensions_for_report() with int uses report_id = N.
+	 */
+	public function test_count_distinct_dimensions_for_report_int_uses_equals(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = %d' )
+							&& false !== strpos( $sql, 'COUNT(DISTINCT dimensions_hash)' );
+					}
+				),
+				'php_error',
+				42
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '2' );
+
+		$count = $this->repo->count_distinct_dimensions_for_report( 'php_error', 42 );
+
+		$this->assertSame( 2, $count );
+	}
+
+	/**
+	 * Test get_sum_for_report() with null uses report_id = 0 sentinel.
+	 */
+	public function test_get_sum_for_report_null_uses_sentinel(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = 0' )
+							&& false !== strpos( $sql, 'SUM(value)' );
+					}
+				),
+				'php_error'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '7.0000' );
+
+		$sum = $this->repo->get_sum_for_report( 'php_error', null );
+
+		$this->assertSame( 7.0, $sum );
+	}
+
+	/**
+	 * Test get_sum_for_report() with int uses report_id = N.
+	 */
+	public function test_get_sum_for_report_int_uses_equals(): void {
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = %d' )
+							&& false !== strpos( $sql, 'SUM(value)' );
+					}
+				),
+				'php_error',
+				99
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_var' )->once()->with( 'PREPARED SQL' )->andReturn( '15.0000' );
+
+		$sum = $this->repo->get_sum_for_report( 'php_error', 99 );
+
+		$this->assertSame( 15.0, $sum );
+	}
+
+	/**
+	 * Test get_rows_for_report() with null uses report_id = 0 sentinel.
+	 */
+	public function test_get_rows_for_report_null_uses_sentinel(): void {
+		$expected_rows = array(
+			array( 'dimensions' => '{"level":"warning"}', 'total' => '5', 'meta' => '{}' ),
+		);
+
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = 0' )
+							&& false !== strpos( $sql, 'GROUP BY dimensions_hash' );
+					}
+				),
+				'php_error'
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_results' )->once()->with( 'PREPARED SQL', ARRAY_A )->andReturn( $expected_rows );
+
+		$rows = $this->repo->get_rows_for_report( 'php_error', null );
+
+		$this->assertSame( $expected_rows, $rows );
+	}
+
+	/**
+	 * Test get_rows_for_report() with int uses report_id = N.
+	 */
+	public function test_get_rows_for_report_int_uses_equals(): void {
+		$expected_rows = array(
+			array( 'dimensions' => '{"level":"notice"}', 'total' => '3', 'meta' => '{}' ),
+		);
+
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) {
+						return false !== strpos( $sql, 'report_id = %d' )
+							&& false !== strpos( $sql, 'GROUP BY dimensions_hash' );
+					}
+				),
+				'php_error',
+				12
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'get_results' )->once()->with( 'PREPARED SQL', ARRAY_A )->andReturn( $expected_rows );
+
+		$rows = $this->repo->get_rows_for_report( 'php_error', 12 );
+
+		$this->assertSame( $expected_rows, $rows );
+	}
+
+	/**
+	 * Test get_rows_for_report() returns empty array when wpdb returns null.
+	 */
+	public function test_get_rows_for_report_returns_empty_array_when_null(): void {
+		$this->wpdb->shouldReceive( 'prepare' )->once()->andReturn( 'PREPARED SQL' );
+		$this->wpdb->shouldReceive( 'get_results' )->once()->andReturn( null );
+
+		$rows = $this->repo->get_rows_for_report( 'php_error', null );
+
+		$this->assertSame( array(), $rows );
 	}
 }

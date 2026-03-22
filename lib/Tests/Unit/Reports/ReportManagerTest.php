@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Sybgo\Tests\Unit\Reports;
 
 use Sybgo\Reports\Report_Manager;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Generator;
@@ -28,6 +29,13 @@ class ReportManagerTest extends TestCase {
 	 * @var Event_Repository
 	 */
 	private $event_repo;
+
+	/**
+	 * Aggregated event repository mock.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private $aggregated_repo;
 
 	/**
 	 * Report repository mock.
@@ -60,11 +68,13 @@ class ReportManagerTest extends TestCase {
 		Monkey\setUp();
 
 		$this->event_repo       = Mockery::mock( Event_Repository::class );
+		$this->aggregated_repo  = Mockery::mock( Aggregated_Event_Repository::class );
 		$this->report_repo      = Mockery::mock( Report_Repository::class );
 		$this->report_generator = Mockery::mock( Report_Generator::class );
 
 		$this->report_manager = new Report_Manager(
 			$this->event_repo,
+			$this->aggregated_repo,
 			$this->report_repo,
 			$this->report_generator
 		);
@@ -93,6 +103,8 @@ class ReportManagerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_freeze_current_report_success() {
+		Functions\when( 'gmdate' )->alias( 'gmdate' );
+
 		$active_report = [
 			'id'           => 1,
 			'period_start' => '2026-02-10 00:00:00',
@@ -119,6 +131,11 @@ class ReportManagerTest extends TestCase {
 			->once()
 			->with( 1, '2026-02-10 00:00:00', '2026-02-16 23:55:00' )
 			->andReturn( 10 )
+			->ordered();
+
+		$this->aggregated_repo->shouldReceive( 'assign_to_report' )
+			->once()
+			->with( 1, '2026-02-10', '2026-02-16' )
 			->ordered();
 
 		$this->report_generator->shouldReceive( 'generate_summary' )

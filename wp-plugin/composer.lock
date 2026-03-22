@@ -83,7 +83,7 @@
         },
         {
             "name": "wp-media/sybgo-lib",
-            "version": "dev-chore/ci-quality-epic",
+            "version": "dev-feat/php-error-tracking",
             "dist": {
                 "type": "path",
                 "url": "../lib",

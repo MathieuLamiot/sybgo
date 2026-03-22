@@ -274,9 +274,10 @@ class Factory {
 			require_once __DIR__ . '/reports/class-report-generator.php';
 			require_once __DIR__ . '/reports/class-report-manager.php';
 
-			$event_repo    = $this->create_event_repository();
-			$report_repo   = $this->create_report_repository();
-			$ai_summarizer = $this->create_ai_summarizer();
+			$event_repo      = $this->create_event_repository();
+			$aggregated_repo = $this->create_aggregated_event_repository();
+			$report_repo     = $this->create_report_repository();
+			$ai_summarizer   = $this->create_ai_summarizer();
 
 			// Create generator.
 			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
@@ -284,6 +285,7 @@ class Factory {
 			// Create manager.
 			self::$report_manager_instance = new \Sybgo\Reports\Report_Manager(
 				$event_repo,
+				$aggregated_repo,
 				$report_repo,
 				$generator
 			);
