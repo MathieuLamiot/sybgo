@@ -47,8 +47,7 @@
 		},
 
 		filterEvents: function(filter) {
-			const $widget = $('#sybgo_activity_digest');
-			const $eventsList = $widget.find('.recent-events');
+			const $eventsList = $('.sybgo-events-list');
 
 			// Add loading state
 			$eventsList.addClass('sybgo-loading');
@@ -64,6 +63,7 @@
 				success: function(response) {
 					if (response.success) {
 						$eventsList.html(response.data.html);
+						$('.sybgo-events-list').prev('.sybgo-event-stats').find('strong').text(response.data.count);
 					}
 				},
 				complete: function() {
