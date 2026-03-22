@@ -4,4 +4,5 @@
 /lib/Tests/env/local/
 /dist/
 *.cache
-*.DS_Store
+.DS_Store
+**/.DS_Store
