@@ -27,7 +27,7 @@
 			$(document).on('click', '.sybgo-preview-last-btn', this.handlePreviewLastClick);
 
 			// AI Summary button
-			$(document).on('click', '.sybgo-ai-summary', this.handleAISummaryClick);
+			$(document).on('click', '.sybgo-widget-ai-btn', this.handleAISummaryClick);
 
 			// Modal close
 			$(document).on('click', '.sybgo-modal-close, .sybgo-modal-overlay', this.handleModalClose);
@@ -113,9 +113,30 @@
 
 		handleAISummaryClick: function(e) {
 			e.preventDefault();
+			var $btn = $(this);
+			$btn.prop('disabled', true).text('Generating…');
+			var $result = $('#sybgo-widget-ai-summary');
 
-			// Placeholder for AI integration
-			alert('AI integration coming soon! This will use OpenAI/Claude API to generate intelligent summaries of your activity.');
+			$.ajax({
+				url: sybgoWidget.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'sybgo_widget_ai_summary',
+					nonce: sybgoWidget.nonce
+				},
+				success: function(response) {
+					if (response.success) {
+						$result.text(response.data.summary).show();
+						$btn.text('Regenerate AI Summary');
+					} else {
+						// eslint-disable-next-line no-alert
+						alert(response.data && response.data.message ? response.data.message : 'Could not generate summary. Please try again.');
+					}
+				},
+				complete: function() {
+					$btn.prop('disabled', false);
+				}
+			});
 		},
 
 		showModal: function(content) {
@@ -150,6 +171,39 @@
 
 			// Resend email button
 			$(document).on('click', '.sybgo-resend-email', this.handleResendEmail);
+
+			// Generate / Regenerate AI summary button
+			$(document).on('click', '.sybgo-generate-ai-btn', this.handleGenerateAISummary);
+		},
+
+		handleGenerateAISummary: function(e) {
+			e.preventDefault();
+			var $btn = $(this);
+			var reportId = $btn.data('report-id');
+			$btn.prop('disabled', true).text('Generating\u2026');
+
+			$.ajax({
+				url: sybgoAdmin.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'sybgo_generate_ai_summary',
+					nonce: sybgoAdmin.nonce,
+					report_id: reportId
+				},
+				success: function(response) {
+					if (response.success) {
+						$('#sybgo-ai-summary-text').text(response.data.summary);
+						$('#sybgo-ai-summary-box').show();
+						$btn.text('Regenerate AI Summary');
+					} else {
+						// eslint-disable-next-line no-alert
+						alert(response.data && response.data.message ? response.data.message : 'Could not generate summary. Please try again.');
+					}
+				},
+				complete: function() {
+					$btn.prop('disabled', false);
+				}
+			});
 		},
 
 		handleManualFreeze: function(e) {

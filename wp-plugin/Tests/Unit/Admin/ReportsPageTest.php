@@ -17,6 +17,7 @@ use Sybgo\Reports\Report_Manager;
 use Sybgo\Reports\Report_Generator;
 use Sybgo\Email\Email_Manager;
 use Sybgo\Events\Event_Registry;
+use Sybgo\AI\AI_Summarizer;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -43,6 +44,11 @@ class ReportsPageTest extends TestCase {
 	private $report_generator;
 
 	/**
+	 * @var \Mockery\MockInterface&AI_Summarizer
+	 */
+	private $ai_summarizer;
+
+	/**
 	 * @var \Mockery\MockInterface&Aggregated_Event_Repository
 	 */
 	private $aggregated_repo;
@@ -66,7 +72,8 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo      = Mockery::mock( Report_Repository::class );
 		$this->event_repo       = Mockery::mock( Event_Repository::class );
 		$this->report_generator = Mockery::mock( Report_Generator::class );
-		$this->aggregated_repo  = Mockery::mock( Aggregated_Event_Repository::class );
+		$this->ai_summarizer   = Mockery::mock( AI_Summarizer::class );
+		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
 
 		$this->reports_page = new Reports_Page(
 			$this->event_repo,
@@ -75,7 +82,8 @@ class ReportsPageTest extends TestCase {
 			$this->report_generator,
 			Mockery::mock( Email_Manager::class ),
 			Mockery::mock( Event_Registry::class ),
-			$this->aggregated_repo
+			$this->aggregated_repo,
+			$this->ai_summarizer
 		);
 
 		// Mock WordPress output/escaping functions.
@@ -94,6 +102,17 @@ class ReportsPageTest extends TestCase {
 		Functions\when( 'admin_url' )->returnArg();
 		Functions\when( 'wp_nonce_url' )->returnArg();
 		Functions\when( 'wp_nonce_field' )->justReturn();
+		Functions\when( 'esc_attr_e' )->alias(
+			function ( string $text ) {
+				echo $text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			}
+		);
+		Functions\when( 'esc_js' )->returnArg();
+		Functions\when( 'check_ajax_referer' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'absint' )->alias( function ( $v ) { return (int) abs( (int) $v ); } );
+		Functions\when( 'wp_send_json_success' )->justReturn();
+		Functions\when( 'wp_send_json_error' )->justReturn();
 	}
 
 	/**
@@ -285,5 +304,247 @@ class ReportsPageTest extends TestCase {
 		$output = $this->capture( 'render_reports_list' );
 
 		$this->assertStringContainsString( 'No reports found', $output );
+	}
+
+	// -------------------------------------------------------------------------
+	// render_report_details() — AI summary block
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Frozen report with no AI summary should show "Generate AI Summary" button.
+	 */
+	public function test_render_report_details_frozen_without_ai_summary_shows_generate_button(): void {
+		$summary = array(
+			'totals'       => array( 'post_published' => 2 ),
+			'trends'       => array(),
+			'highlights'   => array( '2 new posts published' ),
+			'top_authors'  => array(),
+			'total_events' => 2,
+			'ai_summary'   => null,
+		);
+
+		$report = array(
+			'id'           => 10,
+			'status'       => 'frozen',
+			'period_start' => '2026-03-01 00:00:00',
+			'period_end'   => '2026-03-07 23:59:59',
+			'summary_data' => json_encode( $summary ),
+		);
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 10 )->andReturn( $report );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( 10 )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'esc_js' )->returnArg();
+
+		$output = $this->capture( 'render_report_details', array( 10 ) );
+
+		// Button label should be "Generate AI Summary" (no prior summary).
+		$this->assertStringContainsString( 'Generate AI Summary', $output );
+		// The summary box should be hidden (display:none) since ai_summary is null.
+		$this->assertStringContainsString( 'display:none;', $output );
+	}
+
+	/**
+	 * Frozen report with an existing AI summary should show "Regenerate AI Summary" button.
+	 */
+	public function test_render_report_details_frozen_with_ai_summary_shows_regenerate_button(): void {
+		$summary = array(
+			'totals'       => array( 'post_published' => 2 ),
+			'trends'       => array(),
+			'highlights'   => array( '2 new posts published' ),
+			'top_authors'  => array(),
+			'total_events' => 2,
+			'ai_summary'   => 'You had a great week!',
+		);
+
+		$report = array(
+			'id'           => 11,
+			'status'       => 'frozen',
+			'period_start' => '2026-03-01 00:00:00',
+			'period_end'   => '2026-03-07 23:59:59',
+			'summary_data' => json_encode( $summary ),
+		);
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 11 )->andReturn( $report );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( 11 )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'esc_js' )->returnArg();
+
+		$output = $this->capture( 'render_report_details', array( 11 ) );
+
+		$this->assertStringContainsString( 'Regenerate AI Summary', $output );
+		$this->assertStringContainsString( 'You had a great week!', $output );
+	}
+
+	/**
+	 * Active report detail view must show the AI summary section with a Generate button.
+	 */
+	public function test_render_report_details_active_report_shows_ai_section(): void {
+		$report = array(
+			'id'           => 12,
+			'status'       => 'active',
+			'period_start' => '2026-03-01 00:00:00',
+			'period_end'   => null,
+			'summary_data' => null,
+		);
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 12 )->andReturn( $report );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 12 )->andReturn(
+			array(
+				'totals'       => array(),
+				'trends'       => array(),
+				'highlights'   => array(),
+				'total_events' => 0,
+			)
+		);
+
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
+
+		Functions\when( 'current_user_can' )->justReturn( true );
+
+		$output = $this->capture( 'render_report_details', array( 12 ) );
+
+		// Section and button must be present for active reports.
+		$this->assertStringContainsString( 'sybgo-ai-summary-section', $output );
+		$this->assertStringContainsString( 'sybgo-generate-ai-btn', $output );
+
+		// Button label must be "Generate" (no existing summary).
+		$this->assertStringContainsString( 'Generate AI Summary', $output );
+		$this->assertStringNotContainsString( 'Regenerate AI Summary', $output );
+
+		// Summary box must be hidden since there is no AI summary yet.
+		$this->assertStringContainsString( 'display:none;', $output );
+	}
+
+	// -------------------------------------------------------------------------
+	// ajax_generate_ai_summary()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Successful AJAX call should call set_ai_summary with the generated text.
+	 *
+	 * We verify the handler's logic rather than intercepting wp_send_json_success,
+	 * since patchwork closures that throw cause memory exhaustion in this environment.
+	 */
+	public function test_ajax_generate_ai_summary_calls_set_ai_summary(): void {
+		$report = array(
+			'id'           => 20,
+			'status'       => 'frozen',
+			'period_start' => '2026-03-01 00:00:00',
+			'period_end'   => '2026-03-07 23:59:59',
+			'summary_data' => '{"totals":{},"trends":{},"highlights":[],"total_events":0,"ai_summary":null}',
+		);
+
+		$_POST['nonce']     = 'valid_nonce';
+		$_POST['report_id'] = '20';
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 20 )->andReturn( $report );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( 20 )->andReturn( array() );
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->with( array(), 20 )
+			->andReturn( array( 'totals' => array(), 'trends' => array() ) );
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )
+			->with( array(), array(), array() )
+			->andReturn( 'A great week!' );
+
+		// The key assertion: set_ai_summary must be called with the generated text.
+		$this->report_repo->shouldReceive( 'set_ai_summary' )
+			->once()
+			->with( 20, 'A great week!' )
+			->andReturn( true );
+
+		$this->reports_page->ajax_generate_ai_summary();
+
+		// Mockery ->once() expectation is the assertion; add count so PHPUnit doesn't flag as risky.
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * For an active report, AJAX must fetch events via get_by_report(null) and persist
+	 * the full summary (stats + AI text) via save_summary_data().
+	 */
+	public function test_ajax_generate_ai_summary_active_report_uses_null_and_saves_full_summary(): void {
+		$report = array(
+			'id'           => 30,
+			'status'       => 'active',
+			'period_start' => '2026-03-15 00:00:00',
+			'period_end'   => null,
+			'summary_data' => null,
+		);
+
+		$live_summary = array(
+			'totals'       => array( 'post_published' => 4 ),
+			'trends'       => array(),
+			'highlights'   => array( '4 new posts published' ),
+			'top_authors'  => array(),
+			'total_events' => 4,
+			'ai_summary'   => null,
+		);
+
+		$_POST['nonce']     = 'valid_nonce';
+		$_POST['report_id'] = '30';
+
+		$this->report_repo->shouldReceive( 'get_by_id' )->with( 30 )->andReturn( $report );
+
+		// Must use null (unassigned events), NOT 30.
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+
+		$this->report_generator->shouldReceive( 'generate_live_summary' )
+			->with( array(), 30 )
+			->andReturn( $live_summary );
+
+		$this->ai_summarizer->shouldReceive( 'generate_summary' )
+			->andReturn( 'Active week summary.' );
+
+		// Must call save_summary_data (full object), not set_ai_summary.
+		$this->report_repo->shouldReceive( 'save_summary_data' )
+			->once()
+			->with(
+				30,
+				Mockery::on(
+					function ( $data ) {
+						return isset( $data['ai_summary'] ) && 'Active week summary.' === $data['ai_summary']
+							&& isset( $data['totals'] );
+					}
+				)
+			)
+			->andReturn( true );
+		$this->report_repo->shouldNotReceive( 'set_ai_summary' );
+
+		$this->reports_page->ajax_generate_ai_summary();
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * AJAX handler should not call set_ai_summary when AI summarizer is null.
+	 */
+	public function test_ajax_generate_ai_summary_skips_set_when_no_summarizer(): void {
+		$page_no_ai = new Reports_Page(
+			$this->event_repo,
+			$this->report_repo,
+			Mockery::mock( Report_Manager::class ),
+			$this->report_generator,
+			Mockery::mock( Email_Manager::class ),
+			Mockery::mock( Event_Registry::class ),
+			$this->aggregated_repo,
+			null
+		);
+
+		$_POST['nonce']     = 'valid_nonce';
+		$_POST['report_id'] = '1';
+
+		// set_ai_summary must never be called.
+		$this->report_repo->shouldNotReceive( 'set_ai_summary' );
+
+		$page_no_ai->ajax_generate_ai_summary();
+
+		// Mockery expectation is the assertion; add count so PHPUnit doesn't flag as risky.
+		$this->addToAssertionCount( 1 );
 	}
 }

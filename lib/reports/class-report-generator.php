@@ -14,7 +14,6 @@ namespace Sybgo\Reports;
 
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
-use Sybgo\AI\AI_Summarizer;
 
 /**
  * Report Generator class.
@@ -40,23 +39,14 @@ class Report_Generator {
 	private Report_Repository $report_repo;
 
 	/**
-	 * AI summarizer instance.
-	 *
-	 * @var AI_Summarizer|null
-	 */
-	private ?AI_Summarizer $ai_summarizer;
-
-	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository   $event_repo    Event repository.
-	 * @param Report_Repository  $report_repo   Report repository.
-	 * @param AI_Summarizer|null $ai_summarizer AI summarizer or null if unavailable.
+	 * @param Event_Repository  $event_repo  Event repository.
+	 * @param Report_Repository $report_repo Report repository.
 	 */
-	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo, ?AI_Summarizer $ai_summarizer ) {
-		$this->event_repo    = $event_repo;
-		$this->report_repo   = $report_repo;
-		$this->ai_summarizer = $ai_summarizer;
+	public function __construct( Event_Repository $event_repo, Report_Repository $report_repo ) {
+		$this->event_repo  = $event_repo;
+		$this->report_repo = $report_repo;
 	}
 
 	/**
@@ -66,17 +56,9 @@ class Report_Generator {
 	 * @return array<string, mixed> Summary data array.
 	 */
 	public function generate_summary( int $report_id ): array {
-		$events  = $this->event_repo->get_by_report( $report_id );
-		$summary = $this->compute_report_data( $events, $report_id );
-
+		$events                = $this->event_repo->get_by_report( $report_id );
+		$summary               = $this->compute_report_data( $events, $report_id );
 		$summary['ai_summary'] = null;
-		if ( null !== $this->ai_summarizer ) {
-			$summary['ai_summary'] = $this->ai_summarizer->generate_summary(
-				$events,
-				$summary['totals'],
-				$summary['trends']
-			);
-		}
 
 		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
 	}
@@ -92,7 +74,9 @@ class Report_Generator {
 	 * @return array<string, mixed> Summary array with totals, trends, highlights, top_authors, total_events.
 	 */
 	public function generate_live_summary( array $events, int $active_report_id ): array {
-		return $this->compute_report_data( $events, $active_report_id );
+		$data               = $this->compute_report_data( $events, $active_report_id );
+		$data['ai_summary'] = null;
+		return $data;
 	}
 
 	/**
@@ -116,8 +100,7 @@ class Report_Generator {
 			'total_events' => count( $events ),
 		);
 
-		// Allow filtering.
-		return wpm_apply_filters_typesafe( 'sybgo_report_summary', $summary, $report_id );
+		return $summary;
 	}
 
 	/**

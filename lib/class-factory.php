@@ -284,7 +284,7 @@ class Factory {
 			$ai_summarizer   = $this->create_ai_summarizer();
 
 			// Create generator.
-			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo );
 
 			// Create manager.
 			self::$report_manager_instance = new \Sybgo\Reports\Report_Manager(

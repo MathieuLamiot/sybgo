@@ -206,7 +206,7 @@ class Sybgo {
 		$event_registry   = $this->factory->create_event_registry();
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
 		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
-		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
 
 		return new Admin\Dashboard_Widget(
 			$event_repo,
@@ -241,7 +241,7 @@ class Sybgo {
 		$event_registry   = $this->factory->create_event_registry();
 		$report_manager   = $this->factory->create_report_manager();
 		$ai_summarizer    = $this->factory->create_ai_summarizer();
-		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
 		$email_manager    = $this->factory->create_email_manager();
 		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
 
@@ -252,7 +252,8 @@ class Sybgo {
 			$report_generator,
 			$email_manager,
 			$event_registry,
-			$aggregated_repo
+			$aggregated_repo,
+			$ai_summarizer
 		);
 	}
 

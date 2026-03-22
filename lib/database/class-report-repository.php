@@ -257,6 +257,53 @@ class Report_Repository {
 	}
 
 	/**
+	 * Set or update the AI summary for a report.
+	 *
+	 * Reads the existing summary_data JSON, merges in the ai_summary string,
+	 * and persists the updated JSON back to the database.
+	 *
+	 * @param int    $report_id Report ID.
+	 * @param string $summary   AI-generated summary text.
+	 * @return bool True on success, false if the report was not found or update failed.
+	 */
+	public function set_ai_summary( int $report_id, string $summary ): bool {
+		$report = $this->get_by_id( $report_id );
+
+		if ( ! $report ) {
+			return false;
+		}
+
+		$existing = ! empty( $report['summary_data'] )
+			? json_decode( $report['summary_data'], true )
+			: array();
+
+		if ( ! is_array( $existing ) ) {
+			$existing = array();
+		}
+
+		$existing['ai_summary'] = $summary;
+
+		return $this->update( $report_id, array( 'summary_data' => $existing ) );
+	}
+
+	/**
+	 * Save (overwrite) the full summary_data for a report.
+	 *
+	 * Unlike set_ai_summary(), which merges only the AI text into an existing
+	 * summary_data object, this method replaces the entire summary_data column
+	 * with the provided array.  Use this when you have a complete stats + AI
+	 * summary object that should be persisted atomically (e.g. for active
+	 * reports where no frozen summary_data exists yet).
+	 *
+	 * @param int                  $report_id Report ID.
+	 * @param array<string, mixed> $summary   Full summary data array to persist.
+	 * @return bool True on success, false on failure.
+	 */
+	public function save_summary_data( int $report_id, array $summary ): bool {
+		return $this->update( $report_id, array( 'summary_data' => $summary ) );
+	}
+
+	/**
 	 * Get the table name.
 	 *
 	 * @return string Table name.

@@ -112,6 +112,7 @@ class Dashboard_Widget {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
 		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
+		add_action( 'wp_ajax_sybgo_widget_ai_summary', array( $this, 'ajax_widget_ai_summary' ) );
 		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
 	}
 
@@ -178,6 +179,20 @@ class Dashboard_Widget {
 
 			<div class="sybgo-current-week">
 				<h3><?php esc_html_e( 'This Week\'s Activity', 'sybgo' ); ?></h3>
+
+				<button
+					type="button"
+					class="button button-secondary sybgo-widget-ai-btn"
+					style="width:100%;margin-bottom:8px;"
+					<?php if ( null === $this->ai_summarizer ) : ?>
+						disabled
+						title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
+					<?php endif; ?>
+				>
+					<?php esc_html_e( 'Get AI Summary', 'sybgo' ); ?>
+				</button>
+
+				<div id="sybgo-widget-ai-summary" class="sybgo-widget-ai-result" style="display:none;"></div>
 
 				<?php $this->render_filter_buttons(); ?>
 
@@ -454,7 +469,7 @@ class Dashboard_Widget {
 			// Try to get active report for trends, but don't fail if it doesn't exist.
 			$active_report = $this->report_repo->get_active();
 
-			// Generate preview summary (totals + trends) without AI.
+			// Generate preview summary (totals + trends).
 			$live_summary = $this->report_generator->generate_live_summary(
 				$events,
 				$active_report ? (int) $active_report['id'] : 0
@@ -462,20 +477,8 @@ class Dashboard_Widget {
 			$totals       = $live_summary['totals'];
 			$trends       = $live_summary['trends'];
 
-			// Generate AI summary if transport is available.
-			$ai_summary = null;
-			if ( null !== $this->ai_summarizer ) {
-				$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
-			}
-			$ai_error = null;
-
-			// Check if summarizer is configured but summary is null (transport error).
-			if ( null === $ai_summary && null !== $this->ai_summarizer ) {
-				$ai_error = 'The AI summary could not be generated. Please check your WordPress AI connector configuration.';
-			}
-
 			ob_start();
-			$this->render_preview_content( $totals, $trends, $events, $ai_summary, $ai_error );
+			$this->render_preview_content( $totals, $trends );
 			$html = ob_get_clean();
 
 			wp_send_json_success( array( 'html' => $html ) );
@@ -517,12 +520,11 @@ class Dashboard_Widget {
 			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
 		}
 
-		$totals     = $summary['totals'];
-		$trends     = $summary['trends'] ?? array();
-		$ai_summary = $summary['ai_summary'] ?? null;
+		$totals = $summary['totals'];
+		$trends = $summary['trends'] ?? array();
 
 		ob_start();
-		$this->render_preview_content( $totals, $trends, array(), $ai_summary );
+		$this->render_preview_content( $totals, $trends );
 		$html = ob_get_clean();
 
 		wp_send_json_success( array( 'html' => $html ) );
@@ -533,46 +535,11 @@ class Dashboard_Widget {
 	 *
 	 * @param array<string, int>                  $totals Event totals.
 	 * @param array<string, array<string, mixed>> $trends Trend data.
-	 * @param array<int, array<string, mixed>>    $events All events.
-	 * @param string|null                         $ai_summary AI-generated summary (optional).
-	 * @param string|null                         $ai_error AI error message (optional).
 	 * @return void
 	 */
-	private function render_preview_content( array $totals, array $trends, array $events, ?string $ai_summary = null, ?string $ai_error = null ): void {
+	private function render_preview_content( array $totals, array $trends ): void {
 		?>
 		<div class="sybgo-preview">
-			<?php if ( $ai_summary ) : ?>
-				<div class="sybgo-ai-summary" style="background: #f0f6fc; border-left: 4px solid #0073aa; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-admin-comments" style="color: #0073aa;"></span>
-						<?php esc_html_e( 'AI Summary', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php echo esc_html( $ai_summary ); ?>
-					</p>
-				</div>
-			<?php elseif ( $ai_error ) : ?>
-				<div class="sybgo-ai-summary" style="background: #fef5e7; border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-warning" style="color: #e74c3c;"></span>
-						<?php esc_html_e( 'AI Summary Error', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php echo esc_html( $ai_error ); ?>
-					</p>
-				</div>
-			<?php elseif ( null === $this->ai_summarizer ) : ?>
-				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>
-						<?php esc_html_e( 'AI Summaries Require WordPress 7', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php esc_html_e( 'AI-powered summaries are available on WordPress 7 and later. Please upgrade to enable this feature.', 'sybgo' ); ?>
-					</p>
-				</div>
-			<?php endif; ?>
-
 			<h3><?php esc_html_e( 'Activity Summary', 'sybgo' ); ?></h3>
 
 			<div class="sybgo-preview-stats">
@@ -611,5 +578,49 @@ class Dashboard_Widget {
 			</p>
 		</div>
 		<?php
+	}
+
+	/**
+	 * AJAX handler for on-demand AI summary in the dashboard widget.
+	 *
+	 * Generates a live AI summary for the current week's events and returns it as JSON.
+	 * If an active report exists, the summary is persisted to it via save_summary_data().
+	 *
+	 * @return void
+	 */
+	public function ajax_widget_ai_summary(): void {
+		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( null === $this->ai_summarizer ) {
+			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		$events        = $this->event_repo->get_by_report( null );
+		$active_report = $this->report_repo->get_active();
+		$live_summary  = $this->report_generator->generate_live_summary(
+			$events,
+			$active_report ? (int) $active_report['id'] : 0
+		);
+
+		$summary = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+
+		if ( null === $summary ) {
+			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( $active_report ) {
+			$full_summary               = $live_summary;
+			$full_summary['ai_summary'] = $summary;
+			$this->report_repo->save_summary_data( (int) $active_report['id'], $full_summary );
+		}
+
+		wp_send_json_success( array( 'summary' => $summary ) );
 	}
 }
