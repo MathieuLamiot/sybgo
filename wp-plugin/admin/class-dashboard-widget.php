@@ -519,12 +519,11 @@ class Dashboard_Widget {
 			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
 		}
 
-		$totals     = $summary['totals'];
-		$trends     = $summary['trends'] ?? array();
-		$ai_summary = $summary['ai_summary'] ?? null;
+		$totals = $summary['totals'];
+		$trends = $summary['trends'] ?? array();
 
 		ob_start();
-		$this->render_preview_content( $totals, $trends, array(), $ai_summary );
+		$this->render_preview_content( $totals, $trends );
 		$html = ob_get_clean();
 
 		wp_send_json_success( array( 'html' => $html ) );
