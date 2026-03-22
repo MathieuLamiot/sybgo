@@ -18,10 +18,13 @@
 
 		bindEvents: function() {
 			// Filter buttons
-			$(document).on('click', '.sybgo-filter-buttons button', this.handleFilterClick);
+			$(document).on('click', '.sybgo-filters .sybgo-filter-btn', this.handleFilterClick);
 
-			// Preview button
-			$(document).on('click', '.sybgo-preview-digest', this.handlePreviewClick);
+			// Preview button (this week)
+			$(document).on('click', '.sybgo-preview-btn', this.handlePreviewClick);
+
+			// View Previous Digest button
+			$(document).on('click', '.sybgo-preview-last-btn', this.handlePreviewLastClick);
 
 			// AI Summary button
 			$(document).on('click', '.sybgo-ai-summary', this.handleAISummaryClick);
@@ -51,11 +54,11 @@
 			$eventsList.addClass('sybgo-loading');
 
 			$.ajax({
-				url: sybgoAdmin.ajaxUrl,
+				url: sybgoWidget.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'sybgo_filter_events',
-					nonce: sybgoAdmin.nonce,
+					nonce: sybgoWidget.nonce,
 					filter: filter
 				},
 				success: function(response) {
@@ -72,17 +75,37 @@
 		handlePreviewClick: function(e) {
 			e.preventDefault();
 
-			// Make AJAX call to generate preview
 			$.ajax({
-				url: sybgoAdmin.ajaxUrl,
+				url: sybgoWidget.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'sybgo_preview_digest',
-					nonce: sybgoAdmin.nonce
+					nonce: sybgoWidget.nonce
 				},
 				success: function(response) {
 					if (response.success) {
 						SybgoDashboard.showModal(response.data.html);
+					}
+				}
+			});
+		},
+
+		handlePreviewLastClick: function(e) {
+			e.preventDefault();
+
+			$.ajax({
+				url: sybgoWidget.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'sybgo_preview_last_digest',
+					nonce: sybgoWidget.nonce
+				},
+				success: function(response) {
+					if (response.success) {
+						SybgoDashboard.showModal(response.data.html);
+					} else {
+						// eslint-disable-next-line no-alert
+						alert(response.data && response.data.message ? response.data.message : 'No previous digest available.');
 					}
 				}
 			});

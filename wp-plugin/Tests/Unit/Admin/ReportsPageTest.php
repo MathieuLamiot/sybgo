@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Sybgo\Tests\Unit\Admin;
 
 use Sybgo\Admin\Reports_Page;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Manager;
@@ -42,6 +43,11 @@ class ReportsPageTest extends TestCase {
 	private $report_generator;
 
 	/**
+	 * @var \Mockery\MockInterface&Aggregated_Event_Repository
+	 */
+	private $aggregated_repo;
+
+	/**
 	 * Reports_Page instance.
 	 *
 	 * @var Reports_Page
@@ -60,6 +66,7 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo      = Mockery::mock( Report_Repository::class );
 		$this->event_repo       = Mockery::mock( Event_Repository::class );
 		$this->report_generator = Mockery::mock( Report_Generator::class );
+		$this->aggregated_repo  = Mockery::mock( Aggregated_Event_Repository::class );
 
 		$this->reports_page = new Reports_Page(
 			$this->event_repo,
@@ -67,7 +74,8 @@ class ReportsPageTest extends TestCase {
 			Mockery::mock( Report_Manager::class ),
 			$this->report_generator,
 			Mockery::mock( Email_Manager::class ),
-			Mockery::mock( Event_Registry::class )
+			Mockery::mock( Event_Registry::class ),
+			$this->aggregated_repo
 		);
 
 		// Mock WordPress output/escaping functions.
@@ -152,6 +160,7 @@ class ReportsPageTest extends TestCase {
 				'total_events' => 0,
 			)
 		);
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
@@ -184,6 +193,7 @@ class ReportsPageTest extends TestCase {
 		$this->report_repo->shouldReceive( 'get_by_id' )->with( 5 )->andReturn( $report );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$this->report_generator->shouldReceive( 'generate_live_summary' )->with( array(), 5 )->andReturn( $live_summary );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
 
