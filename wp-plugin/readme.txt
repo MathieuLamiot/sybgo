@@ -1,4 +1,4 @@
-=== Sybgo - Activity Digest ===
+=== Sybgo  ===
 Contributors: MathieuLamiot
 Tags: activity, digest, email, notifications
 Requires at least: 5.8

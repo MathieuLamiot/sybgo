@@ -203,20 +203,21 @@ class Settings_Page {
 		);
 
 		// AI Settings Section.
-		add_settings_section(
-			'sybgo_ai_section',
-			__( 'AI Summary Settings', 'sybgo' ),
-			array( $this, 'render_ai_section_description' ),
-			'sybgo-settings'
-		);
-
-		add_settings_field(
-			'anthropic_api_key',
-			__( 'Anthropic API Key', 'sybgo' ),
-			array( $this, 'render_anthropic_api_key_field' ),
-			'sybgo-settings',
-			'sybgo_ai_section'
-		);
+		if ( function_exists( 'wp_ai_client_prompt' ) ) {
+			add_settings_section(
+				'sybgo_ai_section',
+				__( 'AI Summary Settings', 'sybgo' ),
+				array( $this, 'render_ai_section_description' ),
+				'sybgo-settings'
+			);
+		} else {
+			add_settings_section(
+				'sybgo_ai_section',
+				__( 'AI Summary Settings', 'sybgo' ),
+				array( $this, 'render_ai_wp7_required_notice' ),
+				'sybgo-settings'
+			);
+		}
 
 		// Database Management Section.
 		add_settings_section(
@@ -276,9 +277,6 @@ class Settings_Page {
 
 		// Sanitize boolean settings.
 		$sanitized['send_empty_reports'] = isset( $input['send_empty_reports'] );
-
-		// Sanitize AI API key.
-		$sanitized['anthropic_api_key'] = isset( $input['anthropic_api_key'] ) ? sanitize_text_field( trim( $input['anthropic_api_key'] ) ) : '';
 
 		// Sanitize retention days.
 		$sanitized['retention_days'] = isset( $input['retention_days'] ) ? absint( $input['retention_days'] ) : self::DEFAULT_RETENTION_DAYS;
@@ -641,56 +639,22 @@ class Settings_Page {
 	public function render_ai_section_description(): void {
 		?>
 		<p>
-			<?php
-			echo wp_kses_post(
-				sprintf(
-					/* translators: %s: link to Anthropic console */
-					__( 'Enable AI-powered summaries using Claude. Get your API key from <a href="%s" target="_blank" rel="noopener">Anthropic Console</a>.', 'sybgo' ),
-					'https://console.anthropic.com/settings/keys'
-				)
-			);
-			?>
-		</p>
-		<p>
-			<strong><?php esc_html_e( 'Privacy Note:', 'sybgo' ); ?></strong>
-			<?php esc_html_e( 'Event data (post titles, plugin names, etc.) is sent to Anthropic\'s API to generate summaries.', 'sybgo' ); ?>
+			<?php esc_html_e( 'AI-powered summaries use the WordPress 7 native AI provider. Configure your AI connector in Settings → Connectors.', 'sybgo' ); ?>
 		</p>
 		<?php
 	}
 
 	/**
-	 * Render Anthropic API key field.
+	 * Render AI WordPress 7 required notice.
 	 *
 	 * @return void
 	 */
-	public function render_anthropic_api_key_field(): void {
-		$settings = $this->get_settings();
-		$api_key  = $settings['anthropic_api_key'] ?? '';
-
+	public function render_ai_wp7_required_notice(): void {
 		?>
-		<input
-			type="password"
-			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[anthropic_api_key]"
-			id="sybgo_anthropic_api_key"
-			value="<?php echo esc_attr( $api_key ); ?>"
-			class="regular-text"
-			placeholder="sk-ant-..."
-			autocomplete="off"
-		/>
-		<p class="description">
-			<?php esc_html_e( 'Your Anthropic API key. When configured, AI summaries will appear in email digests and preview.', 'sybgo' ); ?>
+		<p class="notice notice-warning inline">
+			<?php esc_html_e( 'AI summaries require WordPress 7 or later. Please upgrade to enable this feature.', 'sybgo' ); ?>
 		</p>
 		<?php
-	}
-
-	/**
-	 * Get Anthropic API key.
-	 *
-	 * @return string API key or empty string if not set.
-	 */
-	public static function get_anthropic_api_key(): string {
-		$settings = get_option( self::OPTION_NAME, array() );
-		return $settings['anthropic_api_key'] ?? '';
 	}
 
 	/**

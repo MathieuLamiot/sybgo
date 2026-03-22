@@ -87,7 +87,7 @@ Automatically create human-readable highlights:
 - "WordPress updated to 6.5"
 - "3 new users registered ↓ 40%"
 
-If an Anthropic API key is configured in settings, an AI-generated summary is also produced via the Claude API and stored in `summary_data.ai_summary`.
+On WordPress 7 and later, an AI-generated summary is also produced via the WordPress native AI provider API (`wp_ai_client_prompt`) and stored in `summary_data.ai_summary`. On WordPress < 7, the `ai_summary` field is `null` and omitted from the digest. See [AI Transport Layer](ai-transport.md) for details.
 
 ### Step 5: Assign Events to Report
 

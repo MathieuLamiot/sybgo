@@ -34,7 +34,6 @@ use Sybgo\Events\Event_Registry;
  * of the Sybgo library services.
  *
  * Accepts a config array to decouple from plugin-specific settings:
- * - 'api_key_provider'        => callable returning the Anthropic API key string.
  * - 'email_settings_provider' => callable returning an email settings array with keys:
  *                                 'recipients', 'from_name', 'from_email', 'send_empty_reports'.
  *
@@ -116,14 +115,10 @@ class Factory {
 	 * Constructor.
 	 *
 	 * @param array<string, mixed> $config Configuration array with keys:
-	 *                                     - 'api_key_provider'        => callable returning API key string.
 	 *                                     - 'email_settings_provider' => callable returning email settings array.
 	 */
 	public function __construct( array $config = array() ) {
 		$defaults = array(
-			'api_key_provider'        => function () {
-				return '';
-			},
 			'email_settings_provider' => function () {
 				return array(
 					'recipients'         => array( get_option( 'admin_email' ) ),
@@ -249,18 +244,27 @@ class Factory {
 	/**
 	 * Create AI summarizer instance.
 	 *
-	 * @return \Sybgo\AI\AI_Summarizer AI summarizer instance.
+	 * Returns null when running on WordPress < 7 (no wp_ai_client_prompt available).
+	 *
+	 * @return \Sybgo\AI\AI_Summarizer|null AI summarizer instance or null if WP 7 is unavailable.
 	 */
-	public function create_ai_summarizer(): \Sybgo\AI\AI_Summarizer {
+	public function create_ai_summarizer(): ?\Sybgo\AI\AI_Summarizer {
+		require_once __DIR__ . '/ai/interface-ai-transport.php';
 		require_once __DIR__ . '/ai/class-ai-summarizer.php';
+		require_once __DIR__ . '/ai/class-wp7-ai-transport.php';
+
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			return null;
+		}
 
 		$report_repo    = $this->create_report_repository();
 		$event_registry = $this->create_event_registry();
+		$transport      = new \Sybgo\AI\WP7_AI_Transport();
 
 		return new \Sybgo\AI\AI_Summarizer(
 			$report_repo,
 			$event_registry,
-			$this->config['api_key_provider']
+			$transport
 		);
 	}
 

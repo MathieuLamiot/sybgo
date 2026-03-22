@@ -284,6 +284,28 @@ class ReportGeneratorTest extends TestCase {
 	}
 
 	/**
+	 * Test generate_summary skips AI when summarizer is null.
+	 */
+	public function test_generate_summary_skips_ai_when_summarizer_is_null() {
+		$generator = new Report_Generator( $this->event_repo, $this->report_repo, null );
+
+		$this->event_repo->shouldReceive( 'get_by_report' )
+			->once()
+			->with( 1 )
+			->andReturn( array() );
+
+		$this->report_repo->shouldReceive( 'get_all_frozen' )
+			->once()
+			->andReturn( array() );
+
+		$summary = $generator->generate_summary( 1 );
+
+		$this->assertIsArray( $summary );
+		$this->assertArrayHasKey( 'ai_summary', $summary );
+		$this->assertNull( $summary['ai_summary'] );
+	}
+
+	/**
 	 * Test top authors extraction.
 	 */
 	public function test_get_top_authors() {

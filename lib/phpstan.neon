@@ -11,6 +11,7 @@ parameters:
 		- docs
 	bootstrapFiles:
 		- phpstan-bootstrap.php
+		- Tests/phpstan/stubs-wp7.php
 	ignoreErrors:
 		- identifier: property.onlyWritten
 

@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Sybgo\AI;
 
+require_once __DIR__ . '/interface-ai-transport.php';
+
 use Sybgo\Database\Report_Repository;
 use Sybgo\Events\Event_Registry;
 use Sybgo\Logger;
@@ -19,7 +21,7 @@ use Sybgo\Logger;
 /**
  * AI Summarizer class.
  *
- * Generates natural language summaries of reports using Anthropic's Claude API.
+ * Generates natural language summaries of reports using an AI transport.
  *
  * @package Sybgo\AI
  * @since   1.0.0
@@ -40,23 +42,23 @@ class AI_Summarizer {
 	private Event_Registry $event_registry;
 
 	/**
-	 * Callable that returns the Anthropic API key.
+	 * AI transport instance.
 	 *
-	 * @var callable
+	 * @var AI_Transport_Interface
 	 */
-	private $api_key_provider;
+	private AI_Transport_Interface $transport;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Event_Registry    $event_registry Event registry.
-	 * @param callable          $api_key_provider Callable returning the Anthropic API key string.
+	 * @param Report_Repository      $report_repo    Report repository.
+	 * @param Event_Registry         $event_registry Event registry.
+	 * @param AI_Transport_Interface $transport      AI transport implementation.
 	 */
-	public function __construct( Report_Repository $report_repo, Event_Registry $event_registry, callable $api_key_provider ) {
-		$this->report_repo      = $report_repo;
-		$this->event_registry   = $event_registry;
-		$this->api_key_provider = $api_key_provider;
+	public function __construct( Report_Repository $report_repo, Event_Registry $event_registry, AI_Transport_Interface $transport ) {
+		$this->report_repo    = $report_repo;
+		$this->event_registry = $event_registry;
+		$this->transport      = $transport;
 	}
 
 	/**
@@ -65,24 +67,17 @@ class AI_Summarizer {
 	 * @param array<int, array<string, mixed>>    $events Array of events.
 	 * @param array<string, int>                  $totals Event totals by type.
 	 * @param array<string, array<string, mixed>> $trends Trend data comparing to previous report.
-	 * @return string|null AI-generated summary or null if API key not configured.
+	 * @return string|null AI-generated summary or null if transport fails.
 	 */
 	public function generate_summary( array $events, array $totals, array $trends ): ?string {
-		// Get API key from provider.
-		$api_key = ( $this->api_key_provider )();
-
-		if ( empty( $api_key ) ) {
-			return null;
-		}
-
 		// Build the prompt.
 		$prompt = $this->build_prompt( $events, $totals, $trends );
 
-		// Call Claude API.
+		// Call transport.
 		try {
-			$response = $this->call_claude_api( $api_key, $prompt );
+			$response = $this->transport->complete( $prompt, 500 );
 			return $response;
-		} catch ( \Exception $e ) {
+		} catch ( \RuntimeException $e ) {
 			// Log error but don't fail the whole process.
 			Logger::error( 'AI Summarizer: ' . $e->getMessage() );
 			return null;
@@ -90,7 +85,7 @@ class AI_Summarizer {
 	}
 
 	/**
-	 * Build the prompt for Claude.
+	 * Build the prompt for the AI provider.
 	 *
 	 * @param array<int, array<string, mixed>>    $events Array of events.
 	 * @param array<string, int>                  $totals Event totals by type.
@@ -155,61 +150,5 @@ class AI_Summarizer {
 		$prompt .= "Don't just list numbers - tell a story about what happened on the site this week.";
 
 		return $prompt;
-	}
-
-	/**
-	 * Call Claude API.
-	 *
-	 * @param string $api_key API key.
-	 * @param string $prompt The prompt.
-	 * @return string The response.
-	 * @throws \Exception If API call fails.
-	 */
-	private function call_claude_api( string $api_key, string $prompt ): string {
-		$url = 'https://api.anthropic.com/v1/messages';
-
-		$body = array(
-			'model'      => 'claude-3-5-haiku-20241022',
-			'max_tokens' => 500,
-			'messages'   => array(
-				array(
-					'role'    => 'user',
-					'content' => $prompt,
-				),
-			),
-		);
-
-		$response = wp_remote_post(
-			$url,
-			array(
-				'timeout' => 30,
-				'headers' => array(
-					'Content-Type'      => 'application/json',
-					'x-api-key'         => $api_key,
-					'anthropic-version' => '2023-06-01',
-					'anthropic-dangerous-direct-browser-access' => 'true',
-				),
-				'body'    => wp_json_encode( $body ),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			throw new \Exception( 'API request failed: ' . $response->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-		if ( 200 !== $status_code ) {
-			$body = wp_remote_retrieve_body( $response );
-			throw new \Exception( "API returned status {$status_code}: {$body}" ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-		}
-
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
-
-		if ( ! isset( $data['content'][0]['text'] ) ) {
-			throw new \Exception( 'Invalid API response format' );
-		}
-
-		return $data['content'][0]['text'];
 	}
 }

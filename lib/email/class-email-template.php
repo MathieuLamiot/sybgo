@@ -311,7 +311,7 @@ class Email_Template {
 						</a>
 					</p>
 					<p style="margin-top: 15px; font-size: 11px;">
-						<?php esc_html_e( 'Powered by Sybgo - Activity Digest Plugin', 'sybgo' ); ?>
+						<?php esc_html_e( 'Powered by Sybgo', 'sybgo' ); ?>
 					</p>
 				</div>
 			</div>
