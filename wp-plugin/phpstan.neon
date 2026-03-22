@@ -12,5 +12,6 @@ parameters:
 		- docs
 	bootstrapFiles:
 		- phpstan-bootstrap.php
-	ignoreErrors:
-		- identifier: property.onlyWritten
+		- Tests/phpstan/stubs-wp7.php
+rules:
+	- Sybgo\Tests\phpstan\Rules\DiscourageApplyFilters

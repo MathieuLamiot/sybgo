@@ -48,7 +48,7 @@ composer require --dev mockery/mockery
 
 ## Code Standards
 
-Sybgo follows WordPress Coding Standards and GroupOne technical standards.
+Sybgo follows WordPress Coding Standards and group.one technical standards.
 
 ### Check Code
 
@@ -103,34 +103,7 @@ $wpdb->prepare( "SELECT * FROM table WHERE id = %d", $id );
 
 ## Testing
 
-### Run All Tests
-
-```bash
-# All tests (unit + integration)
-composer run-tests
-
-# Unit tests only
-composer test-unit
-
-# Integration tests only
-composer test-integration
-
-# With coverage report
-composer test-coverage
-```
-
-### Run Specific Tests
-
-```bash
-# Single test class
-vendor/bin/phpunit --filter PostTrackerTest
-
-# Single test method
-vendor/bin/phpunit --filter test_track_post_publish
-
-# Specific file
-vendor/bin/phpunit Tests/Unit/Events/PostTrackerTest.php
-```
+See `CLAUDE.md` at the repo root for the exact commands to run unit tests, PHPCS, and PHPStan across `lib/` and `wp-plugin/`, including the symlink fix for PHPStan.
 
 ### Writing Tests
 
@@ -330,7 +303,10 @@ sybgo/
 ├── admin/                        # WordPress admin
 │   ├── class-dashboard-widget.php
 │   ├── class-settings-page.php
-│   └── class-reports-page.php
+│   ├── class-reports-page.php
+│   └── class-uninstaller.php     # Plugin cleanup on uninstall
+│
+├── uninstall.php                 # WP uninstall entry point
 │
 ├── email/                        # Email system
 │   ├── class-email-manager.php
@@ -356,6 +332,40 @@ sybgo/
     │   └── Admin/
     └── Integration/
 ```
+
+## Admin AJAX Actions
+
+The dashboard widget registers three AJAX actions, all protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body). All three require the `read` capability.
+
+| Action | Handler | Success response | Error response |
+|--------|---------|-----------------|----------------|
+| `sybgo_filter_events` | `Dashboard_Widget::ajax_filter_events()` | `{html: string, count: int}` | — |
+| `sybgo_preview_digest` | `Dashboard_Widget::ajax_preview_digest()` | `{html: string}` | `{message, file, line, trace}` |
+| `sybgo_preview_last_digest` | `Dashboard_Widget::ajax_preview_last_digest()` | `{html: string}` | `{message: string}` |
+
+`sybgo_preview_last_digest` fetches the most recently frozen report via `Report_Repository::get_last_frozen()`, reads its `summary_data` JSON (fields: `totals`, `trends`, `ai_summary`), and renders the same preview modal used by `sybgo_preview_digest`. It returns an error if no frozen report exists or if `summary_data` is absent.
+
+The nonce value and `ajaxUrl` are available in the `sybgoWidget` JS object (localized by `Dashboard_Widget::enqueue_assets()`).
+
+## Admin Classes: Constructor Dependencies
+
+`Reports_Page` accepts `Aggregated_Event_Repository` as its 7th constructor argument. This repository is used by `render_php_errors_table()` to query PHP error rows for a report's date range. When instantiating `Reports_Page` directly (e.g., in tests), pass an `Aggregated_Event_Repository` instance as the final argument.
+
+Similarly, `Dashboard_Widget` accepts `Aggregated_Event_Repository` as its 6th constructor argument for the PHP Errors widget section.
+
+## Plugin Uninstall
+
+When a user deletes the plugin from the WordPress admin, WordPress calls `uninstall.php` at the plugin root. This file bootstraps the autoloader and delegates all cleanup to `Sybgo\Admin\Uninstaller::run()`.
+
+`Uninstaller` performs three steps in order:
+
+1. **Drop database tables** — calls `DatabaseManager::get_table_names()` (static, no side effects) and issues `DROP TABLE IF EXISTS` for each table.
+2. **Clear cron events** — calls `Sybgo::get_cron_hooks()` and passes each hook to `wp_clear_scheduled_hook()`.
+3. **Delete options** — calls `Settings_Page::get_option_names()` and passes each name to `delete_option()`.
+
+Each of those static methods is the single source of truth for its identifiers, so adding a new table, hook, or option to the appropriate method is enough to ensure it is also cleaned up on uninstall.
+
+The deactivation hook (`Sybgo::deactivate()`) only clears cron events. Full data removal (tables, options) happens only on uninstall, not on deactivation.
 
 ## Adding New Event Types
 

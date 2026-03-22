@@ -33,11 +33,11 @@ class AISummarizerTest extends TestCase {
 	private $report_repo;
 
 	/**
-	 * API key used in tests.
+	 * Mock AI transport.
 	 *
-	 * @var string
+	 * @var Mockery\MockInterface
 	 */
-	private $api_key = '';
+	private $transport;
 
 	/**
 	 * Set up test environment.
@@ -46,22 +46,21 @@ class AISummarizerTest extends TestCase {
 		parent::setUp();
 		Monkey\setUp();
 
-		// Load the AI_Summarizer class.
+		// Load the AI transport interface and AI_Summarizer class.
+		require_once dirname( __DIR__, 3 ) . '/ai/interface-ai-transport.php';
 		require_once dirname( __DIR__, 3 ) . '/ai/class-ai-summarizer.php';
 
-		$this->report_repo    = Mockery::mock( 'Sybgo\Database\Report_Repository' );
-		$event_registry       = Mockery::mock( 'Sybgo\Events\Event_Registry' );
+		$this->report_repo = Mockery::mock( 'Sybgo\Database\Report_Repository' );
+		$event_registry    = Mockery::mock( 'Sybgo\Events\Event_Registry' );
 		$event_registry->shouldReceive( 'get_ai_description' )->andReturn( '' );
 		$event_registry->shouldReceive( 'get_ai_context_for_events' )->andReturn( '' );
 
-		$this->api_key = '';
+		$this->transport = Mockery::mock( 'Sybgo\AI\AI_Transport_Interface' );
 
 		$this->summarizer = new AI_Summarizer(
 			$this->report_repo,
 			$event_registry,
-			function () {
-				return $this->api_key;
-			}
+			$this->transport
 		);
 
 		// Mock WordPress functions.
@@ -81,13 +80,15 @@ class AISummarizerTest extends TestCase {
 	}
 
 	/**
-	 * Test generate_summary returns null when no API key configured.
+	 * Test generate_summary returns null when transport throws RuntimeException.
 	 */
-	public function test_generate_summary_returns_null_without_api_key() {
-		$this->api_key = '';
+	public function test_generate_summary_returns_null_when_transport_throws() {
+		$this->transport->shouldReceive( 'complete' )
+			->once()
+			->andThrow( new \RuntimeException( 'Transport error' ) );
 
 		$events = array(
-			array( 'event_type' => 'post_published' ),
+			array( 'event_type' => 'post_published', 'event_data' => '{}' ),
 		);
 		$totals = array( 'post_published' => 1 );
 		$trends = array();
@@ -98,34 +99,16 @@ class AISummarizerTest extends TestCase {
 	}
 
 	/**
-	 * Test generate_summary calls API when key is provided, even with empty events.
+	 * Test generate_summary returns string from transport.
 	 */
-	public function test_generate_summary_calls_api_with_empty_events() {
-		$this->api_key = 'test-key';
-
-		$mock_error = Mockery::mock( 'WP_Error' );
-		$mock_error->shouldReceive( 'get_error_message' )->andReturn( 'Connection refused' );
-
-		Functions\expect( 'wp_remote_post' )
+	public function test_generate_summary_returns_string_from_transport() {
+		$this->transport->shouldReceive( 'complete' )
 			->once()
-			->andReturn( $mock_error );
+			->andReturn( 'Generated summary' );
 
-		Functions\expect( 'is_wp_error' )
-			->once()
-			->andReturn( true );
+		$result = $this->summarizer->generate_summary( array(), array(), array() );
 
-		Functions\expect( 'wp_json_encode' )
-			->once()
-			->andReturnUsing( 'json_encode' );
-
-		$events = array();
-		$totals = array();
-		$trends = array();
-
-		// Returns null because the API call fails gracefully.
-		$result = $this->summarizer->generate_summary( $events, $totals, $trends );
-
-		$this->assertNull( $result );
+		$this->assertSame( 'Generated summary', $result );
 	}
 
 	/**

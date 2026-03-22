@@ -1,0 +1,9 @@
+{
+    "redefinable-internals": [
+        "error_get_last",
+        "error_reporting",
+        "gmdate",
+        "register_shutdown_function",
+        "set_error_handler"
+    ]
+}

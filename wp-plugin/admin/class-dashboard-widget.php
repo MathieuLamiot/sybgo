@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Generator;
@@ -55,9 +56,9 @@ class Dashboard_Widget {
 	/**
 	 * AI summarizer instance.
 	 *
-	 * @var AI_Summarizer
+	 * @var AI_Summarizer|null
 	 */
-	private AI_Summarizer $ai_summarizer;
+	private ?AI_Summarizer $ai_summarizer;
 
 	/**
 	 * Event registry instance.
@@ -67,26 +68,38 @@ class Dashboard_Widget {
 	private Event_Registry $event_registry;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * Used to query PHP error counts for the dashboard display.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Generator  $report_generator Report generator.
-	 * @param AI_Summarizer     $ai_summarizer AI summarizer.
-	 * @param Event_Registry    $event_registry Event registry.
+	 * @param Event_Repository            $event_repo          Event repository.
+	 * @param Report_Repository           $report_repo         Report repository.
+	 * @param Report_Generator            $report_generator    Report generator.
+	 * @param AI_Summarizer|null          $ai_summarizer       AI summarizer or null if unavailable.
+	 * @param Event_Registry              $event_registry      Event registry.
+	 * @param Aggregated_Event_Repository $aggregated_repo         Aggregated event repository.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
 		Report_Repository $report_repo,
 		Report_Generator $report_generator,
-		AI_Summarizer $ai_summarizer,
-		Event_Registry $event_registry
+		?AI_Summarizer $ai_summarizer,
+		Event_Registry $event_registry,
+		Aggregated_Event_Repository $aggregated_repo
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
 		$this->report_generator = $report_generator;
 		$this->ai_summarizer    = $ai_summarizer;
 		$this->event_registry   = $event_registry;
+		$this->aggregated_repo  = $aggregated_repo;
 	}
 
 	/**
@@ -99,6 +112,8 @@ class Dashboard_Widget {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
 		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
+		add_action( 'wp_ajax_sybgo_widget_ai_summary', array( $this, 'ajax_widget_ai_summary' ) );
+		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
 	}
 
 	/**
@@ -129,23 +144,11 @@ class Dashboard_Widget {
 			return;
 		}
 
-		wp_enqueue_style(
-			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.css', __DIR__ ),
-			array(),
-			'1.0.0'
-		);
-
-		wp_enqueue_script(
-			'sybgo-dashboard-widget',
-			plugins_url( 'assets/admin.js', __DIR__ ),
-			array( 'jquery' ),
-			'1.0.0',
-			true
-		);
-
+		// Localize sybgoWidget onto the sybgo-admin script already enqueued by
+		// Sybgo::enqueue_admin_assets(). We do not register a separate JS file
+		// here to avoid duplicate event bindings that cause multiple modals.
 		wp_localize_script(
-			'sybgo-dashboard-widget',
+			'sybgo-admin',
 			'sybgoWidget',
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
@@ -160,20 +163,36 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function render_widget(): void {
-		// Get last frozen report.
-		$last_report = $this->report_repo->get_last_frozen();
-
 		// Get current week's events (unassigned).
 		$current_events = $this->event_repo->get_by_report( null );
 
 		?>
 		<div class="sybgo-widget">
-			<?php if ( $last_report ) : ?>
-				<?php $this->render_last_report_section( $last_report ); ?>
-			<?php endif; ?>
+			<div class="sybgo-widget-actions">
+				<button type="button" class="button button-secondary sybgo-preview-btn">
+					<?php esc_html_e( 'Preview This Week\'s Digest', 'sybgo' ); ?>
+				</button>
+				<button type="button" class="button button-secondary sybgo-preview-last-btn">
+					<?php esc_html_e( 'View Previous Digest', 'sybgo' ); ?>
+				</button>
+			</div>
 
 			<div class="sybgo-current-week">
 				<h3><?php esc_html_e( 'This Week\'s Activity', 'sybgo' ); ?></h3>
+
+				<button
+					type="button"
+					class="button button-secondary sybgo-widget-ai-btn"
+					style="width:100%;margin-bottom:8px;"
+					<?php if ( null === $this->ai_summarizer ) : ?>
+						disabled
+						title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
+					<?php endif; ?>
+				>
+					<?php esc_html_e( 'Get AI Summary', 'sybgo' ); ?>
+				</button>
+
+				<div id="sybgo-widget-ai-summary" class="sybgo-widget-ai-result" style="display:none;"></div>
 
 				<?php $this->render_filter_buttons(); ?>
 
@@ -185,13 +204,9 @@ class Dashboard_Widget {
 				<div class="sybgo-events-list" data-filter="all">
 					<?php $this->render_events_list( $current_events ); ?>
 				</div>
-
-				<div class="sybgo-widget-actions">
-					<button type="button" class="button button-secondary sybgo-preview-btn">
-						<?php esc_html_e( 'Preview This Week\'s Digest', 'sybgo' ); ?>
-					</button>
-				</div>
 			</div>
+
+			<?php $this->render_php_errors_section(); ?>
 
 			<div id="sybgo-preview-modal" class="sybgo-modal" style="display:none;">
 				<div class="sybgo-modal-content">
@@ -205,38 +220,78 @@ class Dashboard_Widget {
 	}
 
 	/**
-	 * Render last report section.
+	 * Render PHP errors summary section.
 	 *
-	 * @param array<string, mixed> $report Last frozen report.
+	 * Displays the number of distinct error signatures and total occurrences for
+	 * the current report period, plus a top-5 list by occurrence count.
+	 * Uses the same stat/list style as "This Week's Activity".
+	 * Shows nothing when no errors have been recorded in the period.
+	 *
 	 * @return void
 	 */
-	private function render_last_report_section( array $report ): void {
-		$summary = json_decode( $report['summary_data'], true );
-		if ( ! $summary ) {
+	private function render_php_errors_section(): void {
+		// Query by report_id IS NULL — same pattern as singular events.
+		// This ensures errors are always scoped to the current unassigned period,
+		// regardless of calendar dates, and resets automatically after a freeze.
+		$total_count    = $this->aggregated_repo->get_sum_for_report( 'php_error', null );
+		$top_errors     = array_slice(
+			$this->aggregated_repo->get_rows_for_report( 'php_error', null ),
+			0,
+			5
+		);
+		$distinct_count = count( $top_errors );
+
+		if ( 0 === $distinct_count && 0.0 === $total_count ) {
 			return;
 		}
 
-		?>
-		<div class="sybgo-last-report">
-			<h3><?php esc_html_e( 'Last Week\'s Summary', 'sybgo' ); ?></h3>
+		$level_emoji = array(
+			'warning'         => '⚠️',
+			'user_warning'    => '⚠️',
+			'notice'          => 'ℹ️',
+			'user_notice'     => 'ℹ️',
+			'deprecated'      => '🔔',
+			'user_deprecated' => '🔔',
+			'user_error'      => '❌',
+		);
 
-			<div class="sybgo-period">
-				<?php
-				echo esc_html(
-					sprintf(
-						/* translators: %1$s: start date, %2$s: end date */
-						__( '%1$s to %2$s', 'sybgo' ),
-						gmdate( 'M j', strtotime( $report['period_start'] ) ),
-						gmdate( 'M j, Y', strtotime( $report['period_end'] ) )
-					)
-				);
-				?>
+		?>
+		<hr class="sybgo-section-separator">
+		<div class="sybgo-php-errors">
+			<h3><?php esc_html_e( 'PHP Errors', 'sybgo' ); ?></h3>
+
+			<div class="sybgo-event-stats">
+				<strong><?php echo esc_html( (string) $distinct_count ); ?></strong>
+				<?php esc_html_e( 'distinct signatures', 'sybgo' ); ?>
+			</div>
+			<div class="sybgo-event-stats">
+				<strong><?php echo esc_html( (string) (int) $total_count ); ?></strong>
+				<?php esc_html_e( 'total occurrences', 'sybgo' ); ?>
 			</div>
 
-			<?php if ( ! empty( $summary['highlights'] ) ) : ?>
-				<ul class="sybgo-highlights">
-					<?php foreach ( array_slice( $summary['highlights'], 0, 3 ) as $highlight ) : ?>
-						<li><?php echo esc_html( $highlight ); ?></li>
+			<?php if ( ! empty( $top_errors ) ) : ?>
+				<ul class="sybgo-error-items">
+					<?php foreach ( $top_errors as $row ) : ?>
+						<?php
+						$dims    = json_decode( $row['dimensions'], true );
+						$meta    = json_decode( $row['meta'], true );
+						$level   = $dims['level'] ?? 'warning';
+						$emoji   = $level_emoji[ $level ] ?? '⚠️';
+						$message = $meta['message'] ?? '';
+						$file    = isset( $meta['file'] ) ? basename( $meta['file'] ) : '';
+						$line    = $meta['line'] ?? '';
+						$count   = (int) $row['total'];
+						?>
+						<li class="sybgo-error-item">
+							<span class="sybgo-error-item-icon"><?php echo esc_html( $emoji ); ?></span>
+							<span class="sybgo-error-item-desc" title="<?php echo esc_attr( $message ); ?>">
+								<?php echo esc_html( $message ); ?>
+								<?php if ( $file ) : ?>
+									<span class="sybgo-error-item-location"><?php echo esc_html( $file . ':' . $line ); ?></span>
+								<?php endif; ?>
+							</span>
+							<span class="sybgo-error-item-count"><?php echo esc_html( (string) $count ); ?>×</span>
+						</li>
 					<?php endforeach; ?>
 				</ul>
 			<?php endif; ?>
@@ -411,29 +466,19 @@ class Dashboard_Widget {
 			// Get current week's events.
 			$events = $this->event_repo->get_by_report( null );
 
-			// Generate preview summary.
-			$totals = $this->count_events_by_type( $events );
-
 			// Try to get active report for trends, but don't fail if it doesn't exist.
 			$active_report = $this->report_repo->get_active();
-			$trends        = array();
 
-			if ( $active_report ) {
-				$trends = $this->report_generator->get_trend_comparison( (int) $active_report['id'], $totals );
-			}
-
-			// Generate AI summary if API key is configured.
-			$ai_summary = $this->ai_summarizer->generate_summary( $events, $totals, $trends );
-			$ai_error   = null;
-
-			// Check if API key is configured but summary is null (API error).
-			if ( null === $ai_summary && ! empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) {
-				// Get the last error from error log.
-				$ai_error = 'The AI summary could not be generated. Check your API key and account status.';
-			}
+			// Generate preview summary (totals + trends).
+			$live_summary = $this->report_generator->generate_live_summary(
+				$events,
+				$active_report ? (int) $active_report['id'] : 0
+			);
+			$totals       = $live_summary['totals'];
+			$trends       = $live_summary['trends'];
 
 			ob_start();
-			$this->render_preview_content( $totals, $trends, $events, $ai_summary, $ai_error );
+			$this->render_preview_content( $totals, $trends );
 			$html = ob_get_clean();
 
 			wp_send_json_success( array( 'html' => $html ) );
@@ -450,58 +495,51 @@ class Dashboard_Widget {
 	}
 
 	/**
+	 * AJAX handler for previewing the last frozen digest.
+	 *
+	 * Renders the summary of the most recently frozen/emailed report.
+	 *
+	 * @return void
+	 */
+	public function ajax_preview_last_digest(): void {
+		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'read' ) ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+		}
+
+		$last_report = $this->report_repo->get_last_frozen();
+
+		if ( ! $last_report ) {
+			wp_send_json_error( array( 'message' => __( 'No previous digest available yet.', 'sybgo' ) ) );
+		}
+
+		$summary = ! empty( $last_report['summary_data'] ) ? json_decode( $last_report['summary_data'], true ) : null;
+
+		if ( ! $summary ) {
+			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
+		}
+
+		$totals = $summary['totals'];
+		$trends = $summary['trends'] ?? array();
+
+		ob_start();
+		$this->render_preview_content( $totals, $trends );
+		$html = ob_get_clean();
+
+		wp_send_json_success( array( 'html' => $html ) );
+	}
+
+	/**
 	 * Render preview content.
 	 *
 	 * @param array<string, int>                  $totals Event totals.
 	 * @param array<string, array<string, mixed>> $trends Trend data.
-	 * @param array<int, array<string, mixed>>    $events All events.
-	 * @param string|null                         $ai_summary AI-generated summary (optional).
-	 * @param string|null                         $ai_error AI error message (optional).
 	 * @return void
 	 */
-	private function render_preview_content( array $totals, array $trends, array $events, ?string $ai_summary = null, ?string $ai_error = null ): void {
+	private function render_preview_content( array $totals, array $trends ): void {
 		?>
 		<div class="sybgo-preview">
-			<?php if ( $ai_summary ) : ?>
-				<div class="sybgo-ai-summary" style="background: #f0f6fc; border-left: 4px solid #0073aa; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-admin-comments" style="color: #0073aa;"></span>
-						<?php esc_html_e( 'AI Summary', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php echo esc_html( $ai_summary ); ?>
-					</p>
-				</div>
-			<?php elseif ( $ai_error ) : ?>
-				<div class="sybgo-ai-summary" style="background: #fef5e7; border-left: 4px solid #e74c3c; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-warning" style="color: #e74c3c;"></span>
-						<?php esc_html_e( 'AI Summary Error', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php echo esc_html( $ai_error ); ?>
-					</p>
-				</div>
-			<?php elseif ( empty( \Sybgo\Admin\Settings_Page::get_anthropic_api_key() ) ) : ?>
-				<div class="sybgo-ai-summary" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-					<h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
-						<span class="dashicons dashicons-info" style="color: #ffc107;"></span>
-						<?php esc_html_e( 'AI Summaries Available', 'sybgo' ); ?>
-					</h3>
-					<p style="margin: 0; line-height: 1.6; color: #23282d;">
-						<?php
-						echo wp_kses_post(
-							sprintf(
-								/* translators: %s: settings page URL */
-								__( 'Configure your Anthropic API key in <a href="%s">Settings</a> to enable AI-powered summaries of your weekly activity!', 'sybgo' ),
-								admin_url( 'options-general.php?page=sybgo-settings' )
-							)
-						);
-						?>
-					</p>
-				</div>
-			<?php endif; ?>
-
 			<h3><?php esc_html_e( 'Activity Summary', 'sybgo' ); ?></h3>
 
 			<div class="sybgo-preview-stats">
@@ -543,24 +581,46 @@ class Dashboard_Widget {
 	}
 
 	/**
-	 * Count events by type.
+	 * AJAX handler for on-demand AI summary in the dashboard widget.
 	 *
-	 * @param array<int, array<string, mixed>> $events Events to count.
-	 * @return array<string, int> Counts by type.
+	 * Generates a live AI summary for the current week's events and returns it as JSON.
+	 * If an active report exists, the summary is persisted to it via save_summary_data().
+	 *
+	 * @return void
 	 */
-	private function count_events_by_type( array $events ): array {
-		$counts = array();
+	public function ajax_widget_ai_summary(): void {
+		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
 
-		foreach ( $events as $event ) {
-			$type = $event['event_type'];
-
-			if ( ! isset( $counts[ $type ] ) ) {
-				$counts[ $type ] = 0;
-			}
-
-			++$counts[ $type ];
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+			return; // @phpstan-ignore deadCode.unreachable
 		}
 
-		return $counts;
+		if ( null === $this->ai_summarizer ) {
+			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		$events        = $this->event_repo->get_by_report( null );
+		$active_report = $this->report_repo->get_active();
+		$live_summary  = $this->report_generator->generate_live_summary(
+			$events,
+			$active_report ? (int) $active_report['id'] : 0
+		);
+
+		$summary = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+
+		if ( null === $summary ) {
+			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( $active_report ) {
+			$full_summary               = $live_summary;
+			$full_summary['ai_summary'] = $summary;
+			$this->report_repo->save_summary_data( (int) $active_report['id'], $full_summary );
+		}
+
+		wp_send_json_success( array( 'summary' => $summary ) );
 	}
 }

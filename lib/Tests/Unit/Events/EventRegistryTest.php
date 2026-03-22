@@ -320,6 +320,53 @@ class EventRegistryTest extends TestCase {
 	}
 
 	/**
+	 * Test get_event_category returns 'singular' by default.
+	 */
+	public function test_get_event_category_defaults_to_singular() {
+		$this->inject_event_types( array(
+			'post_published' => array( 'icon' => '📝' ),
+		) );
+
+		$this->assertEquals( 'singular', $this->registry->get_event_category( 'post_published' ) );
+	}
+
+	/**
+	 * Test get_event_category returns 'singular' when no category key is set.
+	 */
+	public function test_get_event_category_singular_for_unregistered_type() {
+		$this->inject_event_types( array() );
+
+		$this->assertEquals( 'singular', $this->registry->get_event_category( 'nonexistent_event' ) );
+	}
+
+	/**
+	 * Test get_event_category returns 'aggregated' when category key is 'aggregated'.
+	 */
+	public function test_get_event_category_returns_aggregated() {
+		$this->inject_event_types( array(
+			'page_view' => array(
+				'icon'     => '👁️',
+				'category' => 'aggregated',
+			),
+		) );
+
+		$this->assertEquals( 'aggregated', $this->registry->get_event_category( 'page_view' ) );
+	}
+
+	/**
+	 * Test get_event_category ignores unknown category values and returns 'singular'.
+	 */
+	public function test_get_event_category_ignores_unknown_category() {
+		$this->inject_event_types( array(
+			'test_event' => array(
+				'category' => 'unknown_value',
+			),
+		) );
+
+		$this->assertEquals( 'singular', $this->registry->get_event_category( 'test_event' ) );
+	}
+
+	/**
 	 * Test describe callback receives event data.
 	 */
 	public function test_describe_callback_receives_data() {

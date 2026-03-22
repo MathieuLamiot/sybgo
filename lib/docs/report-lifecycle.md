@@ -23,7 +23,7 @@ Every report progresses through three states:
 ### 1. Active Report
 - **When:** Monday 00:06 - Sunday 23:55
 - **Status:** `active`
-- **Events:** New events have `report_id = NULL` (unassigned)
+- **Events:** New singular events have `report_id = NULL`; new aggregated rows use `report_id = 0` (sentinel)
 - **Behavior:** Collecting events throughout the week
 
 ### 2. Frozen Report
@@ -81,20 +81,27 @@ $trends = [
 ];
 ```
 
-### Step 4: Generate Highlights & AI Summary
+### Step 4: Generate Highlights
 Automatically create human-readable highlights:
 - "12 new posts published ↑ 20%"
 - "WordPress updated to 6.5"
 - "3 new users registered ↓ 40%"
 
-If an Anthropic API key is configured in settings, an AI-generated summary is also produced via the Claude API and stored in `summary_data.ai_summary`.
+The `ai_summary` field in `summary_data` is set to `null` at freeze time. AI summaries are generated on demand after freezing — see [AI Summary (On-Demand)](#ai-summary-on-demand) below.
 
 ### Step 5: Assign Events to Report
+
+Both singular events and aggregated rows are assigned to the new report in bulk:
+
 ```sql
-UPDATE wp_sybgo_events
-SET report_id = 123
-WHERE report_id IS NULL;
+UPDATE wp_sybgo_events SET report_id = 123 WHERE report_id IS NULL;
+UPDATE wp_sybgo_aggregated_events SET report_id = 123
+  WHERE report_id = 0 AND date BETWEEN '2026-02-10' AND '2026-02-16';
 ```
+
+For aggregated rows, `report_id = 0` is the sentinel for "current unassigned period". Updating it to the real report ID vacates the sentinel slot, resetting the PHP error cap and the dashboard widget's error display — the `report_id = 0` set is empty immediately after and the new period starts clean. The `Aggregated_Event_Repository::assign_to_report()` method handles this step.
+
+Using `report_id` itself (rather than a separate boolean column) as the period discriminator means the UNIQUE KEY `(event_type, dimensions_hash, date, report_id)` can accommodate multiple freeze cycles on the same calendar day without collision: each freeze produces a row with a distinct `report_id` value.
 
 ### Step 6: Save Report
 ```json
@@ -110,7 +117,7 @@ WHERE report_id IS NULL;
         "trends": { ... },
         "highlights": [ ... ],
         "top_authors": [ ... ],
-        "ai_summary": "A busy week with 12 new posts..."
+        "ai_summary": null
     }
 }
 ```
@@ -205,15 +212,17 @@ change_percent = ((current - previous) / previous) * 100
 ## Manual Operations
 
 ### Manual Freeze & Send
-You can manually trigger a freeze at any time:
+You can manually trigger a freeze at any time from the Reports admin page (`Sybgo Reports` in the WP admin menu).
 
-**Admin UI:** Sybgo Reports → "Freeze & Send Now" button
+The active report always appears as the first row in the reports table, showing the current period start date, a live event count, and a "Freeze & Send Now" action button. Clicking the button opens a confirmation modal before submitting. The form posts to `admin-post.php` with action `sybgo_freeze_now` (handled by `Reports_Page::handle_manual_freeze()`).
 
 This will:
 1. End the current week early
 2. Freeze report with current events
 3. Send email immediately
 4. Create new active report
+
+After a freeze, the dashboard widget's PHP Errors section automatically shows only errors from the new period because `Aggregated_Event_Repository` queries by `report_id = 0` (the sentinel for the current period). The freeze sets `report_id` to the real report ID on all sentinel rows, so the `report_id = 0` set is empty immediately after and the new period starts clean.
 
 **Use cases:**
 - Testing email template
@@ -223,16 +232,43 @@ This will:
 ### Resend Email
 If email delivery failed or you need to send to additional recipients:
 
-**Admin UI:** Sybgo Reports → [View Report] → "Resend Email" button
+**Admin UI:** Sybgo Reports → "Resend Email" button on any frozen or emailed report row.
 
 ### View Past Reports
 **Admin UI:** Sybgo Reports (top-level admin menu)
 
-Table shows all frozen/emailed reports:
-- Date range
-- Total events
-- Status (active, frozen, emailed)
-- Actions (View, Resend)
+The table shows the active (ongoing) report first, followed by all frozen/emailed reports in reverse chronological order:
+- Date range (active row shows "Now" as end date)
+- Live or frozen event count
+- Status badge (Active, Frozen, Sent)
+- Actions (Freeze & Send Now for active row; View Details and Resend Email for past rows)
+
+### Active Report Details (Live Summary)
+
+Clicking **View Details** on the active report row opens the report details page. Because the active report has no frozen `summary_data` yet, Sybgo generates a **live summary** on the fly:
+
+1. Fetches all unassigned events (singular: `report_id IS NULL`; aggregated: `report_id = 0`).
+2. Calls `Report_Generator::generate_live_summary()`, which runs the same computation pipeline as the freeze process (`totals → trends → highlights → top_authors`) — but skips the AI summarizer and does not persist anything.
+3. Renders the same summary cards and highlights UI as a frozen report.
+
+This gives an accurate, real-time preview of what the next frozen report will look like. The same `generate_live_summary()` method is used by the dashboard widget preview modal.
+
+## AI Summary (On-Demand)
+
+AI-generated prose summaries are generated on demand, never at freeze time. The feature is available on both frozen and active reports when WordPress 7 is active.
+
+On the report detail page (**Sybgo Reports → View Details**), a "Generate AI Summary" button calls the AJAX action `sybgo_generate_ai_summary`, which:
+
+1. Fetches the relevant events — for frozen reports via `Event_Repository::get_by_report($report_id)`, for active reports via `get_by_report(null)` (unassigned events).
+2. Calls `Report_Generator::generate_live_summary()` to compute current totals and trends.
+3. Calls `AI_Summarizer::generate_summary()` via the WP7 native AI API.
+4. Persists the result. For **frozen** reports, `Report_Repository::set_ai_summary()` merges only the AI text into the existing `summary_data` JSON. For **active** reports, `Report_Repository::save_summary_data()` saves the full stats + AI text object atomically (because no frozen `summary_data` exists yet to merge into).
+
+Once generated, the button label changes to "Regenerate AI Summary" and the text is shown inline.
+
+The dashboard widget also offers a "Get AI Summary" button (`sybgo_widget_ai_summary`), which follows the same flow for the current period. If an active report exists, the result is persisted to it via `save_summary_data()`, so the summary is visible on the active report's detail page after the next page load.
+
+The button is disabled (with an explanatory tooltip) when the WP7 AI API is unavailable. See [AI Transport Layer](ai-transport.md) and [AJAX Actions](../wp-plugin/docs/ajax-actions.md) for technical details.
 
 ## Empty Reports
 
@@ -377,7 +413,7 @@ All times are in WordPress timezone (Settings → General):
 |-----------|----------|---------|
 | `sybgo_freeze_weekly_report` | Sunday 23:55 | Freeze current week's report |
 | `sybgo_send_report_emails` | Monday 00:05 | Send digest emails |
-| `sybgo_cleanup_old_events` | Daily 03:00 | Delete events >1 year old |
+| `sybgo_cleanup_old_events` | Daily 03:00 | Delete events and aggregated data older than the configured retention period (default: 90 days) |
 | `sybgo_retry_failed_emails` | Daily 09:00 | Retry failed email deliveries |
 
 ## Performance

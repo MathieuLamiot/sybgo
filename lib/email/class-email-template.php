@@ -62,7 +62,7 @@ class Email_Template {
 		 * @param string $subject Email subject.
 		 * @param array  $report Report data.
 		 */
-		return apply_filters( 'sybgo_email_subject', $subject, $report );
+		return wpm_apply_filters_typesafe( 'sybgo_email_subject', $subject, $report );
 	}
 
 	/**
@@ -311,14 +311,15 @@ class Email_Template {
 						</a>
 					</p>
 					<p style="margin-top: 15px; font-size: 11px;">
-						<?php esc_html_e( 'Powered by Sybgo - Activity Digest Plugin', 'sybgo' ); ?>
+						<?php esc_html_e( 'Powered by Sybgo', 'sybgo' ); ?>
 					</p>
 				</div>
 			</div>
 		</body>
 		</html>
 		<?php
-		$html = ob_get_clean();
+		$raw_html = ob_get_clean();
+		$html     = ( false !== $raw_html ) ? $raw_html : '';
 
 		/**
 		 * Filter email body HTML.
@@ -326,7 +327,7 @@ class Email_Template {
 		 * @param string $html Email body HTML.
 		 * @param array  $report Report data.
 		 */
-		return apply_filters( 'sybgo_email_body', $html, $report );
+		return wpm_apply_filters_typesafe( 'sybgo_email_body', $html, $report );
 	}
 
 	/**

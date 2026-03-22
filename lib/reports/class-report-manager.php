@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Sybgo\Reports;
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 
@@ -32,6 +33,13 @@ class Report_Manager {
 	private Event_Repository $event_repo;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
 	 * Report repository instance.
 	 *
 	 * @var Report_Repository
@@ -48,18 +56,21 @@ class Report_Manager {
 	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Generator  $generator Report generator.
+	 * @param Event_Repository            $event_repo      Event repository.
+	 * @param Aggregated_Event_Repository $aggregated_repo Aggregated event repository.
+	 * @param Report_Repository           $report_repo     Report repository.
+	 * @param Report_Generator            $generator       Report generator.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
+		Aggregated_Event_Repository $aggregated_repo,
 		Report_Repository $report_repo,
 		Report_Generator $generator
 	) {
-		$this->event_repo  = $event_repo;
-		$this->report_repo = $report_repo;
-		$this->generator   = $generator;
+		$this->event_repo      = $event_repo;
+		$this->aggregated_repo = $aggregated_repo;
+		$this->report_repo     = $report_repo;
+		$this->generator       = $generator;
 	}
 
 	/**
@@ -127,6 +138,13 @@ class Report_Manager {
 			$report_id,
 			$period_start,
 			$period_end
+		);
+
+		// Assign all unassigned aggregated events to this report as well.
+		$this->aggregated_repo->assign_to_report(
+			$report_id,
+			gmdate( 'Y-m-d', strtotime( $period_start ) ),
+			gmdate( 'Y-m-d', strtotime( $period_end ) )
 		);
 
 		// Generate summary data AFTER events are assigned.

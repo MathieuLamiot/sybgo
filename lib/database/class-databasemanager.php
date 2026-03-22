@@ -16,7 +16,7 @@ namespace Sybgo\Database;
  * DatabaseManager class.
  *
  * This class provides methods for managing database interactions for the Sybgo plugin.
- * Creates and manages three tables: events, reports, and email_log.
+ * Creates and manages four tables: events, reports, email_log, and aggregated_events.
  *
  * @package Sybgo\Database
  * @since   1.0.0
@@ -47,26 +47,73 @@ class DatabaseManager {
 	private string $email_log_table = '';
 
 	/**
+	 * Table name for storing aggregated event counts.
+	 *
+	 * @var string $aggregated_events_table The name of the aggregated events database table.
+	 * @since 1.0.0
+	 */
+	private string $aggregated_events_table = '';
+
+	/**
 	 * Constructor for the DatabaseManager class.
 	 *
-	 * This method initializes the database manager and sets up all required tables.
-	 * Also handles migration from old crawling_results table.
+	 * Initializes table names only. Call maybe_create_tables() explicitly
+	 * when table creation is needed (e.g. on activation or first run).
 	 *
 	 * @since 1.0.0
 	 */
 	public function __construct() {
+		$this->init_table_names();
+	}
+
+	/**
+	 * Initialize table name properties from the WordPress prefix.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function init_table_names(): void {
+		$table_names                   = $this->get_table_names();
+		$this->events_table            = $table_names['events'];
+		$this->reports_table           = $table_names['reports'];
+		$this->email_log_table         = $table_names['email_log'];
+		$this->aggregated_events_table = $table_names['aggregated_events'];
+	}
+
+	/**
+	 * Get all table names owned by the plugin.
+	 *
+	 * Single source of truth for plugin table names. Safe to call without
+	 * triggering any table creation (e.g. during uninstall).
+	 *
+	 * @return array<string, string> Table names keyed by identifier.
+	 * @since 1.0.0
+	 */
+	public function get_table_names(): array {
 		global $wpdb;
 
-		// Set table names.
-		$this->events_table    = $wpdb->prefix . 'sybgo_events';
-		$this->reports_table   = $wpdb->prefix . 'sybgo_reports';
-		$this->email_log_table = $wpdb->prefix . 'sybgo_email_log';
+		return array(
+			'events'            => $wpdb->prefix . 'sybgo_events',
+			'reports'           => $wpdb->prefix . 'sybgo_reports',
+			'email_log'         => $wpdb->prefix . 'sybgo_email_log',
+			'aggregated_events' => $wpdb->prefix . 'sybgo_aggregated_events',
+		);
+	}
 
-		// Create tables.
+	/**
+	 * Create or upgrade all plugin database tables, and run migrations.
+	 *
+	 * Must be called explicitly on plugin activation and on init (to handle
+	 * schema upgrades). Safe to call multiple times — dbDelta is idempotent.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function maybe_create_tables(): void {
 		$this->create_tables();
-
-		// Run migration.
 		$this->migrate_from_old_schema();
+		$this->migrate_aggregated_events_is_assigned();
+		$this->migrate_aggregated_events_report_id_key();
 	}
 
 	/**
@@ -125,10 +172,34 @@ class DatabaseManager {
 			INDEX idx_status (status)
 		) $charset_collate;";
 
+		// Aggregated events table - stores daily accumulated values per event type and dimension set.
+		// dimensions_hash is a MySQL generated column (SHA2 of the dimensions JSON blob) used in
+		// the UNIQUE KEY because LONGTEXT columns cannot be indexed directly.
+		// Empty dimensions are encoded as '{}' (not NULL) to produce a stable hash for global rows.
+		// report_id uses 0 as a sentinel for "unassigned / current period" rows (NULL cannot be part
+		// of a UNIQUE KEY in MySQL since NULLs are never equal, which would break upsert deduplication).
+		// After a freeze, report_id is set to the actual report ID (always > 0), vacating the
+		// sentinel slot so the next upsert for the same signature creates a fresh row.
+		$aggregated_events_sql = "CREATE TABLE {$this->aggregated_events_table} (
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			event_type VARCHAR(100) NOT NULL,
+			dimensions LONGTEXT DEFAULT NULL,
+			dimensions_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2(dimensions, 256)) STORED,
+			value DECIMAL(20,4) NOT NULL DEFAULT 0,
+			report_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			date DATE NOT NULL,
+			meta LONGTEXT DEFAULT NULL,
+			UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, report_id),
+			INDEX idx_report_id (report_id),
+			INDEX idx_date (date),
+			INDEX idx_event_type (event_type)
+		) $charset_collate;";
+
 		// Execute table creation.
 		dbDelta( $events_sql );
 		dbDelta( $reports_sql );
 		dbDelta( $email_log_sql );
+		dbDelta( $aggregated_events_sql );
 	}
 
 	/**
@@ -153,42 +224,120 @@ class DatabaseManager {
 	}
 
 	/**
-	 * Get table names.
+	 * Add the is_assigned column and update the UNIQUE KEY on wp_sybgo_aggregated_events.
 	 *
-	 * @return array<string, string> Array of table names keyed by identifier.
+	 * DbDelta cannot drop or rename an existing unique key, so this migration runs an
+	 * explicit ALTER TABLE. It is guarded by checking whether the is_assigned column already
+	 * exists, making it safe to call multiple times.
+	 *
+	 * @return void
 	 * @since 1.0.0
 	 */
-	public function get_table_names(): array {
-		return array(
-			'events'    => $this->events_table,
-			'reports'   => $this->reports_table,
-			'email_log' => $this->email_log_table,
+	private function migrate_aggregated_events_is_assigned(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$this->aggregated_events_table} LIKE %s", 'is_assigned' ) );
+		if ( ! empty( $col ) ) {
+			return; // Already migrated.
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$this->aggregated_events_table}
+			 ADD COLUMN is_assigned TINYINT(1) NOT NULL DEFAULT 0,
+			 DROP INDEX uq_event_dim_date,
+			 ADD UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, is_assigned)"
 		);
 	}
 
 	/**
-	 * Cleanup old events (older than 1 year).
+	 * Migrate aggregated_events from is_assigned discriminator to report_id=0 sentinel.
+	 *
+	 * Replaces the binary is_assigned column with report_id=0 as the "unassigned" sentinel
+	 * so that multiple freezes on the same calendar day no longer collide on the unique key.
+	 * The new UNIQUE KEY is (event_type, dimensions_hash, date, report_id).
+	 *
+	 * Guard: skips if is_assigned column no longer exists (already migrated).
+	 * Safe to call multiple times.
+	 *
+	 * @return void
+	 * @since 1.0.0
+	 */
+	private function migrate_aggregated_events_report_id_key(): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$col = $wpdb->get_results( $wpdb->prepare( "SHOW COLUMNS FROM {$this->aggregated_events_table} LIKE %s", 'is_assigned' ) );
+		if ( empty( $col ) ) {
+			return; // Already migrated.
+		}
+
+		// Step 1: convert NULL report_id to sentinel 0 before altering the column to NOT NULL.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "UPDATE {$this->aggregated_events_table} SET report_id = 0 WHERE report_id IS NULL" );
+
+		// Step 2: swap schema — drop old key and is_assigned column, add new key, make report_id NOT NULL.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"ALTER TABLE {$this->aggregated_events_table}
+			 DROP INDEX uq_event_dim_date,
+			 DROP COLUMN is_assigned,
+			 MODIFY COLUMN report_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			 ADD UNIQUE KEY uq_event_dim_date (event_type, dimensions_hash, date, report_id)"
+		);
+	}
+
+	/**
+	 * Drop a single database table.
+	 *
+	 * @param string $table Fully-qualified table name (including prefix).
+	 * @return void
+	 * @since 1.0.0
+	 */
+	public function drop_table( string $table ): void {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+	}
+
+	/**
+	 * Cleanup old events and aggregated events older than the given number of days.
+	 *
+	 * Deletes from both sybgo_events (by event_timestamp) and sybgo_aggregated_events
+	 * (by date) using the same retention window. No foreign key constraints exist between
+	 * these tables and reports/email_log, so deletion order does not matter.
 	 *
 	 * This should be called by a daily cron job.
 	 *
-	 * @return int Number of events deleted.
+	 * @param int $days Retention period in days. Defaults to 90.
+	 * @return int Total number of rows deleted across both tables.
 	 * @since 1.0.0
 	 */
-	public function cleanup_old_events(): int {
+	public function cleanup_old_events( int $days = 90 ): int {
 		global $wpdb;
 
-		$one_year_ago = gmdate( 'Y-m-d H:i:s', strtotime( '-1 year' ) );
+		$cutoff_datetime = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+		$cutoff_date     = gmdate( 'Y-m-d', strtotime( "-{$days} days" ) );
 
-		$deleted = $wpdb->query(
+		$deleted_events = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$this->events_table} WHERE event_timestamp < %s",
-				$one_year_ago
+				$cutoff_datetime
+			)
+		);
+
+		$deleted_aggregated = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$this->aggregated_events_table} WHERE date < %s",
+				$cutoff_date
 			)
 		);
 
 		// Clear any cached data.
 		wp_cache_delete( 'sybgo_events', 'sybgo_cache' );
+		wp_cache_delete( 'sybgo_aggregated_events', 'sybgo_cache' );
 
-		return (int) $deleted;
+		return (int) $deleted_events + (int) $deleted_aggregated;
 	}
 }

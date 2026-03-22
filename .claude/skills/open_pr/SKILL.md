@@ -26,11 +26,16 @@ You are a senior developer opening a pull request for the sybgo project. Fill ev
 
 Fill every section of `.github/PULL_REQUEST_TEMPLATE.md`. Never leave placeholder text or empty sections.
 
-**Description**: 1-2 sentences of user/developer impact. Always link the fixing issue: `Fixes: #N`
+**Description**: 1-2 sentences of user/developer impact. Always link closing issues using one `Closes #N` per line — never a bullet list under `Fixes:` and never a colon-then-list. GitHub only auto-closes issues when the keyword and issue number are on the same line. Example:
+```
+Closes #8
+Closes #29
+Closes #30
+```
 
 **Type of change**: Tick the correct checkbox(es). Never leave all unchecked.
 
-**What was tested**: Concrete scenarios with exact steps and observed results. Not "tested locally".
+**What was tested**: Concrete scenarios with exact steps and observed results. Not "tested locally". Don't mention automated tests here, only manual testing. If no testing was done, consider doing it now. Resort to writing "No testing performed" with a justification only if that's truly the case and cannot be remediated.
 
 **How to test**: Autonomous step-by-step instructions. A reviewer with no prior context must be able to follow them. No assumed environment setup.
 

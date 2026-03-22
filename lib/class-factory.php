@@ -14,13 +14,17 @@ namespace Sybgo;
 
 // Require database classes.
 require_once __DIR__ . '/database/class-databasemanager.php';
+require_once __DIR__ . '/database/class-db-stats.php';
 require_once __DIR__ . '/database/class-event-repository.php';
 require_once __DIR__ . '/database/class-report-repository.php';
+require_once __DIR__ . '/database/class-aggregated-event-repository.php';
 require_once __DIR__ . '/events/class-event-registry.php';
 
 use Sybgo\Database\DatabaseManager;
+use Sybgo\Database\DB_Stats;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Events\Event_Registry;
 
 /**
@@ -30,7 +34,6 @@ use Sybgo\Events\Event_Registry;
  * of the Sybgo library services.
  *
  * Accepts a config array to decouple from plugin-specific settings:
- * - 'api_key_provider'        => callable returning the Anthropic API key string.
  * - 'email_settings_provider' => callable returning an email settings array with keys:
  *                                 'recipients', 'from_name', 'from_email', 'send_empty_reports'.
  *
@@ -88,6 +91,13 @@ class Factory {
 	private static ?object $email_manager_instance = null;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * @var Aggregated_Event_Repository|null
+	 */
+	private static ?Aggregated_Event_Repository $aggregated_event_repo_instance = null;
+
+	/**
 	 * Event registry instance.
 	 *
 	 * @var Event_Registry|null
@@ -95,17 +105,20 @@ class Factory {
 	private static ?Event_Registry $event_registry_instance = null;
 
 	/**
+	 * DB Stats instance.
+	 *
+	 * @var DB_Stats|null
+	 */
+	private static ?DB_Stats $db_stats_instance = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array<string, mixed> $config Configuration array with keys:
-	 *                                     - 'api_key_provider'        => callable returning API key string.
 	 *                                     - 'email_settings_provider' => callable returning email settings array.
 	 */
 	public function __construct( array $config = array() ) {
 		$defaults = array(
-			'api_key_provider'        => function () {
-				return '';
-			},
 			'email_settings_provider' => function () {
 				return array(
 					'recipients'         => array( get_option( 'admin_email' ) ),
@@ -137,6 +150,7 @@ class Factory {
 	public function create_database_manager(): DatabaseManager {
 		if ( null === self::$db_manager_instance ) {
 			self::$db_manager_instance = new DatabaseManager();
+			self::$db_manager_instance->maybe_create_tables();
 		}
 		return self::$db_manager_instance;
 	}
@@ -170,6 +184,20 @@ class Factory {
 	}
 
 	/**
+	 * Create aggregated event repository instance.
+	 *
+	 * @return Aggregated_Event_Repository The aggregated event repository instance.
+	 */
+	public function create_aggregated_event_repository(): Aggregated_Event_Repository {
+		if ( null === self::$aggregated_event_repo_instance ) {
+			$db_manager                           = $this->create_database_manager();
+			$tables                               = $db_manager->get_table_names();
+			self::$aggregated_event_repo_instance = new Aggregated_Event_Repository( $tables['aggregated_events'] );
+		}
+		return self::$aggregated_event_repo_instance;
+	}
+
+	/**
 	 * Create event registry instance.
 	 *
 	 * @return Event_Registry The event registry instance.
@@ -179,6 +207,19 @@ class Factory {
 			self::$event_registry_instance = new Event_Registry();
 		}
 		return self::$event_registry_instance;
+	}
+
+	/**
+	 * Create DB Stats instance.
+	 *
+	 * @return DB_Stats
+	 * @since 1.1.0
+	 */
+	public function create_db_stats(): DB_Stats {
+		if ( null === self::$db_stats_instance ) {
+			self::$db_stats_instance = new DB_Stats( $this->create_database_manager() );
+		}
+		return self::$db_stats_instance;
 	}
 
 	/**
@@ -203,18 +244,27 @@ class Factory {
 	/**
 	 * Create AI summarizer instance.
 	 *
-	 * @return \Sybgo\AI\AI_Summarizer AI summarizer instance.
+	 * Returns null when running on WordPress < 7 (no wp_ai_client_prompt available).
+	 *
+	 * @return \Sybgo\AI\AI_Summarizer|null AI summarizer instance or null if WP 7 is unavailable.
 	 */
-	public function create_ai_summarizer(): \Sybgo\AI\AI_Summarizer {
+	public function create_ai_summarizer(): ?\Sybgo\AI\AI_Summarizer {
+		require_once __DIR__ . '/ai/interface-ai-transport.php';
 		require_once __DIR__ . '/ai/class-ai-summarizer.php';
+		require_once __DIR__ . '/ai/class-wp7-ai-transport.php';
+
+		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
+			return null;
+		}
 
 		$report_repo    = $this->create_report_repository();
 		$event_registry = $this->create_event_registry();
+		$transport      = new \Sybgo\AI\WP7_AI_Transport();
 
 		return new \Sybgo\AI\AI_Summarizer(
 			$report_repo,
 			$event_registry,
-			$this->config['api_key_provider']
+			$transport
 		);
 	}
 
@@ -228,16 +278,18 @@ class Factory {
 			require_once __DIR__ . '/reports/class-report-generator.php';
 			require_once __DIR__ . '/reports/class-report-manager.php';
 
-			$event_repo    = $this->create_event_repository();
-			$report_repo   = $this->create_report_repository();
-			$ai_summarizer = $this->create_ai_summarizer();
+			$event_repo      = $this->create_event_repository();
+			$aggregated_repo = $this->create_aggregated_event_repository();
+			$report_repo     = $this->create_report_repository();
+			$ai_summarizer   = $this->create_ai_summarizer();
 
 			// Create generator.
-			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo, $ai_summarizer );
+			$generator = new \Sybgo\Reports\Report_Generator( $event_repo, $report_repo );
 
 			// Create manager.
 			self::$report_manager_instance = new \Sybgo\Reports\Report_Manager(
 				$event_repo,
+				$aggregated_repo,
 				$report_repo,
 				$generator
 			);

@@ -16,12 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Sybgo\Database\Aggregated_Event_Repository;
 use Sybgo\Database\Event_Repository;
 use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Manager;
 use Sybgo\Reports\Report_Generator;
 use Sybgo\Email\Email_Manager;
 use Sybgo\Events\Event_Registry;
+use Sybgo\AI\AI_Summarizer;
 
 /**
  * Reports Page class.
@@ -75,14 +77,32 @@ class Reports_Page {
 	private Event_Registry $event_registry;
 
 	/**
+	 * Aggregated event repository instance.
+	 *
+	 * Used to query PHP error rows for the report detail view.
+	 *
+	 * @var Aggregated_Event_Repository
+	 */
+	private Aggregated_Event_Repository $aggregated_repo;
+
+	/**
+	 * AI summarizer instance.
+	 *
+	 * @var AI_Summarizer|null
+	 */
+	private ?AI_Summarizer $ai_summarizer;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Event_Repository  $event_repo Event repository.
-	 * @param Report_Repository $report_repo Report repository.
-	 * @param Report_Manager    $report_manager Report manager.
-	 * @param Report_Generator  $report_generator Report generator.
-	 * @param Email_Manager     $email_manager Email manager.
-	 * @param Event_Registry    $event_registry Event registry.
+	 * @param Event_Repository            $event_repo       Event repository.
+	 * @param Report_Repository           $report_repo      Report repository.
+	 * @param Report_Manager              $report_manager   Report manager.
+	 * @param Report_Generator            $report_generator Report generator.
+	 * @param Email_Manager               $email_manager    Email manager.
+	 * @param Event_Registry              $event_registry   Event registry.
+	 * @param Aggregated_Event_Repository $aggregated_repo  Aggregated event repository.
+	 * @param AI_Summarizer|null          $ai_summarizer    AI summarizer or null if unavailable.
 	 */
 	public function __construct(
 		Event_Repository $event_repo,
@@ -90,7 +110,9 @@ class Reports_Page {
 		Report_Manager $report_manager,
 		Report_Generator $report_generator,
 		Email_Manager $email_manager,
-		Event_Registry $event_registry
+		Event_Registry $event_registry,
+		Aggregated_Event_Repository $aggregated_repo,
+		?AI_Summarizer $ai_summarizer = null
 	) {
 		$this->event_repo       = $event_repo;
 		$this->report_repo      = $report_repo;
@@ -98,6 +120,8 @@ class Reports_Page {
 		$this->report_generator = $report_generator;
 		$this->email_manager    = $email_manager;
 		$this->event_registry   = $event_registry;
+		$this->aggregated_repo  = $aggregated_repo;
+		$this->ai_summarizer    = $ai_summarizer;
 	}
 
 	/**
@@ -109,6 +133,7 @@ class Reports_Page {
 		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
 		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
 		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
+		add_action( 'wp_ajax_sybgo_generate_ai_summary', array( $this, 'ajax_generate_ai_summary' ) );
 	}
 
 	/**
@@ -152,10 +177,6 @@ class Reports_Page {
 		<div class="wrap">
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Sybgo Reports', 'sybgo' ); ?></h1>
 
-			<?php if ( 'list' === $view ) : ?>
-				<?php $this->render_freeze_button(); ?>
-			<?php endif; ?>
-
 			<hr class="wp-header-end">
 
 			<?php $this->render_notices(); ?>
@@ -170,27 +191,141 @@ class Reports_Page {
 	}
 
 	/**
-	 * Render freeze now button.
+	 * Render admin notices.
 	 *
 	 * @return void
 	 */
-	private function render_freeze_button(): void {
-		$active_report = $this->report_repo->get_active();
-
-		if ( ! $active_report ) {
+	private function render_notices(): void {
+		if ( ! isset( $_GET['message'] ) ) {
 			return;
 		}
 
-		$events_count = count( $this->event_repo->get_by_report( null ) );
+		check_admin_referer( 'sybgo_report_message' );
+		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) );
+
+		switch ( $message ) {
+			case 'frozen':
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Report frozen and email sent successfully!', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+
+			case 'resent':
+				?>
+				<div class="notice notice-success is-dismissible">
+					<p><?php esc_html_e( 'Email resent successfully!', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+
+			case 'error':
+				?>
+				<div class="notice notice-error is-dismissible">
+					<p><?php esc_html_e( 'An error occurred. Please try again.', 'sybgo' ); ?></p>
+				</div>
+				<?php
+				break;
+		}
+	}
+
+	/**
+	 * Render reports list table.
+	 *
+	 * @return void
+	 */
+	private function render_reports_list(): void {
+		global $wpdb;
+
+		$table_name = esc_sql( $this->report_repo->get_table_name() );
+
+		// Get all frozen/emailed reports ordered by date.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
+		$reports = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
+				"SELECT * FROM {$table_name} WHERE status != %s ORDER BY period_end DESC LIMIT 50",
+				'active'
+			),
+			ARRAY_A
+		);
+
+		$active_report = $this->report_repo->get_active();
+		$events_count  = $active_report ? count( $this->event_repo->get_by_report( null ) ) : 0;
 
 		?>
-		<a
-			href="#"
-			class="page-title-action sybgo-freeze-btn"
-			data-events="<?php echo esc_attr( (string) $events_count ); ?>"
-		>
-			<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
-		</a>
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Period', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Events', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Status', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Created', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Actions', 'sybgo' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ( ! $active_report && empty( $reports ) ) : ?>
+					<tr>
+						<td colspan="5" style="text-align: center;">
+							<?php esc_html_e( 'No reports found. Reports will appear here after the first freeze.', 'sybgo' ); ?>
+						</td>
+					</tr>
+				<?php else : ?>
+					<?php if ( $active_report ) : ?>
+						<?php $this->render_active_report_row( $active_report, $events_count ); ?>
+					<?php endif; ?>
+					<?php foreach ( $reports as $report ) : ?>
+						<?php $this->render_report_row( $report ); ?>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	/**
+	 * Render the active (ongoing) report as the first table row.
+	 *
+	 * @param array<string, mixed> $report       Active report data.
+	 * @param int                  $events_count Live count of unassigned events.
+	 * @return void
+	 */
+	private function render_active_report_row( array $report, int $events_count ): void {
+		$period_start = gmdate( 'M j, Y', strtotime( $report['period_start'] ) );
+		$running_for  = human_time_diff( strtotime( $report['period_start'] ), time() ) . ' ago';
+
+		?>
+		<tr>
+			<td>
+				<strong><?php echo esc_html( $period_start . ' – ' . __( 'Now', 'sybgo' ) ); ?></strong>
+			</td>
+			<td>
+				<?php echo esc_html( number_format_i18n( $events_count ) ); ?>
+			</td>
+			<td>
+				<?php $this->render_status_badge( 'active' ); ?>
+			</td>
+			<td>
+				<?php echo esc_html( $running_for ); ?>
+			</td>
+			<td>
+				<a
+					href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . $report['id'] ), 'sybgo_view_report' ) ); ?>"
+					class="button button-small"
+				>
+					<?php esc_html_e( 'View Details', 'sybgo' ); ?>
+				</a>
+				<a
+					href="#"
+					class="button button-small sybgo-freeze-btn"
+					data-events="<?php echo esc_attr( (string) $events_count ); ?>"
+				>
+					<?php esc_html_e( 'Freeze & Send Now', 'sybgo' ); ?>
+				</a>
+			</td>
+		</tr>
 
 		<div id="sybgo-freeze-modal" class="sybgo-modal" style="display:none;">
 			<div class="sybgo-modal-content">
@@ -246,95 +381,6 @@ class Reports_Page {
 			});
 		});
 		</script>
-		<?php
-	}
-
-	/**
-	 * Render admin notices.
-	 *
-	 * @return void
-	 */
-	private function render_notices(): void {
-		if ( ! isset( $_GET['message'] ) ) {
-			return;
-		}
-
-		check_admin_referer( 'sybgo_report_message' );
-		$message = sanitize_text_field( wp_unslash( $_GET['message'] ) );
-
-		switch ( $message ) {
-			case 'frozen':
-				?>
-				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Report frozen and email sent successfully!', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-
-			case 'resent':
-				?>
-				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'Email resent successfully!', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-
-			case 'error':
-				?>
-				<div class="notice notice-error is-dismissible">
-					<p><?php esc_html_e( 'An error occurred. Please try again.', 'sybgo' ); ?></p>
-				</div>
-				<?php
-				break;
-		}
-	}
-
-	/**
-	 * Render reports list table.
-	 *
-	 * @return void
-	 */
-	private function render_reports_list(): void {
-		global $wpdb;
-
-		$table_name = esc_sql( $this->report_repo->get_table_name() );
-
-		// Get all reports ordered by date.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Admin page query; not in repository.
-		$reports = $wpdb->get_results(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name variable; not user input.
-				"SELECT * FROM {$table_name} WHERE status != %s ORDER BY period_end DESC LIMIT 50",
-				'active'
-			),
-			ARRAY_A
-		);
-
-		?>
-		<table class="wp-list-table widefat fixed striped">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Period', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Events', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Status', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Created', 'sybgo' ); ?></th>
-					<th><?php esc_html_e( 'Actions', 'sybgo' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php if ( empty( $reports ) ) : ?>
-					<tr>
-						<td colspan="5" style="text-align: center;">
-							<?php esc_html_e( 'No reports found. Reports will appear here after the first freeze.', 'sybgo' ); ?>
-						</td>
-					</tr>
-				<?php else : ?>
-					<?php foreach ( $reports as $report ) : ?>
-						<?php $this->render_report_row( $report ); ?>
-					<?php endforeach; ?>
-				<?php endif; ?>
-			</tbody>
-		</table>
 		<?php
 	}
 
@@ -445,8 +491,12 @@ class Reports_Page {
 			return;
 		}
 
-		$summary = json_decode( $report['summary_data'], true );
-		$events  = $this->event_repo->get_by_report( $report_id );
+		$summary = ! empty( $report['summary_data'] ) ? json_decode( $report['summary_data'], true ) : null;
+		$events  = $this->event_repo->get_by_report( 'active' === $report['status'] ? null : $report_id );
+
+		if ( null === $summary && 'active' === $report['status'] ) {
+			$summary = $this->report_generator->generate_live_summary( $events, (int) $report['id'] );
+		}
 
 		?>
 		<div class="sybgo-report-details">
@@ -464,7 +514,7 @@ class Reports_Page {
 							/* translators: %1$s: start date, %2$s: end date */
 							__( 'Report: %1$s to %2$s', 'sybgo' ),
 							gmdate( 'F j, Y', strtotime( $report['period_start'] ) ),
-							gmdate( 'F j, Y', strtotime( $report['period_end'] ) )
+							! empty( $report['period_end'] ) ? gmdate( 'F j, Y', strtotime( $report['period_end'] ) ) : __( 'Now', 'sybgo' )
 						)
 					);
 					?>
@@ -507,6 +557,39 @@ class Reports_Page {
 							<?php endforeach; ?>
 						</ul>
 					<?php endif; ?>
+
+					<div class="sybgo-ai-summary-section" style="margin-top: 20px;">
+						<h3><?php esc_html_e( 'AI Summary', 'sybgo' ); ?></h3>
+
+						<div
+							id="sybgo-ai-summary-box"
+							class="sybgo-ai-summary-box"
+							style="<?php echo ! empty( $summary['ai_summary'] ) ? '' : 'display:none;'; ?>background: #f0f6fc; border-left: 4px solid #0073aa; padding: 15px; margin-bottom: 15px; border-radius: 4px;"
+						>
+							<p id="sybgo-ai-summary-text" style="margin: 0; line-height: 1.6; color: #23282d;">
+								<?php echo esc_html( $summary['ai_summary'] ?? '' ); ?>
+							</p>
+						</div>
+
+						<button
+							type="button"
+							id="sybgo-generate-ai-btn"
+							class="button button-secondary sybgo-generate-ai-btn"
+							data-report-id="<?php echo esc_attr( (string) $report_id ); ?>"
+							<?php if ( null === $this->ai_summarizer ) : ?>
+								disabled
+								title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
+							<?php endif; ?>
+						>
+							<?php
+							if ( ! empty( $summary['ai_summary'] ) ) {
+								esc_html_e( 'Regenerate AI Summary', 'sybgo' );
+							} else {
+								esc_html_e( 'Generate AI Summary', 'sybgo' );
+							}
+							?>
+						</button>
+					</div>
 				</div>
 			<?php endif; ?>
 
@@ -517,6 +600,8 @@ class Reports_Page {
 			<?php else : ?>
 				<?php $this->render_events_table( $events ); ?>
 			<?php endif; ?>
+
+			<?php $this->render_php_errors_table( $report ); ?>
 		</div>
 
 		<style>
@@ -588,6 +673,88 @@ class Reports_Page {
 			margin-bottom: 8px;
 		}
 		</style>
+		<?php
+	}
+
+	/**
+	 * Render PHP errors table for a report.
+	 *
+	 * Queries aggregated error rows for the report's date range and renders a
+	 * wp-list-table with one row per distinct error signature, showing the error
+	 * level emoji, message + file:line, and occurrence count.
+	 * Renders nothing if no errors were recorded in the period.
+	 *
+	 * @param array<string, mixed> $report Report data (period_start, period_end, status).
+	 * @return void
+	 */
+	private function render_php_errors_table( array $report ): void {
+		// Use report_id IS NULL for the active (unassigned) period, or report_id = N
+		// for frozen/emailed reports — same pattern as singular events.
+		$report_id  = 'active' === $report['status'] ? null : (int) $report['id'];
+		$error_rows = $this->aggregated_repo->get_rows_for_report( 'php_error', $report_id );
+
+		if ( empty( $error_rows ) ) {
+			return;
+		}
+
+		$level_emoji = array(
+			'warning'         => '⚠️',
+			'user_warning'    => '⚠️',
+			'notice'          => 'ℹ️',
+			'user_notice'     => 'ℹ️',
+			'deprecated'      => '🔔',
+			'user_deprecated' => '🔔',
+			'user_error'      => '❌',
+		);
+
+		?>
+		<h3>
+			<?php
+			echo esc_html(
+				sprintf(
+					/* translators: %d: number of distinct PHP error signatures */
+					__( 'PHP Errors (%d)', 'sybgo' ),
+					count( $error_rows )
+				)
+			);
+			?>
+		</h3>
+
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th style="width: 50px;"><?php esc_html_e( 'Type', 'sybgo' ); ?></th>
+					<th><?php esc_html_e( 'Description', 'sybgo' ); ?></th>
+					<th style="width: 80px;"><?php esc_html_e( 'Count', 'sybgo' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $error_rows as $row ) : ?>
+					<?php
+					$dims    = json_decode( $row['dimensions'], true );
+					$meta    = json_decode( $row['meta'], true );
+					$level   = $dims['level'] ?? 'warning';
+					$emoji   = $level_emoji[ $level ] ?? '⚠️';
+					$message = $meta['message'] ?? '';
+					$file    = $meta['file'] ?? '';
+					$line    = $meta['line'] ?? '';
+					$count   = (int) $row['total'];
+					?>
+					<tr>
+						<td style="text-align: center; font-size: 20px;">
+							<?php echo esc_html( $emoji ); ?>
+						</td>
+						<td>
+							<strong><?php echo esc_html( $message ); ?></strong>
+							<?php if ( $file ) : ?>
+								<br><code><?php echo esc_html( $file . ':' . $line ); ?></code>
+							<?php endif; ?>
+						</td>
+						<td><?php echo esc_html( (string) $count ); ?></td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
 		<?php
 	}
 
@@ -737,5 +904,61 @@ class Reports_Page {
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * AJAX handler: generate and persist an AI summary for a specific report.
+	 *
+	 * Requires nonce `sybgo_admin_nonce` and `manage_options` capability.
+	 * Returns JSON with `success: true` and `summary` string on success.
+	 *
+	 * @return void
+	 */
+	public function ajax_generate_ai_summary(): void {
+		check_ajax_referer( 'sybgo_admin_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( null === $this->ai_summarizer ) {
+			wp_send_json_error( array( 'message' => __( 'AI summaries require WordPress 7 or later.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		$report_id = isset( $_POST['report_id'] ) ? absint( $_POST['report_id'] ) : 0;
+
+		if ( ! $report_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid report ID.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		$report = $this->report_repo->get_by_id( $report_id );
+
+		if ( ! $report ) {
+			wp_send_json_error( array( 'message' => __( 'Report not found.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		$is_active    = 'active' === $report['status'];
+		$events       = $this->event_repo->get_by_report( $is_active ? null : $report_id );
+		$live_summary = $this->report_generator->generate_live_summary( $events, $report_id );
+		$ai_summary   = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+
+		if ( null === $ai_summary ) {
+			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
+			return; // @phpstan-ignore deadCode.unreachable
+		}
+
+		if ( $is_active ) {
+			$full_summary               = $live_summary;
+			$full_summary['ai_summary'] = $ai_summary;
+			$this->report_repo->save_summary_data( $report_id, $full_summary );
+		} else {
+			$this->report_repo->set_ai_summary( $report_id, $ai_summary );
+		}
+
+		wp_send_json_success( array( 'summary' => $ai_summary ) );
 	}
 }

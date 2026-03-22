@@ -179,6 +179,25 @@ class Event_Registry {
 	}
 
 	/**
+	 * Get the category of an event type.
+	 *
+	 * Returns 'singular' for individually-logged events (default)
+	 * and 'aggregated' for daily-counted events.
+	 *
+	 * @param string $event_type Event type identifier.
+	 * @return string 'singular' or 'aggregated'.
+	 */
+	public function get_event_category( string $event_type ): string {
+		$type = $this->get_event_type( $event_type );
+
+		if ( isset( $type['category'] ) && 'aggregated' === $type['category'] ) {
+			return 'aggregated';
+		}
+
+		return 'singular';
+	}
+
+	/**
 	 * Get AI context for a report.
 	 *
 	 * Generates full AI context including event type descriptions.
