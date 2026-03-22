@@ -108,12 +108,12 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'wp_dashboard_setup', [ $this, 'register_widget' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
-		add_action( 'wp_ajax_sybgo_filter_events', [ $this, 'ajax_filter_events' ] );
-		add_action( 'wp_ajax_sybgo_preview_digest', [ $this, 'ajax_preview_digest' ] );
-		add_action( 'wp_ajax_sybgo_widget_ai_summary', [ $this, 'ajax_widget_ai_summary' ] );
-		add_action( 'wp_ajax_sybgo_preview_last_digest', [ $this, 'ajax_preview_last_digest' ] );
+		add_action( 'wp_dashboard_setup', array( $this, 'register_widget' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
+		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
+		add_action( 'wp_ajax_sybgo_widget_ai_summary', array( $this, 'ajax_widget_ai_summary' ) );
+		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
 	}
 
 	/**

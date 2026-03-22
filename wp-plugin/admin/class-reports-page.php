@@ -130,10 +130,10 @@ class Reports_Page {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'admin_menu', [ $this, 'add_reports_page' ] );
-		add_action( 'admin_post_sybgo_freeze_now', [ $this, 'handle_manual_freeze' ] );
-		add_action( 'admin_post_sybgo_resend_email', [ $this, 'handle_resend_email' ] );
-		add_action( 'wp_ajax_sybgo_generate_ai_summary', [ $this, 'ajax_generate_ai_summary' ] );
+		add_action( 'admin_menu', array( $this, 'add_reports_page' ) );
+		add_action( 'admin_post_sybgo_freeze_now', array( $this, 'handle_manual_freeze' ) );
+		add_action( 'admin_post_sybgo_resend_email', array( $this, 'handle_resend_email' ) );
+		add_action( 'wp_ajax_sybgo_generate_ai_summary', array( $this, 'ajax_generate_ai_summary' ) );
 	}
 
 	/**
