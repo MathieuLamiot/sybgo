@@ -125,7 +125,7 @@ class Dashboard_Widget {
 		wp_add_dashboard_widget(
 			'sybgo_activity_widget',
 			esc_html__( 'Site Activity Digest', 'sybgo' ),
-			[ $this, 'render_widget' ),
+			array( $this, 'render_widget' ),
 			null,
 			null,
 			'side',

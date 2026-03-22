@@ -147,7 +147,7 @@ class Reports_Page {
 			__( 'Sybgo Reports', 'sybgo' ),
 			'manage_options',
 			'sybgo-reports',
-			[ $this, 'render_reports_page' ),
+			array( $this, 'render_reports_page' ),
 			'dashicons-chart-line',
 			30
 		);
