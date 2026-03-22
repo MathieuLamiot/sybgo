@@ -7,7 +7,7 @@
  * Plugin Name: Sybgo
  * Plugin URI: https://github.com/your-repo/sybgo
  * Description: Tracks meaningful WordPress events and sends weekly email digests. Since You've Been Gone - stay informed about what's happening on your site.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: MathieuLamiot
  * Author URI: https://mathieulamiot.com
  * License: GPL-2.0-or-later
