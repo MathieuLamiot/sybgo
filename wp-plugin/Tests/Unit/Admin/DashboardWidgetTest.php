@@ -171,6 +171,25 @@ class DashboardWidgetTest extends TestCase {
 		$this->assertStringContainsString( 'AI summaries require WordPress 7', $output );
 	}
 
+	/**
+	 * "Get AI Summary" button must appear before the filter buttons.
+	 */
+	public function test_render_widget_ai_button_appears_before_filter_buttons(): void {
+		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
+
+		$output = $this->capture( 'render_widget' );
+
+		$ai_btn_pos    = strpos( $output, 'sybgo-widget-ai-btn' );
+		$filter_pos    = strpos( $output, 'sybgo-filters' );
+
+		$this->assertNotFalse( $ai_btn_pos, 'AI button not found in widget output' );
+		$this->assertNotFalse( $filter_pos, 'Filter buttons not found in widget output' );
+		$this->assertLessThan( $filter_pos, $ai_btn_pos, 'AI button should appear before filter buttons' );
+	}
+
 	// -------------------------------------------------------------------------
 	// ajax_preview_digest() — no longer calls AI
 	// -------------------------------------------------------------------------

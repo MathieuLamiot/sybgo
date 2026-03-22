@@ -108,12 +108,12 @@ class Dashboard_Widget {
 	 * @return void
 	 */
 	public function init(): void {
-		add_action( 'wp_dashboard_setup', array( $this, 'register_widget' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
-		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
-		add_action( 'wp_ajax_sybgo_widget_ai_summary', array( $this, 'ajax_widget_ai_summary' ) );
-		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
+		add_action( 'wp_dashboard_setup', [ $this, 'register_widget' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_sybgo_filter_events', [ $this, 'ajax_filter_events' ] );
+		add_action( 'wp_ajax_sybgo_preview_digest', [ $this, 'ajax_preview_digest' ] );
+		add_action( 'wp_ajax_sybgo_widget_ai_summary', [ $this, 'ajax_widget_ai_summary' ] );
+		add_action( 'wp_ajax_sybgo_preview_last_digest', [ $this, 'ajax_preview_last_digest' ] );
 	}
 
 	/**
@@ -125,7 +125,7 @@ class Dashboard_Widget {
 		wp_add_dashboard_widget(
 			'sybgo_activity_widget',
 			esc_html__( 'Site Activity Digest', 'sybgo' ),
-			array( $this, 'render_widget' ),
+			[ $this, 'render_widget' ),
 			null,
 			null,
 			'side',
@@ -180,6 +180,20 @@ class Dashboard_Widget {
 			<div class="sybgo-current-week">
 				<h3><?php esc_html_e( 'This Week\'s Activity', 'sybgo' ); ?></h3>
 
+				<button
+					type="button"
+					class="button button-secondary sybgo-widget-ai-btn"
+					style="width:100%;margin-bottom:8px;"
+					<?php if ( null === $this->ai_summarizer ) : ?>
+						disabled
+						title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
+					<?php endif; ?>
+				>
+					<?php esc_html_e( 'Get AI Summary', 'sybgo' ); ?>
+				</button>
+
+				<div id="sybgo-widget-ai-summary" class="sybgo-widget-ai-result" style="display:none;"></div>
+
 				<?php $this->render_filter_buttons(); ?>
 
 				<div class="sybgo-event-stats">
@@ -190,19 +204,6 @@ class Dashboard_Widget {
 				<div class="sybgo-events-list" data-filter="all">
 					<?php $this->render_events_list( $current_events ); ?>
 				</div>
-
-				<button
-					type="button"
-					class="button button-secondary sybgo-widget-ai-btn"
-					<?php if ( null === $this->ai_summarizer ) : ?>
-						disabled
-						title="<?php esc_attr_e( 'AI summaries require WordPress 7', 'sybgo' ); ?>"
-					<?php endif; ?>
-				>
-					<?php esc_html_e( 'Get AI Summary', 'sybgo' ); ?>
-				</button>
-
-				<div id="sybgo-widget-ai-summary" class="sybgo-widget-ai-result" style="display:none;"></div>
 			</div>
 
 			<?php $this->render_php_errors_section(); ?>

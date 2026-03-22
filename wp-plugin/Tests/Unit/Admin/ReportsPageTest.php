@@ -381,9 +381,9 @@ class ReportsPageTest extends TestCase {
 	}
 
 	/**
-	 * Active report detail view must NOT show the AI summary section.
+	 * Active report detail view must show the AI summary section with a Generate button.
 	 */
-	public function test_render_report_details_active_report_hides_ai_section(): void {
+	public function test_render_report_details_active_report_shows_ai_section(): void {
 		$report = array(
 			'id'           => 12,
 			'status'       => 'active',
@@ -406,12 +406,19 @@ class ReportsPageTest extends TestCase {
 		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
 		Functions\when( 'current_user_can' )->justReturn( true );
-		Functions\when( 'esc_js' )->returnArg();
 
 		$output = $this->capture( 'render_report_details', array( 12 ) );
 
-		$this->assertStringNotContainsString( 'Generate AI Summary', $output );
-		$this->assertStringNotContainsString( 'sybgo-generate-ai-btn', $output );
+		// Section and button must be present for active reports.
+		$this->assertStringContainsString( 'sybgo-ai-summary-section', $output );
+		$this->assertStringContainsString( 'sybgo-generate-ai-btn', $output );
+
+		// Button label must be "Generate" (no existing summary).
+		$this->assertStringContainsString( 'Generate AI Summary', $output );
+		$this->assertStringNotContainsString( 'Regenerate AI Summary', $output );
+
+		// Summary box must be hidden since there is no AI summary yet.
+		$this->assertStringContainsString( 'display:none;', $output );
 	}
 
 	// -------------------------------------------------------------------------
