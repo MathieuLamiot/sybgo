@@ -116,7 +116,7 @@ The `meta` column stores a snapshot: `file`, `line`, and the first 100 character
 
 ### Per-period cap
 
-To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows whose `report_id IS NULL` (i.e. the current, not-yet-frozen period). Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. The cap resets automatically after a freeze because the freeze operation assigns a `report_id` to existing rows, making the unassigned set empty again.
+To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows with `report_id = 0` (the sentinel for the current, not-yet-frozen period). Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. The cap resets automatically after a freeze because the freeze operation sets `report_id` to the real report ID on all sentinel rows, making the `report_id = 0` set empty again.
 
 ### Handler chaining
 
@@ -193,9 +193,9 @@ Shows all reports (active, frozen, emailed) with period dates, event counts, sta
 
 ### Database Inspection
 
-Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date)` so each `(event_type, dimension set, date)` combination has at most one row.
+Singular events are stored in `wp_sybgo_events` (one row per occurrence). Aggregated events are stored in `wp_sybgo_aggregated_events`, with a unique constraint on `(event_type, dimensions_hash, date, report_id)` so upserts accumulate into the correct period slot.
 
-`Aggregated_Event_Repository` exposes read methods beyond `upsert`. The primary query interface is report-scoped — passing `null` targets unassigned rows (current active period); passing an integer targets a specific frozen report:
+`Aggregated_Event_Repository` exposes read methods beyond `upsert`. The primary query interface is report-scoped — passing `null` targets unassigned rows (current active period, `report_id = 0`); passing an integer targets a specific frozen report:
 
 - `count_distinct_dimensions_for_report(string $event_type, ?int $report_id): int` — counts distinct dimension sets for the current or a past period. Used by `Error_Tracker` to enforce the 5-signature-per-period cap.
 - `get_sum_for_report(string $event_type, ?int $report_id): float` — sums all accumulated values for the period. Used by the dashboard widget for total error occurrence counts.
@@ -212,7 +212,7 @@ The `wp_sybgo_aggregated_events` schema (defined in `DatabaseManager::create_tab
 | `dimensions` | LONGTEXT | JSON blob of breakdown axes, e.g. `{"role":"editor","product_id":42}`. Empty = `'{}'` (global row). |
 | `dimensions_hash` | VARCHAR(64) | SHA2-256 of `dimensions`, computed by MySQL automatically. Used in the UNIQUE KEY. |
 | `value` | DECIMAL(20,4) | Accumulated value for the day (count or sum). Default 0. |
-| `report_id` | BIGINT UNSIGNED | Foreign key to `wp_sybgo_reports`. NULL = current unassigned period. Set during freeze via `assign_to_report()`. |
+| `report_id` | BIGINT UNSIGNED NOT NULL | `0` = current unassigned period (sentinel). Set to the actual report ID during freeze via `assign_to_report()`. Including `report_id` in the unique key allows multiple freeze cycles on the same calendar day without collision. |
 | `date` | DATE | Date of the aggregation (Y-m-d) |
 | `meta` | LONGTEXT | Optional JSON context snapshot (overwritten on conflict, not accumulated) |
 
@@ -236,7 +236,7 @@ LIMIT 10;
 -- Count events by type
 SELECT event_type, COUNT(*) as total
 FROM wp_sybgo_events
-WHERE report_id IS NULL  -- Current week only
+WHERE report_id IS NULL  -- Current period (singular events still use NULL)
 GROUP BY event_type;
 
 -- Top 10 pages by visits today

@@ -68,7 +68,7 @@ class Aggregated_Event_Repository {
 
 		$result = $wpdb->query(
 			$wpdb->prepare(
-				"INSERT INTO {$this->table} (event_type, dimensions, value, date, meta, is_assigned)
+				"INSERT INTO {$this->table} (event_type, dimensions, value, date, meta, report_id)
 				VALUES (%s, %s, %f, %s, %s, 0)
 				ON DUPLICATE KEY UPDATE value = value + VALUES(value), meta = VALUES(meta)",
 				$event_type,
@@ -211,9 +211,10 @@ class Aggregated_Event_Repository {
 	 * Assign all unassigned rows within a date range to the given report.
 	 *
 	 * Called during the freeze process after singular events have been assigned.
-	 * Sets report_id on every row whose report_id IS NULL and whose date falls
-	 * within the period, matching the same bulk-assignment pattern used for
-	 * wp_sybgo_events.
+	 * Sets report_id on every row whose report_id = 0 (sentinel for "unassigned")
+	 * and whose date falls within the period. Because report_id is part of the
+	 * UNIQUE KEY, updating it from 0 to the real report ID vacates the sentinel
+	 * slot so the next upsert for the same signature creates a fresh row without collision.
 	 *
 	 * @param int    $report_id  The ID of the report to assign rows to.
 	 * @param string $date_from  Start date inclusive (Y-m-d).
@@ -226,8 +227,8 @@ class Aggregated_Event_Repository {
 		$wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$this->table}
-				 SET report_id = %d, is_assigned = 1
-				 WHERE report_id IS NULL AND date BETWEEN %s AND %s",
+				 SET report_id = %d
+				 WHERE report_id = 0 AND date BETWEEN %s AND %s",
 				$report_id,
 				$date_from,
 				$date_to
@@ -253,7 +254,7 @@ class Aggregated_Event_Repository {
 			$result = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT COUNT(DISTINCT dimensions_hash) FROM {$this->table}
-					 WHERE event_type = %s AND report_id IS NULL",
+					 WHERE event_type = %s AND report_id = 0",
 					$event_type
 				)
 			);
@@ -289,7 +290,7 @@ class Aggregated_Event_Repository {
 			$result = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT COALESCE(SUM(value), 0) FROM {$this->table}
-					 WHERE event_type = %s AND report_id IS NULL",
+					 WHERE event_type = %s AND report_id = 0",
 					$event_type
 				)
 			);
@@ -331,7 +332,7 @@ class Aggregated_Event_Repository {
 				$wpdb->prepare(
 					"SELECT dimensions, SUM(value) AS total, meta
 					 FROM {$this->table}
-					 WHERE event_type = %s AND report_id IS NULL
+					 WHERE event_type = %s AND report_id = 0
 					 GROUP BY dimensions_hash
 					 ORDER BY total DESC",
 					$event_type

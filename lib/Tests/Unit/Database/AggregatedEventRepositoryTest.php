@@ -260,18 +260,17 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * Test assign_to_report() issues an UPDATE with report_id IS NULL and date range.
+	 * Test assign_to_report() issues an UPDATE targeting sentinel rows (report_id = 0) in date range.
 	 */
-	public function test_assign_to_report_updates_null_rows_in_date_range(): void {
+	public function test_assign_to_report_updates_sentinel_rows_in_date_range(): void {
 		$this->wpdb
 			->shouldReceive( 'prepare' )
 			->once()
 			->with(
 				Mockery::on(
 					function ( $sql ) {
-						return false !== strpos( $sql, 'report_id IS NULL' )
+						return false !== strpos( $sql, 'report_id = 0' )
 							&& false !== strpos( $sql, 'SET report_id' )
-							&& false !== strpos( $sql, 'is_assigned' )
 							&& false !== strpos( $sql, 'BETWEEN' );
 					}
 				),
@@ -289,16 +288,52 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * Test count_distinct_dimensions_for_report() with null uses report_id IS NULL.
+	 * Test assign_to_report() SQL does not reference is_assigned or report_id IS NULL.
+	 *
+	 * Regression guard: the old schema used IS NULL + is_assigned which caused a unique key
+	 * collision on the second freeze for same-day signatures. The new schema uses report_id=0
+	 * as a sentinel so the unique key (event_type, dimensions_hash, date, report_id) can
+	 * accommodate multiple freezes on the same calendar day without collision.
 	 */
-	public function test_count_distinct_dimensions_for_report_null_uses_is_null(): void {
+	public function test_assign_to_report_sql_uses_sentinel_not_null(): void {
+		$captured_sql = '';
+
+		$this->wpdb
+			->shouldReceive( 'prepare' )
+			->once()
+			->with(
+				Mockery::on(
+					function ( $sql ) use ( &$captured_sql ) {
+						$captured_sql = $sql;
+						return true;
+					}
+				),
+				Mockery::any(),
+				Mockery::any(),
+				Mockery::any()
+			)
+			->andReturn( 'PREPARED SQL' );
+
+		$this->wpdb->shouldReceive( 'query' )->once()->andReturn( 1 );
+
+		$this->repo->assign_to_report( 1, '2026-03-21', '2026-03-21' );
+
+		$this->assertStringContainsString( 'report_id = 0', $captured_sql );
+		$this->assertStringNotContainsString( 'IS NULL', $captured_sql );
+		$this->assertStringNotContainsString( 'is_assigned', $captured_sql );
+	}
+
+	/**
+	 * Test count_distinct_dimensions_for_report() with null uses report_id = 0 sentinel.
+	 */
+	public function test_count_distinct_dimensions_for_report_null_uses_sentinel(): void {
 		$this->wpdb
 			->shouldReceive( 'prepare' )
 			->once()
 			->with(
 				Mockery::on(
 					function ( $sql ) {
-						return false !== strpos( $sql, 'report_id IS NULL' )
+						return false !== strpos( $sql, 'report_id = 0' )
 							&& false !== strpos( $sql, 'COUNT(DISTINCT dimensions_hash)' );
 					}
 				),
@@ -340,16 +375,16 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * Test get_sum_for_report() with null uses report_id IS NULL.
+	 * Test get_sum_for_report() with null uses report_id = 0 sentinel.
 	 */
-	public function test_get_sum_for_report_null_uses_is_null(): void {
+	public function test_get_sum_for_report_null_uses_sentinel(): void {
 		$this->wpdb
 			->shouldReceive( 'prepare' )
 			->once()
 			->with(
 				Mockery::on(
 					function ( $sql ) {
-						return false !== strpos( $sql, 'report_id IS NULL' )
+						return false !== strpos( $sql, 'report_id = 0' )
 							&& false !== strpos( $sql, 'SUM(value)' );
 					}
 				),
@@ -391,9 +426,9 @@ class AggregatedEventRepositoryTest extends TestCase {
 	}
 
 	/**
-	 * Test get_rows_for_report() with null uses report_id IS NULL.
+	 * Test get_rows_for_report() with null uses report_id = 0 sentinel.
 	 */
-	public function test_get_rows_for_report_null_uses_is_null(): void {
+	public function test_get_rows_for_report_null_uses_sentinel(): void {
 		$expected_rows = array(
 			array( 'dimensions' => '{"level":"warning"}', 'total' => '5', 'meta' => '{}' ),
 		);
@@ -404,7 +439,7 @@ class AggregatedEventRepositoryTest extends TestCase {
 			->with(
 				Mockery::on(
 					function ( $sql ) {
-						return false !== strpos( $sql, 'report_id IS NULL' )
+						return false !== strpos( $sql, 'report_id = 0' )
 							&& false !== strpos( $sql, 'GROUP BY dimensions_hash' );
 					}
 				),
