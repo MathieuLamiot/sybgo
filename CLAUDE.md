@@ -35,14 +35,14 @@ cd lib && vendor/bin/phpunit --testsuite Unit
 cd wp-plugin && vendor/bin/phpunit --testsuite Unit
 ```
 
-**PHPCS on lib** (lib has no standalone PHPCS binary; use the wp-plugin one):
+**PHPCS on lib:**
 ```bash
-cd wp-plugin && vendor/bin/phpcs ../lib --standard=../lib/phpcs.xml.dist
+cd lib && composer phpcs
 ```
 
 **PHPCS on wp-plugin:**
 ```bash
-cd wp-plugin && vendor/bin/phpcs --standard=phpcs.xml.dist .
+cd wp-plugin && composer phpcs
 ```
 
 **PHPStan:**
