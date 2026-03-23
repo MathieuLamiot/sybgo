@@ -335,17 +335,14 @@ sybgo/
 
 ## Admin AJAX Actions
 
-The dashboard widget registers three AJAX actions, all protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body). All three require the `read` capability.
+The dashboard widget registers two AJAX actions, both protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body).
 
-| Action | Handler | Success response | Error response |
-|--------|---------|-----------------|----------------|
-| `sybgo_filter_events` | `Dashboard_Widget::ajax_filter_events()` | `{html: string, count: int}` | — |
-| `sybgo_preview_digest` | `Dashboard_Widget::ajax_preview_digest()` | `{html: string}` | `{message, file, line, trace}` |
-| `sybgo_preview_last_digest` | `Dashboard_Widget::ajax_preview_last_digest()` | `{html: string}` | `{message: string}` |
+| Action | Handler | Capability | Success response |
+|--------|---------|------------|-----------------|
+| `sybgo_filter_events` | `Dashboard_Widget::ajax_filter_events()` | `read` | `{html: string, count: int}` |
+| `sybgo_widget_ai_summary` | `Dashboard_Widget::ajax_widget_ai_summary()` | `manage_options` | `{summary: string}` |
 
-`sybgo_preview_last_digest` fetches the most recently frozen report via `Report_Repository::get_last_frozen()`, reads its `summary_data` JSON (fields: `totals`, `trends`, `ai_summary`), and renders the same preview modal used by `sybgo_preview_digest`. It returns an error if no frozen report exists or if `summary_data` is absent.
-
-The nonce value and `ajaxUrl` are available in the `sybgoWidget` JS object (localized by `Dashboard_Widget::enqueue_assets()`).
+The nonce value and `ajaxUrl` are available in the `sybgoWidget` JS object (localized by `Dashboard_Widget::enqueue_assets()`). See [ajax-actions.md](ajax-actions.md) for full parameter and response documentation.
 
 ## Admin Classes: Constructor Dependencies
 

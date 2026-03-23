@@ -51,20 +51,6 @@ Registered in `Dashboard_Widget::init()` and handled by `Dashboard_Widget::ajax_
 
 The handler fetches unassigned events (`report_id IS NULL`), calls `Report_Generator::generate_live_summary()` to compute totals and trends for the current week, then passes those to `AI_Summarizer::generate_summary()`. If an active report exists, the full summary object (stats + AI text) is persisted to it via `Report_Repository::save_summary_data()`, so the result survives a page reload and is visible on the active report's detail page.
 
-## sybgo_preview_digest
-
-Returns the rendered HTML for the dashboard widget's digest preview modal.
-
-Registered in `Dashboard_Widget::init()` and handled by `Dashboard_Widget::ajax_preview_digest()`.
-
-| Parameter | Source | Description |
-|-----------|--------|-------------|
-| `nonce` | `$_POST` | Nonce verified against `sybgo_widget_nonce` |
-
-**Capability required:** `manage_options`
-
-Returns an HTML fragment rendered by `Dashboard_Widget::render_preview_content()`. No AI summary is included in the preview.
-
 ## sybgo_filter_events
 
 Returns filtered event rows for the dashboard widget's event list.
