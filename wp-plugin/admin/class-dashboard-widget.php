@@ -111,9 +111,7 @@ class Dashboard_Widget {
 		add_action( 'wp_dashboard_setup', array( $this, 'register_widget' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_sybgo_filter_events', array( $this, 'ajax_filter_events' ) );
-		add_action( 'wp_ajax_sybgo_preview_digest', array( $this, 'ajax_preview_digest' ) );
 		add_action( 'wp_ajax_sybgo_widget_ai_summary', array( $this, 'ajax_widget_ai_summary' ) );
-		add_action( 'wp_ajax_sybgo_preview_last_digest', array( $this, 'ajax_preview_last_digest' ) );
 	}
 
 	/**
@@ -164,17 +162,24 @@ class Dashboard_Widget {
 	 */
 	public function render_widget(): void {
 		// Get current week's events (unassigned).
-		$current_events = $this->event_repo->get_by_report( null );
+		$current_events     = $this->event_repo->get_by_report( null );
+		$active_report      = $this->report_repo->get_active();
+		$last_frozen_report = $this->report_repo->get_last_frozen();
+		$details_base_url   = admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' );
 
 		?>
 		<div class="sybgo-widget">
 			<div class="sybgo-widget-actions">
-				<button type="button" class="button button-secondary sybgo-preview-btn">
-					<?php esc_html_e( 'Preview This Week\'s Digest', 'sybgo' ); ?>
-				</button>
-				<button type="button" class="button button-secondary sybgo-preview-last-btn">
-					<?php esc_html_e( 'View Previous Digest', 'sybgo' ); ?>
-				</button>
+				<?php if ( $active_report ) : ?>
+					<a href="<?php echo esc_url( $details_base_url . (int) $active_report['id'] ); ?>" class="button button-secondary">
+						<?php esc_html_e( 'View This Week\'s Details', 'sybgo' ); ?>
+					</a>
+				<?php endif; ?>
+				<?php if ( $last_frozen_report ) : ?>
+					<a href="<?php echo esc_url( $details_base_url . (int) $last_frozen_report['id'] ); ?>" class="button button-secondary">
+						<?php esc_html_e( 'View Last Week\'s Details', 'sybgo' ); ?>
+					</a>
+				<?php endif; ?>
 			</div>
 
 			<div class="sybgo-current-week">
@@ -207,14 +212,6 @@ class Dashboard_Widget {
 			</div>
 
 			<?php $this->render_php_errors_section(); ?>
-
-			<div id="sybgo-preview-modal" class="sybgo-modal" style="display:none;">
-				<div class="sybgo-modal-content">
-					<span class="sybgo-modal-close">&times;</span>
-					<h2><?php esc_html_e( 'Digest Preview', 'sybgo' ); ?></h2>
-					<div class="sybgo-modal-body"></div>
-				</div>
-			</div>
 		</div>
 		<?php
 	}
@@ -448,136 +445,6 @@ class Dashboard_Widget {
 				'count' => count( $events ),
 			)
 		);
-	}
-
-	/**
-	 * AJAX handler for preview digest.
-	 *
-	 * @return void
-	 */
-	public function ajax_preview_digest(): void {
-		try {
-			check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
-
-			if ( ! current_user_can( 'read' ) ) {
-				wp_send_json_error( array( 'message' => 'Unauthorized' ) );
-			}
-
-			// Get current week's events.
-			$events = $this->event_repo->get_by_report( null );
-
-			// Try to get active report for trends, but don't fail if it doesn't exist.
-			$active_report = $this->report_repo->get_active();
-
-			// Generate preview summary (totals + trends).
-			$live_summary = $this->report_generator->generate_live_summary(
-				$events,
-				$active_report ? (int) $active_report['id'] : 0
-			);
-			$totals       = $live_summary['totals'];
-			$trends       = $live_summary['trends'];
-
-			ob_start();
-			$this->render_preview_content( $totals, $trends );
-			$html = ob_get_clean();
-
-			wp_send_json_success( array( 'html' => $html ) );
-		} catch ( \Exception $e ) {
-			wp_send_json_error(
-				array(
-					'message' => $e->getMessage(),
-					'file'    => $e->getFile(),
-					'line'    => $e->getLine(),
-					'trace'   => $e->getTraceAsString(),
-				)
-			);
-		}
-	}
-
-	/**
-	 * AJAX handler for previewing the last frozen digest.
-	 *
-	 * Renders the summary of the most recently frozen/emailed report.
-	 *
-	 * @return void
-	 */
-	public function ajax_preview_last_digest(): void {
-		check_ajax_referer( 'sybgo_widget_nonce', 'nonce' );
-
-		if ( ! current_user_can( 'read' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
-		}
-
-		$last_report = $this->report_repo->get_last_frozen();
-
-		if ( ! $last_report ) {
-			wp_send_json_error( array( 'message' => __( 'No previous digest available yet.', 'sybgo' ) ) );
-		}
-
-		$summary = ! empty( $last_report['summary_data'] ) ? json_decode( $last_report['summary_data'], true ) : null;
-
-		if ( ! $summary ) {
-			wp_send_json_error( array( 'message' => __( 'No summary data available for the previous digest.', 'sybgo' ) ) );
-		}
-
-		$totals = $summary['totals'];
-		$trends = $summary['trends'] ?? array();
-
-		ob_start();
-		$this->render_preview_content( $totals, $trends );
-		$html = ob_get_clean();
-
-		wp_send_json_success( array( 'html' => $html ) );
-	}
-
-	/**
-	 * Render preview content.
-	 *
-	 * @param array<string, int>                  $totals Event totals.
-	 * @param array<string, array<string, mixed>> $trends Trend data.
-	 * @return void
-	 */
-	private function render_preview_content( array $totals, array $trends ): void {
-		?>
-		<div class="sybgo-preview">
-			<h3><?php esc_html_e( 'Activity Summary', 'sybgo' ); ?></h3>
-
-			<div class="sybgo-preview-stats">
-				<?php foreach ( $totals as $type => $count ) : ?>
-					<?php
-					$trend      = $trends[ $type ] ?? null;
-					$arrow      = '';
-					$trend_text = '';
-
-					if ( $trend ) {
-						if ( 'up' === $trend['direction'] ) {
-							$arrow      = '↑';
-							$trend_text = sprintf( '+%d%%', absint( $trend['change_percent'] ) );
-						} elseif ( 'down' === $trend['direction'] ) {
-							$arrow      = '↓';
-							$trend_text = sprintf( '-%d%%', absint( $trend['change_percent'] ) );
-						}
-					}
-					?>
-					<div class="sybgo-stat-item">
-						<div class="sybgo-stat-label"><?php echo esc_html( ucwords( str_replace( '_', ' ', $type ) ) ); ?></div>
-						<div class="sybgo-stat-value">
-							<?php echo esc_html( (string) $count ); ?>
-							<?php if ( $arrow ) : ?>
-								<span class="sybgo-trend <?php echo esc_attr( $trend['direction'] ); ?>">
-									<?php echo esc_html( $arrow . ' ' . $trend_text ); ?>
-								</span>
-							<?php endif; ?>
-						</div>
-					</div>
-				<?php endforeach; ?>
-			</div>
-
-			<p class="sybgo-preview-note">
-				<?php esc_html_e( 'This is a preview of the digest that will be sent on Monday.', 'sybgo' ); ?>
-			</p>
-		</div>
-		<?php
 	}
 
 	/**
