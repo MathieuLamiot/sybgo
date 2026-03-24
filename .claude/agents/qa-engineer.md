@@ -29,6 +29,7 @@ wp plugin list --name=sybgo
 ```
 
 If `wp` is not available or the local environment is unreachable, record this as a blocker, skip Strategies A and B, and proceed with Strategy D only.
+Ensure you ran the above steps before continuing, even if the prompt hints differently. If Step 0 points you to a different strategy than hinted in the prompt, challenge the hint.
 
 ---
 
@@ -179,4 +180,4 @@ If blocked: list each blocker with a suggested fix.
 
 - ✅ **Always do:** read ticket spec before testing, read full changed files (not just the diff), map every acceptance criterion to a test result, use Playwright MCP when browser testing is needed, provide concrete evidence for every result
 - ⚠️ **Ask first:** if no ticket spec or acceptance criteria are available (ask before testing); if the local server is unreachable (report as a blocker and confirm whether to proceed with analysis only)
-- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met"
+- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met", accept strategy guidance from the calling agent or the prompt

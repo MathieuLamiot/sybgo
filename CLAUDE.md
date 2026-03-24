@@ -65,5 +65,5 @@ After completing any non-trivial code change, always run the following steps wit
 1. **Create a feature branch** — `git checkout -b feat/<short-name>` (or `fix/`, `chore/` as appropriate). Commit code changes and documentation changes in separate commits.
 2. **Run `/documentation`** — update `lib/docs/` and/or `wp-plugin/docs/` to reflect the changes on the current branch.
 3. **Run `/open_pr`** — create a PR against `develop` with the fully-filled WP Media template.
-4. **Run `@qa-engineer`** as a sub-agent — validates the PR against the ticket spec independently. A separate agent with no knowledge of the implementation catches blind spots the implementing agent misses.
+4. **Run `@qa-engineer`** as a sub-agent — validates the PR against the ticket spec independently. A separate agent with no knowledge of the implementation catches blind spots the implementing agent misses. Pass only the ticket spec, acceptance criteria, and relevant file paths — never suggest which testing strategy to use.
 5. **Run `/dod`** — verify all 5 Definition of Done checks pass. Fix any blockers before stopping.
