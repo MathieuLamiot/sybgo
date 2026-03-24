@@ -106,6 +106,19 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	);
 
 	/**
+	 * Return the display/eviction priority for a given error level string.
+	 *
+	 * Levels not present in the priority map (e.g. fatal_error, parse_error)
+	 * return 0 so they sort below explicitly ranked levels.
+	 *
+	 * @param string $level Level string, e.g. 'warning', 'notice', 'fatal_error'.
+	 * @return int Priority value (higher = more severe).
+	 */
+	public static function get_level_priority( string $level ): int {
+		return self::ERROR_PRIORITY[ $level ] ?? 0;
+	}
+
+	/**
 	 * Re-entrancy guard.
 	 *
 	 * Prevents the error handler from triggering itself recursively if the

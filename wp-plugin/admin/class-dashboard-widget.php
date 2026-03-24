@@ -22,6 +22,7 @@ use Sybgo\Database\Report_Repository;
 use Sybgo\Reports\Report_Generator;
 use Sybgo\AI\AI_Summarizer;
 use Sybgo\Events\Event_Registry;
+use Sybgo\Events\Trackers\Error_Tracker;
 
 /**
  * Dashboard Widget class.
@@ -233,12 +234,25 @@ class Dashboard_Widget {
 		// Query by report_id IS NULL — same pattern as singular events.
 		// This ensures errors are always scoped to the current unassigned period,
 		// regardless of calendar dates, and resets automatically after a freeze.
-		$total_count    = $this->aggregated_repo->get_sum_for_report( 'php_error', null );
-		$top_errors     = array_slice(
-			$this->aggregated_repo->get_rows_for_report( 'php_error', null ),
-			0,
-			5
+		$total_count = $this->aggregated_repo->get_sum_for_report( 'php_error', null );
+		$all_errors  = $this->aggregated_repo->get_rows_for_report( 'php_error', null );
+
+		usort(
+			$all_errors,
+			static function ( array $a, array $b ): int {
+				$level_a    = json_decode( $a['dimensions'], true )['level'] ?? '';
+				$level_b    = json_decode( $b['dimensions'], true )['level'] ?? '';
+				$priority_a = Error_Tracker::get_level_priority( $level_a );
+				$priority_b = Error_Tracker::get_level_priority( $level_b );
+				if ( $priority_a !== $priority_b ) {
+					return $priority_b - $priority_a;
+				}
+				return (int) $b['total'] - (int) $a['total'];
+			}
 		);
+
+		$cap            = wpm_apply_filters_typed( 'integer', 'sybgo_error_tracker_daily_cap', 5 );
+		$top_errors     = array_slice( $all_errors, 0, $cap );
 		$distinct_count = count( $top_errors );
 
 		if ( 0 === $distinct_count && 0.0 === $total_count ) {
