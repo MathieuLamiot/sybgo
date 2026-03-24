@@ -58,9 +58,12 @@ cd wp-plugin && composer reinstall wp-media/sybgo-lib && vendor/bin/phpstan clea
 
 ## Post-implementation workflow (autonomous)
 
+Before implementing, estimate the diff size. If it exceeds ~100 meaningful lines (excluding docs, CSS, tests, generated code), split into independently shippable steps and implement them sequentially. Apply the below workflow for the first step and wait for human approval before moving to the next step.
+
 After completing any non-trivial code change, always run the following steps without waiting to be asked:
 
 1. **Create a feature branch** — `git checkout -b feat/<short-name>` (or `fix/`, `chore/` as appropriate). Commit code changes and documentation changes in separate commits.
 2. **Run `/documentation`** — update `lib/docs/` and/or `wp-plugin/docs/` to reflect the changes on the current branch.
 3. **Run `/open_pr`** — create a PR against `develop` with the fully-filled WP Media template.
-4. **Run `/dod`** — verify all 5 Definition of Done checks pass. Fix any blockers before stopping.
+4. **Run `@qa-engineer`** as a sub-agent — validates the PR against the ticket spec independently. A separate agent with no knowledge of the implementation catches blind spots the implementing agent misses.
+5. **Run `/dod`** — verify all 5 Definition of Done checks pass. Fix any blockers before stopping.
