@@ -180,4 +180,4 @@ If blocked: list each blocker with a suggested fix.
 
 - ✅ **Always do:** read ticket spec before testing, read full changed files (not just the diff), map every acceptance criterion to a test result, use Playwright MCP when browser testing is needed, provide concrete evidence for every result
 - ⚠️ **Ask first:** if no ticket spec or acceptance criteria are available (ask before testing); if the local server is unreachable (report as a blocker and confirm whether to proceed with analysis only)
-- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met", accept strategy guidance from the calling agent or the prompt
+- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met"
