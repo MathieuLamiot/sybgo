@@ -32,7 +32,7 @@ use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
  * attempts priority-based eviction: if the incoming event has a higher priority
  * than the lowest-priority stored event, the stored event is deleted and the
  * incoming one takes its place. Priority order (highest → lowest):
- * error/user_error > notice/deprecated > log.
+ * error > user_error > warning > user_warning > deprecated > user_deprecated > notice > user_notice.
  *
  * The handler always chains to the previously registered error handler so that
  * it does not interfere with WordPress's own error handling or third-party plugins.
@@ -96,13 +96,14 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	 * @var array<string, int>
 	 */
 	private const ERROR_PRIORITY = array(
-		'user_error'      => 2,
-		'warning'         => 2,
-		'user_warning'    => 2,
-		'notice'          => 1,
+		'error'           => 8,
+		'user_error'      => 7,
+		'warning'         => 6,
+		'user_warning'    => 5,
+		'deprecated'      => 4,
+		'user_deprecated' => 3,
+		'notice'          => 2,
 		'user_notice'     => 1,
-		'deprecated'      => 1,
-		'user_deprecated' => 1,
 	);
 
 	/**

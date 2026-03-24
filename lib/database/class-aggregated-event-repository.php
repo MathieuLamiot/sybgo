@@ -239,7 +239,7 @@ class Aggregated_Event_Repository {
 	/**
 	 * Count distinct dimension sets for the current unassigned period (or a specific report).
 	 *
-	 * Passing null counts rows with report_id IS NULL (current active period).
+	 * Passing null counts rows with report_id = 0 (sentinel for current active period).
 	 * Passing an integer counts rows assigned to that report.
 	 * Used by Error_Tracker to enforce the per-period cap of 5 distinct signatures.
 	 *
