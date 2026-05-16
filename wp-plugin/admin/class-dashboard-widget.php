@@ -172,12 +172,12 @@ class Dashboard_Widget {
 		<div class="sybgo-widget">
 			<div class="sybgo-widget-actions">
 				<?php if ( $active_report ) : ?>
-					<a href="<?php echo esc_url( $details_base_url . (int) $active_report['id'] ); ?>" class="button button-secondary">
+					<a href="<?php echo esc_url( wp_nonce_url( $details_base_url . (int) $active_report['id'], 'sybgo_view_report' ) ); ?>" class="button button-secondary">
 						<?php esc_html_e( 'View This Week\'s Details', 'sybgo' ); ?>
 					</a>
 				<?php endif; ?>
 				<?php if ( $last_frozen_report ) : ?>
-					<a href="<?php echo esc_url( $details_base_url . (int) $last_frozen_report['id'] ); ?>" class="button button-secondary">
+					<a href="<?php echo esc_url( wp_nonce_url( $details_base_url . (int) $last_frozen_report['id'], 'sybgo_view_report' ) ); ?>" class="button button-secondary">
 						<?php esc_html_e( 'View Last Week\'s Details', 'sybgo' ); ?>
 					</a>
 				<?php endif; ?>

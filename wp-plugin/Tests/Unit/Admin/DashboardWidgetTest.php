@@ -94,6 +94,12 @@ class DashboardWidgetTest extends TestCase {
 		);
 		Functions\when( 'human_time_diff' )->justReturn( '1 hour' );
 		Functions\when( 'admin_url' )->returnArg();
+		Functions\when( 'wp_nonce_url' )->alias(
+			function ( string $url, string $action ) {
+				$sep = ( false === strpos( $url, '?' ) ) ? '?' : '&';
+				return $url . $sep . '_wpnonce=' . md5( $action );
+			}
+		);
 	}
 
 	/**
@@ -301,6 +307,9 @@ class DashboardWidgetTest extends TestCase {
 		$this->assertStringContainsString( 'report_id=1', $output );
 		$this->assertStringContainsString( "View This Week's Details", $output );
 		$this->assertStringContainsString( "View Last Week's Details", $output );
+		// Guards against a future drop of wp_nonce_url() which would trigger
+		// WP's "Are you sure?" 403 on the reports details page.
+		$this->assertStringContainsString( '_wpnonce=', $output );
 	}
 
 	/**
