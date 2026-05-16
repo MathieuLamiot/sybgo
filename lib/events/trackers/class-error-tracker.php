@@ -274,7 +274,7 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 				}
 
 				$incoming_priority = self::ERROR_PRIORITY[ $level_name ];
-				$stored_priority   = isset( $lowest['level'] ) ? ( self::ERROR_PRIORITY[ $lowest['level'] ] ?? 0 ) : 0;
+				$stored_priority   = self::ERROR_PRIORITY[ $lowest['level'] ] ?? 0;
 
 				if ( $incoming_priority <= $stored_priority ) {
 					// Incoming event is not strictly higher priority — discard.
