@@ -87,8 +87,10 @@
                   <li>A list of the most recent events with icons and "X minutes ago" timestamps.</li>
                   <li>A <strong>PHP Errors</strong> section, shown only when at least one error was caught this week. It lists the top 5 errors with their file and line number. <!-- source: wp-plugin/admin/class-dashboard-widget.php render_php_errors_section() --></li>
                 </ul>
-                <!-- TODO: screenshot of dashboard widget on a fresh install (capture during Chrome experiment) -->
-                <!-- TODO: screenshot of dashboard widget with mixed activity and a PHP error (capture during Chrome experiment) -->
+                <figure class="docs-figure">
+                    <img src="../assets/img/02-widget.png" alt="The Site Activity Digest dashboard widget showing twelve events tracked across posts and users, three PHP errors, and the disabled 'Get AI Summary' button.">
+                    <figcaption>The dashboard widget after a typical week — events grouped by type, with a PHP errors section at the bottom.</figcaption>
+                </figure>
                 <h2>The Sybgo Reports page</h2>
                 <p>In the admin sidebar, click <strong>Sybgo Reports</strong>. You will see a table with every report Sybgo has produced. <!-- source: wp-plugin/admin/class-reports-page.php render_reports_list() --></p>
                 <p>The first row is always <strong>this week's report</strong> (the one Sybgo is still collecting events into). Below it are <strong>past reports</strong> in reverse chronological order.</p>
@@ -117,7 +119,10 @@
                   <li>An <strong>All Events</strong> table listing every individual event with type icon, description, and timestamp.</li>
                   <li>A <strong>PHP Errors</strong> table, when applicable, with one row per distinct error and an occurrence count.</li>
                 </ul>
-                <!-- TODO: screenshot of a frozen report detail page with all sections visible (capture during Chrome experiment) -->
+                <figure class="docs-figure">
+                    <img src="../assets/img/07-frozen-report-details.png" alt="A frozen report detail page showing the Summary stats, Highlights bullet list, AI Summary section, All Events table, and PHP Errors table.">
+                    <figcaption>A frozen report detail page — Summary, Highlights, AI Summary, full event list, and PHP errors.</figcaption>
+                </figure>
                 <h2>Next steps</h2>
                 <ul>
                   <li><a href="./what-sybgo-tracks.html">See exactly which events Sybgo tracks</a></li>

@@ -529,8 +529,37 @@ section { padding: var(--space-8) 0; }
     margin: 0;
 }
 
-/* Screenshot placeholder */
+/* Screenshot placeholder + real screenshots */
 .hero-visual { width: 100%; }
+
+.hero-screenshot {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    background: var(--color-bg-elevated);
+}
+
+.docs-figure {
+    margin: var(--space-6) 0;
+    padding: 0;
+}
+.docs-figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+.docs-figure figcaption {
+    margin-top: var(--space-3);
+    font-size: 0.9rem;
+    color: var(--color-text-subtle);
+    text-align: center;
+}
 
 .screenshot-placeholder {
     background: var(--color-bg-elevated);
