@@ -109,6 +109,62 @@ class ReportRepositoryTest extends TestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// get_last_frozen()
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Regression test for #70.
+	 *
+	 * get_last_frozen() used to wrap a placeholder-free query in $wpdb->prepare()
+	 * with a bogus empty-string arg. That triggered two `wpdb::prepare was called
+	 * incorrectly` notices on every cron run. The fix removes the prepare() call
+	 * (the query is fully static and has no user input).
+	 *
+	 * This test pins the contract: prepare() must NEVER be called for the
+	 * static get_last_frozen() query.
+	 */
+	public function test_get_last_frozen_does_not_call_prepare_for_static_query(): void {
+		$report = array(
+			'id'         => 1,
+			'status'     => 'frozen',
+			'frozen_at'  => '2026-03-01 00:00:00',
+		);
+
+		// The critical assertion: prepare() must NOT be invoked.
+		$this->wpdb->shouldNotReceive( 'prepare' );
+
+		$this->wpdb->shouldReceive( 'get_row' )
+			->once()
+			->with(
+				Mockery::pattern( "/SELECT \* FROM wp_sybgo_reports WHERE status IN \('frozen', 'emailed'\)/" ),
+				'ARRAY_A'
+			)
+			->andReturn( $report );
+
+		$result = $this->report_repo->get_last_frozen();
+
+		$this->assertSame( $report, $result );
+	}
+
+	/**
+	 * Regression test for #70 (no-result path).
+	 *
+	 * When no frozen report exists, get_last_frozen() still must not call
+	 * prepare() and must return null.
+	 */
+	public function test_get_last_frozen_returns_null_without_calling_prepare(): void {
+		$this->wpdb->shouldNotReceive( 'prepare' );
+
+		$this->wpdb->shouldReceive( 'get_row' )
+			->once()
+			->andReturn( null );
+
+		$result = $this->report_repo->get_last_frozen();
+
+		$this->assertNull( $result );
+	}
+
+	// -------------------------------------------------------------------------
 	// set_ai_summary()
 	// -------------------------------------------------------------------------
 
