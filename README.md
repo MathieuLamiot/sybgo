@@ -7,8 +7,24 @@
 ```
 sybgo/
 ├── wp-plugin/    WordPress plugin (wp-media/sybgo)
-└── lib/          PHP library (wp-media/sybgo-lib)
+├── lib/          PHP library (wp-media/sybgo-lib)
+└── bin/          Developer tooling (dev-up.sh, dev-seed.sh, ...)
 ```
+
+## Local development
+
+Boot a one-shot WordPress + MySQL + sybgo environment via `@wordpress/env`:
+
+```bash
+bin/dev-up.sh           # boot, activate plugin, seed demo content
+bin/dev-up.sh --no-seed # boot only
+bin/dev-up.sh --reset   # destroy + reboot fresh
+bin/dev-down.sh         # stop (keeps data)
+```
+
+Requires Docker (Rancher Desktop or Docker Desktop), Node.js, and Composer. After boot:
+`http://localhost:8888/wp-admin` — login `admin` / `password`. The plugin source at
+`wp-plugin/` and the library at `lib/` are bind-mounted, so host edits are live.
 
 ## Packages
 
