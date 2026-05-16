@@ -251,7 +251,7 @@ class Dashboard_Widget {
 			}
 		);
 
-		$cap            = wpm_apply_filters_typed( 'integer', 'sybgo_error_tracker_daily_cap', 5 );
+		$cap            = Error_Tracker::get_effective_daily_cap();
 		$top_errors     = array_slice( $all_errors, 0, $cap );
 		$distinct_count = count( $top_errors );
 

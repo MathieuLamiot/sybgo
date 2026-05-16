@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sybgo\Events\Trackers;
 
 use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
+use Sybgo\Logger;
 
 /**
  * Error Tracker class.
@@ -117,6 +118,19 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	 */
 	public static function get_level_priority( string $level ): int {
 		return self::ERROR_PRIORITY[ $level ] ?? 0;
+	}
+
+	/**
+	 * Return the effective daily cap, applying the `sybgo_error_tracker_daily_cap` filter.
+	 *
+	 * Single source of truth for the cap's filter name and default — callers outside
+	 * the tracker (e.g. the admin dashboard widget) must use this method rather than
+	 * duplicating the filter call so a future change of filter name or default propagates.
+	 *
+	 * @return int Effective cap (defaults to DAILY_CAP = 5).
+	 */
+	public static function get_effective_daily_cap(): int {
+		return wpm_apply_filters_typed( 'integer', 'sybgo_error_tracker_daily_cap', self::DAILY_CAP );
 	}
 
 	/**
@@ -248,25 +262,41 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 
 			if ( $existing_count >= $cap ) {
 				// Attempt priority-based eviction: find the lowest-priority stored row.
-				$lowest            = $this->aggregated_repo->get_lowest_priority_row_for_report(
+				$lowest = $this->aggregated_repo->get_lowest_priority_row_for_report(
 					self::EVENT_TYPE,
 					self::ERROR_PRIORITY,
 					null
 				);
+
+				if ( null === $lowest ) {
+					// No stored rows to evict — discard incoming event.
+					return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
+				}
+
 				$incoming_priority = self::ERROR_PRIORITY[ $level_name ];
 				$stored_priority   = isset( $lowest['level'] ) ? ( self::ERROR_PRIORITY[ $lowest['level'] ] ?? 0 ) : 0;
 
-				if ( null === $lowest || $incoming_priority <= $stored_priority ) {
-					// No eviction possible — discard incoming event.
+				if ( $incoming_priority <= $stored_priority ) {
+					// Incoming event is not strictly higher priority — discard.
 					return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
 				}
 
 				// Evict the lowest-priority stored row to make room.
-				$this->aggregated_repo->delete_by_dimensions_hash_and_report(
+				$deleted = $this->aggregated_repo->delete_by_dimensions_hash_and_report(
 					self::EVENT_TYPE,
 					$lowest['dimensions_hash'],
 					null
 				);
+
+				if ( false === $deleted ) {
+					Logger::info(
+						sprintf(
+							'Error_Tracker: failed to evict row (event_type=%s, dimensions_hash=%s) when making room for higher-priority event.',
+							self::EVENT_TYPE,
+							$lowest['dimensions_hash']
+						)
+					);
+				}
 			}
 
 			$this->increment( self::EVENT_TYPE, 1.0, $dimensions, $meta );
@@ -325,7 +355,7 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	 * @return int Effective cap (defaults to DAILY_CAP = 5).
 	 */
 	protected function get_daily_cap(): int {
-		return wpm_apply_filters_typed( 'integer', 'sybgo_error_tracker_daily_cap', self::DAILY_CAP );
+		return self::get_effective_daily_cap();
 	}
 
 	/**

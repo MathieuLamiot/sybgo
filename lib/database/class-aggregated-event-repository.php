@@ -422,7 +422,7 @@ class Aggregated_Event_Repository {
 
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT id, dimensions_hash, dimensions FROM {$this->table}
+				"SELECT dimensions_hash, dimensions FROM {$this->table}
 				 WHERE event_type = %s AND report_id = %d
 				 ORDER BY id ASC",
 				$event_type,
