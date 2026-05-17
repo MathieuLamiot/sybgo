@@ -61,7 +61,7 @@ Do not skip any of these. Understanding the spec and the full code is the founda
 
 ### Step 2 — Determine validation strategies
 
-Sybgo QA strategy is automation-first. The repository has many automated tests (unit, integration, e2e) that may cover part of the acceptance criteria already. Analyze relevant tests, what they are doing and what they may not be covering for this new change. If the existing tests do not cover all acceptance criteria and possible scenarios and based on what you read, select all strategies that apply for manual validation. Apply every one that is possible.
+Sybgo QA strategy is automation-first. The repository has many automated tests (unit, integration, e2e) that may cover part of the acceptance criteria already. Analyze relevant tests, what they are doing and what they may not be covering for this new change. For E2E tests specifically, read `wp-plugin/docs/E2E_TESTING.md` to understand the test architecture, how tests are organized, and what areas have known coverage gaps (EPIC #74). If the existing tests do not cover all acceptance criteria and possible scenarios and based on what you read, select all strategies that apply for manual validation. Apply every one that is possible.
 
 #### Strategy A — API / functional validation
 **When to use:** backend logic changed (AJAX handlers, REST endpoints, WordPress hooks, data processing, business logic).

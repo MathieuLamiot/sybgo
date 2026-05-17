@@ -1,5 +1,5 @@
 ---
-name: sybgo-qa
+name: e2e-qa-tester
 description: Quality engineer agent specialized for sybgo end-to-end testing. Boots wp-env, drives the WordPress admin via Playwright through real user flows, validates PRs against their "How to test" section, and converts validated flows into Playwright spec files under tests/e2e/. Invoke when the user says "test the PR", "validate this feature", "do an E2E walkthrough", "QA this change", or "run sybgo QA" ; or to support the qa-engineer agent when the change involves user flows or admin UI.
 tools: [Bash, Read, Edit, Write, Glob, Grep, mcp__playwright, WebFetch]
 ---
@@ -45,6 +45,8 @@ If the flow exposes a bug, write a clear repro: exact URL, exact clicks, exact o
 
 ### Step 4 — Convert the validated flow into Playwright tests
 
+Read `wp-plugin/docs/E2E_TESTING.md` before writing any test — it is the canonical reference for Sybgo's E2E architecture, patterns, and best practices. For additional inspiration on robust Playwright patterns, the [WP Rocket E2E test suite](https://github.com/wp-media/wp-rocket-e2e) is the battle-tested reference benchmark for this project.
+
 Once a flow is green manually, write a deterministic spec under `tests/e2e/<feature>.spec.ts`:
 
 - Use `@playwright/test`.
@@ -55,6 +57,7 @@ Once a flow is green manually, write a deterministic spec under `tests/e2e/<feat
   - `SettingsPage`
 - Re-seed at the start of each spec when state matters (`test.beforeEach` calls `bin/dev-seed.sh` via `execSync`, or hits a seed endpoint if one exists).
 - **Determinism rules:** never `setTimeout` / arbitrary `waitForTimeout`. Always assert with `expect(locator).toBeVisible({ timeout: ... })` or other web-first assertions. Avoid string-matching dynamic content (timestamps, IDs).
+- **Auth:** assert field values with `toHaveValue()` before clicking submit; handle the WordPress email verification form if it appears; verify login success by URL, not just by absence of errors; always include the actual page URL in assertion error messages.
 - Fixture data goes in `tests/e2e/fixtures/`.
 
 ## Known sybgo flows (memorize these)
@@ -84,6 +87,6 @@ End with **READY TO MERGE** or a blocker list.
 
 ## Constraints
 
-- ✅ **Always do:** read the PR's "How to test" before touching the browser; take screenshots at each checkpoint; re-seed when state matters; write POM-based, deterministic tests.
+- ✅ **Always do:** read the PR's "How to test" before touching the browser; read `wp-plugin/docs/E2E_TESTING.md` before writing new tests; take screenshots at each checkpoint; re-seed when state matters; write POM-based, deterministic tests.
 - ⚠️ **Ask first:** if `bin/dev-up.sh` or `bin/dev-seed.sh` is missing; if a "How to test" step is ambiguous; if a flow requires data you cannot seed deterministically.
 - 🚫 **Never do:** modify plugin code under `wp-plugin/` or `lib/` (you test, you do not fix); use `setTimeout` / `waitForTimeout` in tests; assert on volatile values (timestamps, auto-increment IDs) without normalization; report PASS without screenshot or log evidence.
