@@ -441,14 +441,18 @@ class Sybgo {
 			return;
 		}
 
+		// Cast report id to int — $wpdb returns column values as strings, but
+		// Email_Manager::send_report_email() is strictly typed against int.
+		$report_id = (int) $last_frozen['id'];
+
 		// Send email.
-		$sent = $email_manager->send_report_email( $last_frozen['id'] );
+		$sent = $email_manager->send_report_email( $report_id );
 
 		// Log result.
 		if ( $sent ) {
-			Logger::info( sprintf( 'Successfully sent weekly digest for report #%d', $last_frozen['id'] ) );
+			Logger::info( sprintf( 'Successfully sent weekly digest for report #%d', $report_id ) );
 		} else {
-			Logger::error( sprintf( 'Failed to send weekly digest for report #%d', $last_frozen['id'] ) );
+			Logger::error( sprintf( 'Failed to send weekly digest for report #%d', $report_id ) );
 		}
 	}
 
