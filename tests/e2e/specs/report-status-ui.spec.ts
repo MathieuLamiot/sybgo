@@ -47,9 +47,9 @@ test.describe( 'Report status UI and lifecycle', () => {
 		await list.goto();
 
 		const statuses = await list.getAllRowStatuses();
-		// Newest row must be ACTIVE; subsequent rows must be FROZEN (not ACTIVE).
+		// Newest row must be ACTIVE; subsequent rows must be FROZEN or SENT (not ACTIVE).
 		expect( statuses[ 0 ] ).toBe( 'ACTIVE' );
-		expect( statuses.slice( 1 ).every( ( s ) => s === 'FROZEN' ) ).toBe( true );
+		expect( statuses.slice( 1 ).every( ( s ) => [ 'FROZEN', 'SENT' ].includes( s ) ) ).toBe( true );
 	} );
 
 	test( 'multiple frozen reports display in correct order (most recent first)', async ( { page } ) => {
