@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Sybgo\Tests\Unit;
 
 use Brain\Monkey;
+use Brain\Monkey\Actions;
 use Brain\Monkey\Filters;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -90,6 +91,20 @@ class CronManagerTest extends TestCase {
 	public function test_init_skips_scheduling_when_already_scheduled(): void {
 		Functions\expect( 'wp_next_scheduled' )->times( 4 )->andReturn( 1234567890 );
 		Functions\expect( 'wp_schedule_event' )->never();
+
+		$this->make_manager()->init();
+
+		$this->assertTrue( true );
+	}
+
+
+	public function test_init_wires_four_action_callbacks(): void {
+		Functions\when( 'wp_next_scheduled' )->justReturn( true );
+
+		$hooks = Cron_Manager::get_hooks();
+		foreach ( $hooks as $hook ) {
+			Actions\expectAdded( $hook )->once();
+		}
 
 		$this->make_manager()->init();
 
