@@ -19,7 +19,7 @@ export class DashboardWidgetPage {
 		this.page = page;
 		this.root = page.locator( '#sybgo_activity_widget' );
 		this.title = this.root.getByRole( 'heading', { name: 'Site Activity Digest' } );
-		this.aiSummaryButton = page.locator( '#sybgo-generate-ai-btn' ).first();
+		this.aiSummaryButton = this.root.locator( '.sybgo-widget-ai-btn' );
 		this.eventCounter = this.root.locator( '.sybgo-event-counter, [data-event-counter]' ).first();
 		this.filterTabs = this.root.getByRole( 'tab' );
 		this.phpErrorsSection = this.root.getByText( /PHP Errors/i );

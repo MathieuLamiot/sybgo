@@ -12,16 +12,21 @@ export const ADMIN_PASS = process.env.SYBGO_ADMIN_PASS ?? 'password';
  * already set, navigation hits /wp-admin/ directly and skips the form.
  */
 export async function loginAsAdmin( page: Page ): Promise<void> {
-	await page.goto( '/wp-login.php' );
+	await page.goto( '/wp-login.php', { waitUntil: 'networkidle' } );
 
 	// Already logged in? Cookie redirects to wp-admin.
 	if ( page.url().includes( '/wp-admin/' ) ) {
 		return;
 	}
 
+	await page.getByLabel( 'Username or Email Address' ).waitFor({ timeout: 5000 });
 	await page.getByLabel( 'Username or Email Address' ).fill( ADMIN_USER );
 	await page.getByLabel( 'Password', { exact: true } ).fill( ADMIN_PASS );
-	await page.getByRole( 'button', { name: 'Log In' } ).click();
 
-	await expect( page ).toHaveURL( /\/wp-admin\/?/ );
+	// Submit the login form
+	const loginButton = page.getByRole( 'button', { name: 'Log In' } );
+	await loginButton.click();
+
+	// Wait for redirect to wp-admin
+	await page.waitForURL( /\/wp-admin\/?$/, { timeout: 20000 } );
 }

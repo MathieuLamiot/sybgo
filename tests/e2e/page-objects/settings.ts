@@ -19,23 +19,23 @@ export class SettingsPage {
 
 	constructor( page: Page ) {
 		this.page = page;
-		this.heading = page.getByRole( 'heading', { name: 'Sybgo Settings', exact: true } );
-		this.emailRecipients = page.getByLabel( 'Email Recipients' );
-		this.fromName = page.getByLabel( 'From Name' );
-		this.fromEmail = page.getByLabel( 'From Email' );
-		this.editMagnitudeThreshold = page.getByLabel( /Edit Magnitude Threshold/ );
-		this.retentionDays = page.getByLabel( /Data Retention Period/ );
-		this.saveButton = page.getByRole( 'button', { name: 'Save Settings' } );
+		this.heading = page.getByRole( 'heading', { name: 'Settings' } );
+		this.emailRecipients = page.locator( 'textarea[name*="email_recipients"]' );
+		this.fromName = page.locator( 'input[name*="from_name"]' );
+		this.fromEmail = page.locator( 'input[name*="from_email"]' );
+		this.editMagnitudeThreshold = page.locator( 'input[name*="edit_magnitude"]' );
+		this.retentionDays = page.locator( 'input[name*="retention"]' );
+		this.saveButton = page.getByRole( 'button', { name: /Save/ } );
 		this.footprintTable = page.locator( 'h2:has-text("Database Footprint") + table, h3:has-text("Database Footprint") + table' );
 	}
 
 	async goto(): Promise<void> {
 		await this.page.goto( '/wp-admin/options-general.php?page=sybgo-settings' );
-		await expect( this.heading ).toBeVisible();
+		await expect( this.emailRecipients ).toBeVisible();
 	}
 
 	async save(): Promise<void> {
 		await this.saveButton.click();
-		await expect( this.page.getByText( /Settings saved|saved successfully/i ) ).toBeVisible();
+		await expect( this.page.getByText( /Settings saved|saved successfully/i ).first() ).toBeVisible();
 	}
 }

@@ -6,8 +6,9 @@ import { execSync } from 'node:child_process';
  * running crons, triggering known events).
  */
 export function wpCli( command: string ): string {
+	const root = `${ __dirname }/../../..`;
 	const cmd = `npx --yes @wordpress/env run cli wp ${ command }`;
-	return execSync( cmd, { encoding: 'utf-8', stdio: [ 'ignore', 'pipe', 'pipe' ] } );
+	return execSync( cmd, { cwd: root, encoding: 'utf-8', stdio: [ 'ignore', 'pipe', 'pipe' ] } );
 }
 
 /**

@@ -34,7 +34,8 @@ export class ReportsListPage {
 
 	async getRowStatus( index: number ): Promise<'ACTIVE' | 'FROZEN' | 'SENT'> {
 		const row = await this.row( index );
-		const badge = await row.locator( '.sybgo-status-badge, .badge, .status' ).first().innerText();
+		// Status badge is a span with inline styles, typically in the 2nd or 3rd column
+		const badge = await row.locator( 'td span' ).first().innerText();
 		const normalized = badge.trim().toUpperCase();
 		if ( normalized !== 'ACTIVE' && normalized !== 'FROZEN' && normalized !== 'SENT' ) {
 			throw new Error( `Unexpected report status badge: ${ badge }` );
