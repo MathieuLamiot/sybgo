@@ -94,6 +94,7 @@ class DashboardWidgetTest extends TestCase {
 		);
 		Functions\when( 'human_time_diff' )->justReturn( '1 hour' );
 		Functions\when( 'admin_url' )->returnArg();
+		Functions\when( 'wp_nonce_url' )->returnArg();
 	}
 
 	/**
