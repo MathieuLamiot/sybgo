@@ -1,0 +1,335 @@
+{
+  "module": "lib",
+  "path": "lib",
+  "rootNamespace": "Sybgo",
+  "files": [
+    {
+      "path": "lib/ai/class-ai-summarizer.php",
+      "namespace": "Sybgo\\AI",
+      "exports": ["AI_Summarizer"],
+      "imports": {
+        "internal": [
+          "lib/database/class-report-repository.php",
+          "lib/events/class-event-registry.php",
+          "lib/class-logger.php"
+        ],
+        "external": []
+      },
+      "importedBy": [
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php"
+      ]
+    },
+    {
+      "path": "lib/ai/class-wp7-ai-transport.php",
+      "namespace": "Sybgo\\AI",
+      "exports": ["WP7_AI_Transport"],
+      "imports": {
+        "internal": ["lib/ai/interface-ai-transport.php"],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/ai/interface-ai-transport.php",
+      "namespace": "Sybgo\\AI",
+      "exports": ["AI_Transport"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": ["lib/ai/class-wp7-ai-transport.php"]
+    },
+    {
+      "path": "lib/api/functions.php",
+      "namespace": null,
+      "exports": ["global PHP functions"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/class-factory.php",
+      "namespace": "Sybgo",
+      "exports": ["Factory"],
+      "imports": {
+        "internal": [
+          "lib/database/class-databasemanager.php",
+          "lib/database/class-db-stats.php",
+          "lib/database/class-event-repository.php",
+          "lib/database/class-report-repository.php",
+          "lib/database/class-aggregated-event-repository.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/class-logger.php",
+      "namespace": "Sybgo",
+      "exports": ["Logger"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": [
+        "lib/ai/class-ai-summarizer.php",
+        "lib/events/trackers/class-error-tracker.php"
+      ]
+    },
+    {
+      "path": "lib/database/class-aggregated-event-repository.php",
+      "namespace": "Sybgo\\Database",
+      "exports": ["Aggregated_Event_Repository"],
+      "imports": {
+        "internal": [],
+        "external": ["berlindb/core"]
+      },
+      "importedBy": [
+        "lib/class-factory.php",
+        "lib/events/abstracts/class-abstract-aggregated-event.php",
+        "lib/events/class-event-tracker.php",
+        "lib/reports/class-report-manager.php",
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php"
+      ]
+    },
+    {
+      "path": "lib/database/class-databasemanager.php",
+      "namespace": "Sybgo\\Database",
+      "exports": ["DatabaseManager"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": [
+        "lib/class-factory.php",
+        "wp-plugin/admin/class-uninstaller.php"
+      ]
+    },
+    {
+      "path": "lib/database/class-db-stats.php",
+      "namespace": "Sybgo\\Database",
+      "exports": ["DB_Stats"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": [
+        "lib/class-factory.php",
+        "wp-plugin/admin/class-settings-page.php"
+      ]
+    },
+    {
+      "path": "lib/database/class-event-repository.php",
+      "namespace": "Sybgo\\Database",
+      "exports": ["Event_Repository"],
+      "imports": {
+        "internal": [],
+        "external": ["berlindb/core"]
+      },
+      "importedBy": [
+        "lib/class-factory.php",
+        "lib/events/abstracts/class-abstract-singular-event.php",
+        "lib/events/class-event-tracker.php",
+        "lib/events/trackers/class-comment-tracker.php",
+        "lib/events/trackers/class-post-tracker.php",
+        "lib/events/trackers/class-update-tracker.php",
+        "lib/events/trackers/class-user-tracker.php",
+        "lib/reports/class-report-generator.php",
+        "lib/reports/class-report-manager.php",
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php"
+      ]
+    },
+    {
+      "path": "lib/database/class-report-repository.php",
+      "namespace": "Sybgo\\Database",
+      "exports": ["Report_Repository"],
+      "imports": {
+        "internal": [],
+        "external": ["berlindb/core"]
+      },
+      "importedBy": [
+        "lib/class-factory.php",
+        "lib/ai/class-ai-summarizer.php",
+        "lib/email/class-email-manager.php",
+        "lib/reports/class-report-generator.php",
+        "lib/reports/class-report-manager.php",
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php"
+      ]
+    },
+    {
+      "path": "lib/email/class-email-manager.php",
+      "namespace": "Sybgo\\Email",
+      "exports": ["Email_Manager"],
+      "imports": {
+        "internal": ["lib/database/class-report-repository.php"],
+        "external": []
+      },
+      "importedBy": ["wp-plugin/admin/class-reports-page.php"]
+    },
+    {
+      "path": "lib/email/class-email-template.php",
+      "namespace": "Sybgo\\Email",
+      "exports": ["Email_Template"],
+      "imports": {
+        "internal": ["lib/events/class-event-registry.php"],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/events/abstracts/class-abstract-aggregated-event.php",
+      "namespace": "Sybgo\\Events\\Abstracts",
+      "exports": ["Abstract_Aggregated_Event"],
+      "imports": {
+        "internal": ["lib/database/class-aggregated-event-repository.php"],
+        "external": []
+      },
+      "importedBy": ["lib/events/trackers/class-error-tracker.php"]
+    },
+    {
+      "path": "lib/events/abstracts/class-abstract-singular-event.php",
+      "namespace": "Sybgo\\Events\\Abstracts",
+      "exports": ["Abstract_Singular_Event"],
+      "imports": {
+        "internal": ["lib/database/class-event-repository.php"],
+        "external": []
+      },
+      "importedBy": [
+        "lib/events/trackers/class-comment-tracker.php",
+        "lib/events/trackers/class-post-tracker.php",
+        "lib/events/trackers/class-update-tracker.php",
+        "lib/events/trackers/class-user-tracker.php"
+      ]
+    },
+    {
+      "path": "lib/events/class-event-registry.php",
+      "namespace": "Sybgo\\Events",
+      "exports": ["Event_Registry"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": [
+        "lib/ai/class-ai-summarizer.php",
+        "lib/email/class-email-template.php",
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php",
+        "wp-plugin/admin/class-settings-page.php"
+      ]
+    },
+    {
+      "path": "lib/events/class-event-tracker.php",
+      "namespace": "Sybgo\\Events",
+      "exports": ["Event_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/database/class-aggregated-event-repository.php",
+          "lib/database/class-event-repository.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/events/trackers/class-comment-tracker.php",
+      "namespace": "Sybgo\\Events\\Trackers",
+      "exports": ["Comment_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/database/class-event-repository.php",
+          "lib/events/abstracts/class-abstract-singular-event.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/events/trackers/class-error-tracker.php",
+      "namespace": "Sybgo\\Events\\Trackers",
+      "exports": ["Error_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/events/abstracts/class-abstract-aggregated-event.php",
+          "lib/class-logger.php"
+        ],
+        "external": []
+      },
+      "importedBy": ["wp-plugin/admin/class-dashboard-widget.php"]
+    },
+    {
+      "path": "lib/events/trackers/class-post-tracker.php",
+      "namespace": "Sybgo\\Events\\Trackers",
+      "exports": ["Post_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/database/class-event-repository.php",
+          "lib/events/abstracts/class-abstract-singular-event.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/events/trackers/class-update-tracker.php",
+      "namespace": "Sybgo\\Events\\Trackers",
+      "exports": ["Update_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/database/class-event-repository.php",
+          "lib/events/abstracts/class-abstract-singular-event.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/events/trackers/class-user-tracker.php",
+      "namespace": "Sybgo\\Events\\Trackers",
+      "exports": ["User_Tracker"],
+      "imports": {
+        "internal": [
+          "lib/database/class-event-repository.php",
+          "lib/events/abstracts/class-abstract-singular-event.php"
+        ],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "lib/reports/class-report-generator.php",
+      "namespace": "Sybgo\\Reports",
+      "exports": ["Report_Generator"],
+      "imports": {
+        "internal": [
+          "lib/database/class-event-repository.php",
+          "lib/database/class-report-repository.php"
+        ],
+        "external": []
+      },
+      "importedBy": [
+        "wp-plugin/admin/class-dashboard-widget.php",
+        "wp-plugin/admin/class-reports-page.php"
+      ]
+    },
+    {
+      "path": "lib/reports/class-report-manager.php",
+      "namespace": "Sybgo\\Reports",
+      "exports": ["Report_Manager"],
+      "imports": {
+        "internal": [
+          "lib/database/class-aggregated-event-repository.php",
+          "lib/database/class-event-repository.php",
+          "lib/database/class-report-repository.php"
+        ],
+        "external": []
+      },
+      "importedBy": ["wp-plugin/admin/class-reports-page.php"]
+    }
+  ]
+}

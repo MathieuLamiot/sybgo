@@ -56,6 +56,17 @@ cd wp-plugin && vendor/bin/phpstan analyse --memory-limit=1G
 cd wp-plugin && composer reinstall wp-media/sybgo-lib && vendor/bin/phpstan clear-result-cache
 ```
 
+## Knowledge Graph
+
+A pre-built dependency graph exists at `.claude/knowledge-graph/`. Before exploring the codebase for dependency or import information:
+
+1. Read `.claude/knowledge-graph/meta.json` to check freshness (compare `lastCommitHash` with `git rev-parse HEAD`)
+2. If the graph is stale or missing, invoke the `knowledge-graph` agent before proceeding — do not fall back to manual scanning
+3. Read `.claude/knowledge-graph/summary.json` for module-level dependencies
+4. For file-level detail, read the relevant `.claude/knowledge-graph/modules/<module>.json`
+
+Available modules: `lib` (PHP library), `wp-plugin` (WordPress plugin), `tests-e2e` (Playwright E2E tests).
+
 ## Post-implementation workflow (autonomous)
 
 Before implementing, estimate the diff size. If it exceeds ~100 meaningful lines (excluding docs, CSS, tests, generated code), split into independently shippable steps and implement them sequentially. Apply the below workflow for the first step and wait for human approval before moving to the next step.

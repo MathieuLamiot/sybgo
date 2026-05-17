@@ -1,0 +1,102 @@
+{
+  "module": "wp-plugin",
+  "path": "wp-plugin",
+  "rootNamespace": "Sybgo\\Admin",
+  "files": [
+    {
+      "path": "wp-plugin/class-sybgo.php",
+      "namespace": "Sybgo",
+      "exports": ["Sybgo"],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": ["wp-plugin/admin/class-uninstaller.php"]
+    },
+    {
+      "path": "wp-plugin/uninstall.php",
+      "namespace": null,
+      "exports": [],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "wp-plugin/assets/js/admin.js",
+      "namespace": null,
+      "exports": [],
+      "imports": {
+        "internal": [],
+        "external": []
+      },
+      "importedBy": []
+    },
+    {
+      "path": "wp-plugin/admin/class-dashboard-widget.php",
+      "namespace": "Sybgo\\Admin",
+      "exports": ["Dashboard_Widget"],
+      "imports": {
+        "internal": ["wp-plugin/class-sybgo.php"],
+        "external": [
+          "lib/database/class-aggregated-event-repository.php",
+          "lib/database/class-event-repository.php",
+          "lib/database/class-report-repository.php",
+          "lib/reports/class-report-generator.php",
+          "lib/ai/class-ai-summarizer.php",
+          "lib/events/class-event-registry.php",
+          "lib/events/trackers/class-error-tracker.php"
+        ]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "wp-plugin/admin/class-reports-page.php",
+      "namespace": "Sybgo\\Admin",
+      "exports": ["Reports_Page"],
+      "imports": {
+        "internal": [],
+        "external": [
+          "lib/database/class-aggregated-event-repository.php",
+          "lib/database/class-event-repository.php",
+          "lib/database/class-report-repository.php",
+          "lib/reports/class-report-manager.php",
+          "lib/reports/class-report-generator.php",
+          "lib/email/class-email-manager.php",
+          "lib/events/class-event-registry.php",
+          "lib/ai/class-ai-summarizer.php"
+        ]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "wp-plugin/admin/class-settings-page.php",
+      "namespace": "Sybgo\\Admin",
+      "exports": ["Settings_Page"],
+      "imports": {
+        "internal": [],
+        "external": [
+          "lib/database/class-db-stats.php",
+          "lib/events/class-event-registry.php"
+        ]
+      },
+      "importedBy": ["wp-plugin/admin/class-uninstaller.php"]
+    },
+    {
+      "path": "wp-plugin/admin/class-uninstaller.php",
+      "namespace": "Sybgo\\Admin",
+      "exports": ["Uninstaller"],
+      "imports": {
+        "internal": [
+          "wp-plugin/class-sybgo.php",
+          "wp-plugin/admin/class-settings-page.php"
+        ],
+        "external": [
+          "lib/database/class-databasemanager.php"
+        ]
+      },
+      "importedBy": []
+    }
+  ]
+}
