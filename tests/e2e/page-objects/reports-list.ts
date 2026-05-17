@@ -32,6 +32,10 @@ export class ReportsListPage {
 		return rows.nth( index );
 	}
 
+	async getRowCount(): Promise<number> {
+		return this.table.locator( 'tbody tr' ).count();
+	}
+
 	async getRowStatus( index: number ): Promise<'ACTIVE' | 'FROZEN' | 'SENT'> {
 		const row = await this.row( index );
 		// Status badge is a span with inline styles, typically in the 2nd or 3rd column
@@ -41,6 +45,32 @@ export class ReportsListPage {
 			throw new Error( `Unexpected report status badge: ${ badge }` );
 		}
 		return normalized;
+	}
+
+	/**
+	 * Return the status of every row in the list, ordered top-to-bottom (newest first).
+	 */
+	async getAllRowStatuses(): Promise<Array<'ACTIVE' | 'FROZEN' | 'SENT'>> {
+		const count = await this.getRowCount();
+		const statuses: Array<'ACTIVE' | 'FROZEN' | 'SENT'> = [];
+		for ( let i = 0; i < count; i++ ) {
+			statuses.push( await this.getRowStatus( i ) );
+		}
+		return statuses;
+	}
+
+	/**
+	 * Return the 0-based index of the first row whose status matches.
+	 * Throws if no such row is found.
+	 */
+	async findRowIndexByStatus( status: 'ACTIVE' | 'FROZEN' | 'SENT' ): Promise<number> {
+		const count = await this.getRowCount();
+		for ( let i = 0; i < count; i++ ) {
+			if ( ( await this.getRowStatus( i ) ) === status ) {
+				return i;
+			}
+		}
+		throw new Error( `No row with status ${ status } found in reports list` );
 	}
 
 	async openDetailsForRow( index: number ): Promise<void> {
