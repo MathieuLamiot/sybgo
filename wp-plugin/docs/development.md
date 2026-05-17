@@ -279,7 +279,8 @@ wp db query "SELECT recipient, status, error_message FROM wp_sybgo_email_log WHE
 ```
 sybgo/
 ├── sybgo.php                     # Main plugin file (WordPress header)
-├── class-sybgo.php               # Main orchestrator class
+├── class-sybgo.php               # Plugin lifecycle (activate/deactivate/init)
+├── class-cron-manager.php        # WP-Cron schedule registration and callbacks
 ├── class-factory.php             # Dependency injection
 │
 ├── database/                     # Data layer
@@ -357,10 +358,10 @@ When a user deletes the plugin from the WordPress admin, WordPress calls `uninst
 `Uninstaller` performs three steps in order:
 
 1. **Drop database tables** — calls `DatabaseManager::get_table_names()` (static, no side effects) and issues `DROP TABLE IF EXISTS` for each table.
-2. **Clear cron events** — calls `Sybgo::get_cron_hooks()` and passes each hook to `wp_clear_scheduled_hook()`.
+2. **Clear cron events** — calls `Cron_Manager::get_hooks()` and passes each hook to `wp_clear_scheduled_hook()`.
 3. **Delete options** — calls `Settings_Page::get_option_names()` and passes each name to `delete_option()`.
 
-Each of those static methods is the single source of truth for its identifiers, so adding a new table, hook, or option to the appropriate method is enough to ensure it is also cleaned up on uninstall.
+Each of those static methods is the single source of truth for its identifiers: `DatabaseManager::get_table_names()`, `Cron_Manager::get_hooks()`, and `Settings_Page::get_option_names()`. Adding a new table, hook, or option to the appropriate method is enough to ensure it is also cleaned up on uninstall.
 
 The deactivation hook (`Sybgo::deactivate()`) only clears cron events. Full data removal (tables, options) happens only on uninstall, not on deactivation.
 
