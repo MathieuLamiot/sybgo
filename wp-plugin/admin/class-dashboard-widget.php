@@ -166,16 +166,18 @@ class Dashboard_Widget {
 		$current_events     = $this->event_repo->get_by_report( null );
 		$active_report      = $this->report_repo->get_active();
 		$last_frozen_report = $this->report_repo->get_last_frozen();
+		$details_base_url   = admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' );
+
 		?>
 		<div class="sybgo-widget">
 			<div class="sybgo-widget-actions">
 				<?php if ( $active_report ) : ?>
-					<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . (int) $active_report['id'] ), 'sybgo_view_report' ) ); ?>" class="button button-secondary">
+					<a href="<?php echo esc_url( wp_nonce_url( $details_base_url . (int) $active_report['id'], 'sybgo_view_report' ) ); ?>" class="button button-secondary">
 						<?php esc_html_e( 'View This Week\'s Details', 'sybgo' ); ?>
 					</a>
 				<?php endif; ?>
 				<?php if ( $last_frozen_report ) : ?>
-					<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=sybgo-reports&view=details&report_id=' . (int) $last_frozen_report['id'] ), 'sybgo_view_report' ) ); ?>" class="button button-secondary">
+					<a href="<?php echo esc_url( wp_nonce_url( $details_base_url . (int) $last_frozen_report['id'], 'sybgo_view_report' ) ); ?>" class="button button-secondary">
 						<?php esc_html_e( 'View Last Week\'s Details', 'sybgo' ); ?>
 					</a>
 				<?php endif; ?>
