@@ -232,6 +232,7 @@ class DashboardWidgetTest extends TestCase {
 		$this->report_generator->shouldReceive( 'generate_live_summary' )
 			->with( array(), 5 )
 			->andReturn( $live_summary );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->with( 'php_error', null )->andReturn( array() );
 		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( 'Widget summary.' );
 
 		// Must persist the full object.
@@ -277,6 +278,7 @@ class DashboardWidgetTest extends TestCase {
 		$this->report_generator->shouldReceive( 'generate_live_summary' )
 			->with( array(), 0 )
 			->andReturn( $live_summary );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->with( 'php_error', null )->andReturn( array() );
 		$this->ai_summarizer->shouldReceive( 'generate_summary' )->andReturn( 'No active report summary.' );
 
 		// Must NOT persist.
