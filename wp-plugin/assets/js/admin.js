@@ -20,17 +20,8 @@
 			// Filter buttons
 			$(document).on('click', '.sybgo-filters .sybgo-filter-btn', this.handleFilterClick);
 
-			// Preview button (this week)
-			$(document).on('click', '.sybgo-preview-btn', this.handlePreviewClick);
-
-			// View Previous Digest button
-			$(document).on('click', '.sybgo-preview-last-btn', this.handlePreviewLastClick);
-
 			// AI Summary button
 			$(document).on('click', '.sybgo-widget-ai-btn', this.handleAISummaryClick);
-
-			// Modal close
-			$(document).on('click', '.sybgo-modal-close, .sybgo-modal-overlay', this.handleModalClose);
 		},
 
 		handleFilterClick: function(e) {
@@ -72,45 +63,6 @@
 			});
 		},
 
-		handlePreviewClick: function(e) {
-			e.preventDefault();
-
-			$.ajax({
-				url: sybgoWidget.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'sybgo_preview_digest',
-					nonce: sybgoWidget.nonce
-				},
-				success: function(response) {
-					if (response.success) {
-						SybgoDashboard.showModal(response.data.html);
-					}
-				}
-			});
-		},
-
-		handlePreviewLastClick: function(e) {
-			e.preventDefault();
-
-			$.ajax({
-				url: sybgoWidget.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'sybgo_preview_last_digest',
-					nonce: sybgoWidget.nonce
-				},
-				success: function(response) {
-					if (response.success) {
-						SybgoDashboard.showModal(response.data.html);
-					} else {
-						// eslint-disable-next-line no-alert
-						alert(response.data && response.data.message ? response.data.message : 'No previous digest available.');
-					}
-				}
-			});
-		},
-
 		handleAISummaryClick: function(e) {
 			e.preventDefault();
 			var $btn = $(this);
@@ -137,23 +89,6 @@
 					$btn.prop('disabled', false);
 				}
 			});
-		},
-
-		showModal: function(content) {
-			const $modal = $('<div class="sybgo-modal-overlay active">' +
-				'<div class="sybgo-modal-content">' +
-				'<span class="sybgo-modal-close">&times;</span>' +
-				content +
-				'</div>' +
-				'</div>');
-
-			$('body').append($modal);
-		},
-
-		handleModalClose: function(e) {
-			if ($(e.target).hasClass('sybgo-modal-overlay') || $(e.target).hasClass('sybgo-modal-close')) {
-				$('.sybgo-modal-overlay').remove();
-			}
 		}
 	};
 

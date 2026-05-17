@@ -124,6 +124,7 @@ class DashboardWidgetTest extends TestCase {
 	 * Widget should render the "Get AI Summary" button when AI summarizer is available.
 	 */
 	public function test_render_widget_shows_get_ai_summary_button_when_summarizer_available(): void {
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( null );
 		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
@@ -155,6 +156,7 @@ class DashboardWidgetTest extends TestCase {
 			$aggregated_repo
 		);
 
+		$report_repo->shouldReceive( 'get_active' )->andReturn( null );
 		$report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
 		$event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
@@ -175,6 +177,7 @@ class DashboardWidgetTest extends TestCase {
 	 * "Get AI Summary" button must appear before the filter buttons.
 	 */
 	public function test_render_widget_ai_button_appears_before_filter_buttons(): void {
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( null );
 		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
 		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
@@ -279,30 +282,40 @@ class DashboardWidgetTest extends TestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// ajax_preview_digest() — no longer calls AI
+	// render_widget() — report detail links
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Preview digest AJAX must not call AI summarizer.
+	 * Widget must render links to active and last frozen report detail pages when both exist.
 	 */
-	public function test_ajax_preview_digest_does_not_call_ai_summarizer(): void {
-		Functions\when( 'check_ajax_referer' )->justReturn( true );
-		Functions\when( 'current_user_can' )->justReturn( true );
-		Functions\when( 'wp_send_json_success' )->justReturn();
-		Functions\when( 'wp_send_json_error' )->justReturn();
-		Functions\when( 'absint' )->alias( 'absint' );
-
+	public function test_render_widget_shows_links_when_reports_exist(): void {
+		$this->report_repo->shouldReceive( 'get_active' )->andReturn( array( 'id' => '3', 'status' => 'active' ) );
+		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( array( 'id' => '1', 'status' => 'frozen' ) );
 		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
+
+		$output = $this->capture( 'render_widget' );
+
+		$this->assertStringContainsString( 'report_id=3', $output );
+		$this->assertStringContainsString( 'report_id=1', $output );
+		$this->assertStringContainsString( "View This Week's Details", $output );
+		$this->assertStringContainsString( "View Last Week's Details", $output );
+	}
+
+	/**
+	 * Widget must not render report detail links when no reports exist.
+	 */
+	public function test_render_widget_hides_links_when_no_reports(): void {
 		$this->report_repo->shouldReceive( 'get_active' )->andReturn( null );
-		$this->report_generator->shouldReceive( 'generate_live_summary' )
-			->andReturn( array( 'totals' => array(), 'trends' => array() ) );
+		$this->report_repo->shouldReceive( 'get_last_frozen' )->andReturn( null );
+		$this->event_repo->shouldReceive( 'get_by_report' )->with( null )->andReturn( array() );
+		$this->aggregated_repo->shouldReceive( 'get_sum_for_report' )->andReturn( 0 );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->andReturn( array() );
 
-		// AI summarizer must NOT be called.
-		$this->ai_summarizer->shouldNotReceive( 'generate_summary' );
+		$output = $this->capture( 'render_widget' );
 
-		$this->widget->ajax_preview_digest();
-
-		// Mockery expectation is the assertion; add count so PHPUnit doesn't flag as risky.
-		$this->addToAssertionCount( 1 );
+		$this->assertStringNotContainsString( 'sybgo-reports', $output );
+		$this->assertStringNotContainsString( 'report_id=', $output );
 	}
 }
