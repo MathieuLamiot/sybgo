@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "lastScanTimestamp": "2026-05-17T20:28:00Z",
+  "lastCommitHash": "edb51784d0c7c3b843d7f82430f3c5f889a52c88",
+  "scanMode": "full",
+  "totalFiles": 45,
+  "totalModules": 3,
+  "languages": {
+    "php": 31,
+    "typescript": 13,
+    "javascript": 1
+  },
+  "entryPoints": [
+    "wp-plugin/class-sybgo.php",
+    "wp-plugin/uninstall.php",
+    "tests/e2e/playwright.config.ts"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "modules": [
+    {
+      "name": "lib",
+      "path": "lib",
+      "manifest": "lib/composer.json",
+      "fileCount": 24,
+      "languages": ["php"],
+      "rootNamespace": "Sybgo",
+      "entryPoints": [],
+      "externalDeps": ["berlindb/core", "wp-media/apply-filters-typed"],
+      "dependsOn": [],
+      "dependedOnBy": ["wp-plugin"]
+    },
+    {
+      "name": "wp-plugin",
+      "path": "wp-plugin",
+      "manifest": "wp-plugin/composer.json",
+      "fileCount": 7,
+      "languages": ["php", "javascript"],
+      "rootNamespace": "Sybgo\\Admin",
+      "entryPoints": ["wp-plugin/class-sybgo.php", "wp-plugin/uninstall.php"],
+      "externalDeps": ["wp-media/sybgo-lib"],
+      "dependsOn": ["lib"],
+      "dependedOnBy": []
+    },
+    {
+      "name": "tests-e2e",
+      "path": "tests/e2e",
+      "manifest": "tests/e2e/package.json",
+      "fileCount": 14,
+      "languages": ["typescript"],
+      "entryPoints": ["tests/e2e/playwright.config.ts"],
+      "externalDeps": ["@playwright/test", "@types/node", "typescript"],
+      "dependsOn": [],
+      "dependedOnBy": []
+    }
+  ],
+  "edges": [
+    { "from": "wp-plugin", "to": "lib", "weight": 18 }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "packages": {
+    "berlindb/core": {
+      "language": "php",
+      "importedByModule": "lib",
+      "importCount": 1,
+      "note": "Database abstraction layer used by lib/database/"
+    },
+    "wp-media/apply-filters-typed": {
+      "language": "php",
+      "importedByModule": "lib",
+      "importCount": 1,
+      "note": "Typed apply_filters wrapper"
+    },
+    "wp-media/sybgo-lib": {
+      "language": "php",
+      "importedByModule": "wp-plugin",
+      "importCount": 18,
+      "note": "Resolved to local lib/ module via composer path repository"
+    },
+    "@playwright/test": {
+      "language": "typescript",
+      "importedByModule": "tests-e2e",
+      "importedBy": [
+        "tests/e2e/fixtures/auth.ts",
+        "tests/e2e/page-objects/dashboard-widget.ts",
+        "tests/e2e/page-objects/report-details.ts",
+        "tests/e2e/page-objects/reports-list.ts",
+        "tests/e2e/page-objects/settings.ts",
+        "tests/e2e/playwright.config.ts",
+        "tests/e2e/specs/dashboard-navigation.spec.ts",
+        "tests/e2e/specs/dashboard-widget.spec.ts",
+        "tests/e2e/specs/email-delivery.spec.ts",
+        "tests/e2e/specs/error-tracker-cap.spec.ts",
+        "tests/e2e/specs/report-status-ui.spec.ts",
+        "tests/e2e/specs/reports-lifecycle.spec.ts",
+        "tests/e2e/specs/settings.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ],
+      "importCount": 14
+    }
+  }
+}

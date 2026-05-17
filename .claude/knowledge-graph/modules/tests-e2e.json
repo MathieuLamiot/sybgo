@@ -1,0 +1,209 @@
+{
+  "module": "tests-e2e",
+  "path": "tests/e2e",
+  "files": [
+    {
+      "path": "tests/e2e/playwright.config.ts",
+      "exports": ["default (PlaywrightTestConfig)"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/fixtures/auth.ts",
+      "exports": ["test", "expect"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": [
+        "tests/e2e/specs/dashboard-navigation.spec.ts",
+        "tests/e2e/specs/dashboard-widget.spec.ts",
+        "tests/e2e/specs/email-delivery.spec.ts",
+        "tests/e2e/specs/error-tracker-cap.spec.ts",
+        "tests/e2e/specs/report-status-ui.spec.ts",
+        "tests/e2e/specs/reports-lifecycle.spec.ts",
+        "tests/e2e/specs/settings.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ]
+    },
+    {
+      "path": "tests/e2e/fixtures/wp-cli.ts",
+      "exports": ["wpCli fixture"],
+      "imports": {
+        "internal": [],
+        "external": ["node:child_process"]
+      },
+      "importedBy": [
+        "tests/e2e/specs/dashboard-navigation.spec.ts",
+        "tests/e2e/specs/dashboard-widget.spec.ts",
+        "tests/e2e/specs/email-delivery.spec.ts",
+        "tests/e2e/specs/error-tracker-cap.spec.ts",
+        "tests/e2e/specs/report-status-ui.spec.ts",
+        "tests/e2e/specs/reports-lifecycle.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ]
+    },
+    {
+      "path": "tests/e2e/page-objects/dashboard-widget.ts",
+      "exports": ["DashboardWidgetPage"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": [
+        "tests/e2e/specs/dashboard-navigation.spec.ts",
+        "tests/e2e/specs/dashboard-widget.spec.ts",
+        "tests/e2e/specs/error-tracker-cap.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ]
+    },
+    {
+      "path": "tests/e2e/page-objects/report-details.ts",
+      "exports": ["ReportDetailsPage"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": [
+        "tests/e2e/specs/dashboard-navigation.spec.ts",
+        "tests/e2e/specs/report-status-ui.spec.ts",
+        "tests/e2e/specs/reports-lifecycle.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ]
+    },
+    {
+      "path": "tests/e2e/page-objects/reports-list.ts",
+      "exports": ["ReportsListPage"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": [
+        "tests/e2e/specs/email-delivery.spec.ts",
+        "tests/e2e/specs/report-status-ui.spec.ts",
+        "tests/e2e/specs/reports-lifecycle.spec.ts",
+        "tests/e2e/specs/smoke.spec.ts"
+      ]
+    },
+    {
+      "path": "tests/e2e/page-objects/settings.ts",
+      "exports": ["SettingsPage"],
+      "imports": {
+        "internal": [],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": ["tests/e2e/specs/settings.spec.ts"]
+    },
+    {
+      "path": "tests/e2e/specs/dashboard-navigation.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/dashboard-widget.ts",
+          "tests/e2e/page-objects/report-details.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/dashboard-widget.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/dashboard-widget.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/email-delivery.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/reports-list.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/error-tracker-cap.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/dashboard-widget.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/report-status-ui.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/report-details.ts",
+          "tests/e2e/page-objects/reports-list.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/reports-lifecycle.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/report-details.ts",
+          "tests/e2e/page-objects/reports-list.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/settings.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/page-objects/settings.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    },
+    {
+      "path": "tests/e2e/specs/smoke.spec.ts",
+      "exports": [],
+      "imports": {
+        "internal": [
+          "tests/e2e/fixtures/auth.ts",
+          "tests/e2e/fixtures/wp-cli.ts",
+          "tests/e2e/page-objects/dashboard-widget.ts",
+          "tests/e2e/page-objects/report-details.ts",
+          "tests/e2e/page-objects/reports-list.ts"
+        ],
+        "external": ["@playwright/test"]
+      },
+      "importedBy": []
+    }
+  ]
+}
