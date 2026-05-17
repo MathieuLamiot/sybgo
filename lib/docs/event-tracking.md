@@ -116,7 +116,26 @@ The `meta` column stores a snapshot: `file`, `line`, and the first 100 character
 
 ### Per-period cap
 
-To prevent database bloat from error storms, at most **5 distinct error signatures** are stored per report period. On each error, `Error_Tracker` queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows with `report_id = 0` (the sentinel for the current, not-yet-frozen period). Once 5 distinct signatures have been recorded in the current period, new signatures are dropped. Already-known signatures continue to accumulate. The cap resets automatically after a freeze because the freeze operation sets `report_id` to the real report ID on all sentinel rows, making the `report_id = 0` set empty again.
+To prevent database bloat from error storms, at most **5 distinct error signatures** (by default) are stored per report period. On each error, `Error_Tracker` checks whether the incoming signature is already stored; if so, it increments the counter without any cap logic. For genuinely new signatures, it queries `Aggregated_Event_Repository::count_distinct_dimensions_for_report('php_error', null)` — where `null` selects rows with `report_id = 0` (the sentinel for the current, not-yet-frozen period). Already-known signatures continue to accumulate without counting against the cap. The cap resets automatically after a freeze because the freeze operation sets `report_id` to the real report ID on all sentinel rows, making the `report_id = 0` set empty again.
+
+**Filtering the cap:** The effective cap is passed through `wpm_apply_filters_typed` before it is applied:
+
+```php
+add_filter( 'sybgo_error_tracker_daily_cap', function( int $cap ): int {
+    return 10; // Allow up to 10 distinct signatures per period.
+} );
+```
+
+The filter hook name is `sybgo_error_tracker_daily_cap`, the type is `integer`, and the default value is `5`. Returning a non-integer from a hooked callback is ignored (the default is used instead, and a `_doing_it_wrong()` notice is raised).
+
+**Priority-based eviction:** When the cap is full and a new (unknown) signature arrives, the tracker compares the incoming event's priority against the lowest-priority event currently stored. If the incoming event has a *strictly higher* priority, the lowest-priority stored event is deleted and the incoming one takes its place. Priority order (highest → lowest):
+
+| Priority | Levels |
+|----------|--------|
+| 2 (high) | `user_error`, `warning`, `user_warning` |
+| 1 (medium) | `notice`, `user_notice`, `deprecated`, `user_deprecated` |
+
+If the incoming event has equal or lower priority than the stored minimum, it is discarded (existing behaviour). On a tie among stored events, the oldest entry (lowest `id`) is evicted. Fatal errors are unaffected — they bypass the cap entirely.
 
 ### Handler chaining
 

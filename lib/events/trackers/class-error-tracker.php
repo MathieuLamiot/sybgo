@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sybgo\Events\Trackers;
 
 use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
+use Sybgo\Logger;
 
 /**
  * Error Tracker class.
@@ -23,9 +24,16 @@ use Sybgo\Events\Abstracts\Abstract_Aggregated_Event;
  * in the wp_sybgo_aggregated_events table.
  *
  * Each unique error location (file + line + message excerpt) is treated as a
- * distinct signature. At most 5 distinct signatures are stored per day to
- * prevent database bloat. Occurrences of already-known signatures continue to
- * accumulate beyond the cap.
+ * distinct signature. At most DAILY_CAP distinct signatures are stored per
+ * report period to prevent database bloat. The cap is filterable via the
+ * `sybgo_error_tracker_daily_cap` filter. Occurrences of already-known
+ * signatures continue to accumulate beyond the cap.
+ *
+ * When the cap is reached and a new (unknown) signature arrives, the tracker
+ * attempts priority-based eviction: if the incoming event has a higher priority
+ * than the lowest-priority stored event, the stored event is deleted and the
+ * incoming one takes its place. Priority order (highest → lowest):
+ * error > user_error > warning > user_warning > deprecated > user_deprecated > notice > user_notice.
  *
  * The handler always chains to the previously registered error handler so that
  * it does not interfere with WordPress's own error handling or third-party plugins.
@@ -41,7 +49,9 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	private const EVENT_TYPE = 'php_error';
 
 	/**
-	 * Maximum number of distinct error signatures stored per report period.
+	 * Default maximum number of distinct error signatures stored per report period.
+	 *
+	 * Can be overridden at runtime via the `sybgo_error_tracker_daily_cap` filter.
 	 */
 	private const DAILY_CAP = 5;
 
@@ -74,6 +84,54 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 		E_CORE_ERROR    => 'core_error',
 		E_COMPILE_ERROR => 'compile_error',
 	);
+
+	/**
+	 * Priority weight for each non-fatal error level name.
+	 *
+	 * Higher integer = higher priority. Used to decide eviction: an incoming event
+	 * can only evict a stored event with a strictly lower priority.
+	 *
+	 * Fatal levels (fatal_error, core_error, compile_error, parse_error) are not
+	 * included because fatal errors bypass the cap entirely.
+	 *
+	 * @var array<string, int>
+	 */
+	private const ERROR_PRIORITY = array(
+		'error'           => 8,
+		'user_error'      => 7,
+		'warning'         => 6,
+		'user_warning'    => 5,
+		'deprecated'      => 4,
+		'user_deprecated' => 3,
+		'notice'          => 2,
+		'user_notice'     => 1,
+	);
+
+	/**
+	 * Return the display/eviction priority for a given error level string.
+	 *
+	 * Levels not present in the priority map (e.g. fatal_error, parse_error)
+	 * return 0 so they sort below explicitly ranked levels.
+	 *
+	 * @param string $level Level string, e.g. 'warning', 'notice', 'fatal_error'.
+	 * @return int Priority value (higher = more severe).
+	 */
+	public static function get_level_priority( string $level ): int {
+		return self::ERROR_PRIORITY[ $level ] ?? 0;
+	}
+
+	/**
+	 * Return the effective daily cap, applying the `sybgo_error_tracker_daily_cap` filter.
+	 *
+	 * Single source of truth for the cap's filter name and default — callers outside
+	 * the tracker (e.g. the admin dashboard widget) must use this method rather than
+	 * duplicating the filter call so a future change of filter name or default propagates.
+	 *
+	 * @return int Effective cap (defaults to DAILY_CAP = 5).
+	 */
+	public static function get_effective_daily_cap(): int {
+		return wpm_apply_filters_typed( 'integer', 'sybgo_error_tracker_daily_cap', self::DAILY_CAP );
+	}
 
 	/**
 	 * Re-entrancy guard.
@@ -173,25 +231,73 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 				'signature' => $signature,
 			);
 
-			// Enforce the per-period cap: only proceed if fewer than DAILY_CAP distinct
+			$meta = array(
+				'file'    => $errfile,
+				'line'    => $errline,
+				'message' => $message_snippet,
+			);
+
+			// If this exact signature is already stored in the current period,
+			// just increment its counter — no cap or eviction logic applies.
+			if ( $this->aggregated_repo->dimensions_hash_exists_for_report(
+				self::EVENT_TYPE,
+				$this->compute_dimensions_hash( $dimensions ),
+				null
+			) ) {
+				$this->increment( self::EVENT_TYPE, 1.0, $dimensions, $meta );
+				return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
+			}
+
+			// Apply the filterable cap (default: DAILY_CAP = 5).
+			$cap = $this->get_daily_cap();
+
+			// Enforce the per-period cap: only proceed if fewer than $cap distinct
 			// signatures have been stored in the current (unassigned) period.
-			// report_id IS NULL identifies "current period" — exactly the same
-			// pattern used for singular events — so the cap resets automatically
+			// report_id = 0 identifies "current period" — so the cap resets automatically
 			// after a freeze without any additional bookkeeping.
 			$existing_count = $this->aggregated_repo->count_distinct_dimensions_for_report(
 				self::EVENT_TYPE,
 				null
 			);
 
-			if ( $existing_count >= self::DAILY_CAP ) {
-				return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
-			}
+			if ( $existing_count >= $cap ) {
+				// Attempt priority-based eviction: find the lowest-priority stored row.
+				$lowest = $this->aggregated_repo->get_lowest_priority_row_for_report(
+					self::EVENT_TYPE,
+					self::ERROR_PRIORITY,
+					null
+				);
 
-			$meta = array(
-				'file'    => $errfile,
-				'line'    => $errline,
-				'message' => $message_snippet,
-			);
+				if ( null === $lowest ) {
+					// No stored rows to evict — discard incoming event.
+					return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
+				}
+
+				$incoming_priority = self::ERROR_PRIORITY[ $level_name ];
+				$stored_priority   = self::ERROR_PRIORITY[ $lowest['level'] ] ?? 0;
+
+				if ( $incoming_priority <= $stored_priority ) {
+					// Incoming event is not strictly higher priority — discard.
+					return $this->call_previous_handler( $errno, $errstr, $errfile, $errline );
+				}
+
+				// Evict the lowest-priority stored row to make room.
+				$deleted = $this->aggregated_repo->delete_by_dimensions_hash_and_report(
+					self::EVENT_TYPE,
+					$lowest['dimensions_hash'],
+					null
+				);
+
+				if ( false === $deleted ) {
+					Logger::info(
+						sprintf(
+							'Error_Tracker: failed to evict row (event_type=%s, dimensions_hash=%s) when making room for higher-priority event.',
+							self::EVENT_TYPE,
+							$lowest['dimensions_hash']
+						)
+					);
+				}
+			}
 
 			$this->increment( self::EVENT_TYPE, 1.0, $dimensions, $meta );
 		} finally {
@@ -241,6 +347,18 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	}
 
 	/**
+	 * Return the effective daily cap, applying the `sybgo_error_tracker_daily_cap` filter.
+	 *
+	 * Extracted as a protected method so unit tests can override the value without
+	 * needing to stub wpm_apply_filters_typed (which is loaded before Patchwork).
+	 *
+	 * @return int Effective cap (defaults to DAILY_CAP = 5).
+	 */
+	protected function get_daily_cap(): int {
+		return self::get_effective_daily_cap();
+	}
+
+	/**
 	 * Return the last PHP error, if any.
 	 *
 	 * Extracted as a protected method so unit tests can override it without
@@ -251,6 +369,23 @@ class Error_Tracker extends Abstract_Aggregated_Event {
 	protected function get_last_error(): ?array {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_get_last
 		return error_get_last();
+	}
+
+	/**
+	 * Compute the canonical dimensions hash for a given dimensions array.
+	 *
+	 * Mirrors the SHA2-256 hash computed by MySQL on the `dimensions` column, using
+	 * the same canonical JSON encoding (keys sorted alphabetically, JSON_FORCE_OBJECT).
+	 * Used to check whether a specific dimension set already exists in the database
+	 * without issuing a full-table query.
+	 *
+	 * @param array<string, mixed> $dimensions Dimension key→value pairs.
+	 * @return string SHA2-256 hex string (64 characters).
+	 */
+	private function compute_dimensions_hash( array $dimensions ): string {
+		ksort( $dimensions );
+		$json = (string) wp_json_encode( $dimensions, JSON_FORCE_OBJECT );
+		return hash( 'sha256', $json );
 	}
 
 	/**

@@ -45,7 +45,17 @@ class ErrorTrackerTest extends TestCase {
 		Monkey\setUp();
 
 		$this->aggregated_repo = Mockery::mock( Aggregated_Event_Repository::class );
-		$this->tracker         = new Error_Tracker( $this->aggregated_repo );
+
+		// Use a partial mock so tests can stub protected helper methods
+		// (get_daily_cap, get_last_error) without touching PHP built-ins that
+		// Patchwork cannot redefine after they have already been loaded.
+		$this->tracker = Mockery::mock( Error_Tracker::class, array( $this->aggregated_repo ) )
+			->makePartial()
+			->shouldAllowMockingProtectedMethods();
+
+		// Stub get_daily_cap() to return the default cap of 5 for all tests.
+		// Individual tests that verify filtering behaviour override this stub.
+		$this->tracker->shouldReceive( 'get_daily_cap' )->andReturn( 5 )->byDefault();
 
 		// Seed normal_error_reporting with the ambient mask so the suppression
 		// check works in tests that simulate @ by calling error_reporting(0).
@@ -103,6 +113,13 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_tracks_warning(): void {
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
@@ -134,8 +151,6 @@ class ErrorTrackerTest extends TestCase {
 			)
 			->andReturn( true );
 
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
-
 		$result = $this->tracker->handle_error( E_WARNING, 'Something went wrong', '/var/www/html/wp-content/plugins/test/file.php', 42 );
 
 		$this->assertFalse( $result ); // No previous handler → returns false.
@@ -151,6 +166,7 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_skips_suppressed_error(): void {
+		$this->aggregated_repo->shouldNotReceive( 'dimensions_hash_exists_for_report' );
 		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_report' );
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
 
@@ -172,13 +188,32 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_drops_when_cap_reached(): void {
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
 			->with( 'php_error', null )
 			->andReturn( 5 ); // At cap.
 
+		// No eviction possible (all same priority as incoming warning).
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn(
+				array(
+					'dimensions_hash' => 'aaaabbbbccccddddaaaabbbbccccdddd',
+					'level'           => 'warning',
+				)
+			);
+
 		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+		$this->aggregated_repo->shouldNotReceive( 'delete_by_dimensions_hash_and_report' );
 
 		$result = $this->tracker->handle_error( E_WARNING, 'New error type', '/file.php', 1 );
 
@@ -191,6 +226,13 @@ class ErrorTrackerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_handle_error_allows_when_under_cap(): void {
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
@@ -201,8 +243,6 @@ class ErrorTrackerTest extends TestCase {
 			->shouldReceive( 'upsert' )
 			->once()
 			->andReturn( true );
-
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$this->tracker->handle_error( E_NOTICE, 'A notice', '/file.php', 10 );
 
@@ -235,6 +275,13 @@ class ErrorTrackerTest extends TestCase {
 	public function test_handle_error_truncates_message_to_100_chars(): void {
 		$long_message = str_repeat( 'x', 200 );
 
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
@@ -256,8 +303,6 @@ class ErrorTrackerTest extends TestCase {
 				)
 			)
 			->andReturn( true );
-
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$this->tracker->handle_error( E_WARNING, $long_message, '/file.php', 1 );
 
@@ -404,6 +449,13 @@ class ErrorTrackerTest extends TestCase {
 		$ref->setAccessible( true );
 		$ref->setValue( $this->tracker, $mock_handler );
 
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
 		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
@@ -414,8 +466,6 @@ class ErrorTrackerTest extends TestCase {
 			->shouldReceive( 'upsert' )
 			->once()
 			->andReturn( true );
-
-		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
 
 		$result = $this->tracker->handle_error( E_WARNING, 'Test warning', '/file.php', 5 );
 
@@ -435,6 +485,11 @@ class ErrorTrackerTest extends TestCase {
 	 */
 	public function test_cap_uses_report_scoped_query(): void {
 		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		$this->aggregated_repo
 			->shouldReceive( 'count_distinct_dimensions_for_report' )
 			->once()
 			->with( 'php_error', null )
@@ -451,5 +506,313 @@ class ErrorTrackerTest extends TestCase {
 
 		// Mockery verifies the count_distinct_dimensions_for_report expectation in tearDown.
 		$this->addToAssertionCount( 1 );
+	}
+
+	// -------------------------------------------------------------------------
+	// Tests for #56: filterable daily cap
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test that handle_error() uses the default cap of 5 when no filter overrides it.
+	 *
+	 * @return void
+	 */
+	public function test_handle_error_uses_default_cap_without_filter(): void {
+		// The default byDefault() stub already returns 5; no override needed.
+		// This test verifies the default cap of 5 is respected.
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		// count = 5 → at default cap → event should be dropped.
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 5 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn( null ); // No eviction possible.
+
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		$result = $this->tracker->handle_error( E_WARNING, 'Overflow error', '/file.php', 1 );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that a filter override for the cap is honoured.
+	 *
+	 * With a filtered cap of 3 and 3 existing signatures, the event is dropped.
+	 *
+	 * @return void
+	 */
+	public function test_handle_error_uses_filtered_cap(): void {
+		// Override the default byDefault() stub to simulate a filter lowering the cap to 3.
+		$this->tracker->shouldReceive( 'get_daily_cap' )->andReturn( 3 );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		// count = 3 → at filtered cap → event should be dropped.
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 3 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn( null ); // No eviction possible.
+
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		$result = $this->tracker->handle_error( E_WARNING, 'Filtered cap test', '/file.php', 1 );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that with a filtered cap of 3 and only 2 existing signatures, the event is stored.
+	 *
+	 * @return void
+	 */
+	public function test_handle_error_allows_when_under_filtered_cap(): void {
+		// Override the default byDefault() stub to simulate a filter lowering the cap to 3.
+		$this->tracker->shouldReceive( 'get_daily_cap' )->andReturn( 3 );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		// count = 2 → under filtered cap → event should be stored.
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 2 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->andReturn( true );
+
+		$this->tracker->handle_error( E_WARNING, 'Under filtered cap', '/file.php', 1 );
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	// -------------------------------------------------------------------------
+	// Tests for #57: priority-based eviction
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test that a known signature bypasses the cap check and is simply incremented.
+	 *
+	 * When the signature is already stored, handle_error() must call upsert without
+	 * touching count_distinct_dimensions_for_report or the eviction methods.
+	 *
+	 * @return void
+	 */
+	public function test_known_signature_skips_cap_check(): void {
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( true ); // Signature already stored.
+
+		$this->aggregated_repo->shouldNotReceive( 'count_distinct_dimensions_for_report' );
+		$this->aggregated_repo->shouldNotReceive( 'get_lowest_priority_row_for_report' );
+		$this->aggregated_repo->shouldNotReceive( 'delete_by_dimensions_hash_and_report' );
+
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->andReturn( true );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$this->tracker->handle_error( E_WARNING, 'Known warning', '/file.php', 1 );
+
+		$this->addToAssertionCount( 1 );
+	}
+
+	/**
+	 * Test that an error evicts a stored warning when the cap is full.
+	 *
+	 * An incoming user_error (priority 2) should evict a stored warning (priority 2)...
+	 * actually a warning also has priority 2, so let's use notice (priority 1) as the
+	 * stored event and user_error (priority 2) as the incoming event.
+	 *
+	 * @return void
+	 */
+	public function test_eviction_occurs_when_incoming_has_higher_priority(): void {
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 5 ); // Cap full.
+
+		// Stored lowest-priority row is a notice (priority 1).
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn(
+				array(
+					'dimensions_hash' => 'abc123def456abc123def456abc123de',
+					'level'           => 'notice',
+				)
+			);
+
+		// Eviction must happen.
+		$this->aggregated_repo
+			->shouldReceive( 'delete_by_dimensions_hash_and_report' )
+			->once()
+			->with( 'php_error', 'abc123def456abc123def456abc123de', null )
+			->andReturn( true );
+
+		// Incoming event (user_error, priority 2) is then stored.
+		$this->aggregated_repo
+			->shouldReceive( 'upsert' )
+			->once()
+			->andReturn( true );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$result = $this->tracker->handle_error( E_USER_ERROR, 'User error arrives', '/file.php', 10 );
+
+		$this->assertFalse( $result ); // No previous handler.
+	}
+
+	/**
+	 * Test that no eviction occurs when the incoming event has the same priority as the stored minimum.
+	 *
+	 * @return void
+	 */
+	public function test_no_eviction_when_incoming_has_same_priority(): void {
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 5 ); // Cap full.
+
+		// Stored lowest-priority row is also a warning (priority 2) — same as incoming.
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn(
+				array(
+					'dimensions_hash' => 'abc123def456abc123def456abc123de',
+					'level'           => 'warning',
+				)
+			);
+
+		$this->aggregated_repo->shouldNotReceive( 'delete_by_dimensions_hash_and_report' );
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$result = $this->tracker->handle_error( E_WARNING, 'Same-priority warning', '/file.php', 20 );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that no eviction occurs when the incoming event has a lower priority than the stored minimum.
+	 *
+	 * @return void
+	 */
+	public function test_no_eviction_when_incoming_has_lower_priority(): void {
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->with( 'php_error', null )
+			->andReturn( 5 ); // Cap full of user_errors (priority 2).
+
+		// Stored minimum is user_error (priority 2); incoming is deprecated (priority 1).
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn(
+				array(
+					'dimensions_hash' => 'abc123def456abc123def456abc123de',
+					'level'           => 'user_error',
+				)
+			);
+
+		$this->aggregated_repo->shouldNotReceive( 'delete_by_dimensions_hash_and_report' );
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$result = $this->tracker->handle_error( E_DEPRECATED, 'A deprecation notice', '/file.php', 30 );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test that when get_lowest_priority_row_for_report returns null, the incoming event is discarded.
+	 *
+	 * This handles the edge case where the cap is full but no rows are returned by the
+	 * eviction query (should not happen in practice but is a defensive check).
+	 *
+	 * @return void
+	 */
+	public function test_no_eviction_when_no_stored_rows_returned(): void {
+
+		$this->aggregated_repo
+			->shouldReceive( 'dimensions_hash_exists_for_report' )
+			->once()
+			->andReturn( false );
+
+		$this->aggregated_repo
+			->shouldReceive( 'count_distinct_dimensions_for_report' )
+			->once()
+			->andReturn( 5 );
+
+		$this->aggregated_repo
+			->shouldReceive( 'get_lowest_priority_row_for_report' )
+			->once()
+			->andReturn( null );
+
+		$this->aggregated_repo->shouldNotReceive( 'delete_by_dimensions_hash_and_report' );
+		$this->aggregated_repo->shouldNotReceive( 'upsert' );
+
+		Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+		$result = $this->tracker->handle_error( E_USER_ERROR, 'High priority but no rows', '/file.php', 1 );
+
+		$this->assertFalse( $result );
 	}
 }

@@ -239,7 +239,7 @@ class Aggregated_Event_Repository {
 	/**
 	 * Count distinct dimension sets for the current unassigned period (or a specific report).
 	 *
-	 * Passing null counts rows with report_id IS NULL (current active period).
+	 * Passing null counts rows with report_id = 0 (sentinel for current active period).
 	 * Passing an integer counts rows assigned to that report.
 	 * Used by Error_Tracker to enforce the per-period cap of 5 distinct signatures.
 	 *
@@ -355,6 +355,141 @@ class Aggregated_Event_Repository {
 		}
 
 		return $results ? $results : array();
+	}
+
+	/**
+	 * Check whether a row with the given dimensions hash exists for an event type and period.
+	 *
+	 * Passing null checks rows with report_id = 0 (current active period).
+	 * Passing an integer checks rows assigned to that specific report.
+	 * Used by Error_Tracker to detect already-known signatures so the cap and eviction
+	 * logic are skipped for repeat occurrences.
+	 *
+	 * @param string   $event_type      Event type identifier (e.g. 'php_error').
+	 * @param string   $dimensions_hash SHA2-256 hex string of the canonical dimensions JSON.
+	 * @param int|null $report_id       null = current period (report_id=0); int = specific report.
+	 * @return bool True if a matching row exists, false otherwise.
+	 */
+	public function dimensions_hash_exists_for_report(
+		string $event_type,
+		string $dimensions_hash,
+		?int $report_id
+	): bool {
+		global $wpdb;
+
+		$report_id_value = null === $report_id ? 0 : $report_id;
+
+		$result = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM {$this->table}
+				 WHERE event_type = %s AND dimensions_hash = %s AND report_id = %d
+				 LIMIT 1",
+				$event_type,
+				$dimensions_hash,
+				$report_id_value
+			)
+		);
+
+		return null !== $result;
+	}
+
+	/**
+	 * Return the dimensions_hash and level of the stored row with the lowest priority.
+	 *
+	 * Fetches all rows for the given event type and period, maps each row's `level`
+	 * dimension to its priority weight using the provided map, and returns the row
+	 * with the lowest priority. On a tie, the row with the smallest `id` (oldest) wins.
+	 *
+	 * Passing null targets rows with report_id = 0 (current active period).
+	 * Passing an integer targets rows assigned to that specific report.
+	 *
+	 * Used by Error_Tracker to decide which stored event to evict when the cap is full
+	 * and a higher-priority incoming event arrives.
+	 *
+	 * @param string             $event_type   Event type identifier (e.g. 'php_error').
+	 * @param array<string, int> $priority_map Map of level name → priority integer (higher = more important).
+	 * @param int|null           $report_id    null = current period (report_id=0); int = specific report.
+	 * @return array{dimensions_hash: string, level: string}|null Null if no rows exist.
+	 */
+	public function get_lowest_priority_row_for_report(
+		string $event_type,
+		array $priority_map,
+		?int $report_id
+	): ?array {
+		global $wpdb;
+
+		$report_id_value = null === $report_id ? 0 : $report_id;
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT dimensions_hash, dimensions FROM {$this->table}
+				 WHERE event_type = %s AND report_id = %d
+				 ORDER BY id ASC",
+				$event_type,
+				$report_id_value
+			),
+			ARRAY_A
+		);
+
+		if ( empty( $rows ) ) {
+			return null;
+		}
+
+		$lowest_row      = null;
+		$lowest_priority = PHP_INT_MAX;
+
+		foreach ( $rows as $row ) {
+			$decoded  = json_decode( (string) $row['dimensions'], true );
+			$level    = isset( $decoded['level'] ) ? (string) $decoded['level'] : '';
+			$priority = $priority_map[ $level ] ?? 0;
+
+			// Strictly lower priority wins (oldest row on a tie due to ORDER BY id ASC).
+			if ( $priority < $lowest_priority ) {
+				$lowest_priority = $priority;
+				$lowest_row      = array(
+					'dimensions_hash' => (string) $row['dimensions_hash'],
+					'level'           => $level,
+				);
+			}
+		}
+
+		return $lowest_row;
+	}
+
+	/**
+	 * Delete a single row identified by its dimensions hash and report period.
+	 *
+	 * Passing null targets rows with report_id = 0 (current active period).
+	 * Passing an integer targets rows assigned to that specific report.
+	 *
+	 * Used by Error_Tracker to evict a lower-priority stored event when the cap is
+	 * full and a higher-priority incoming event needs a slot.
+	 *
+	 * @param string   $event_type      Event type identifier (e.g. 'php_error').
+	 * @param string   $dimensions_hash SHA2-256 hex string identifying the row to delete.
+	 * @param int|null $report_id       null = current period (report_id=0); int = specific report.
+	 * @return bool True if a row was deleted, false if no matching row was found.
+	 */
+	public function delete_by_dimensions_hash_and_report(
+		string $event_type,
+		string $dimensions_hash,
+		?int $report_id
+	): bool {
+		global $wpdb;
+
+		$report_id_value = null === $report_id ? 0 : $report_id;
+
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$this->table}
+				 WHERE event_type = %s AND dimensions_hash = %s AND report_id = %d",
+				$event_type,
+				$dimensions_hash,
+				$report_id_value
+			)
+		);
+
+		return false !== $result && $result > 0;
 	}
 
 	/**
