@@ -25,8 +25,10 @@ import { DashboardWidgetPage } from '../page-objects/dashboard-widget';
  * eviction paths.
  */
 
-const COUNT_QUERY = "db query \"SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL\" --skip-column-names";
-const CLEAR_QUERY = "db query \"DELETE FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL\"";
+// Aggregated events use report_id = 0 as the sentinel for "current period"
+// (distinct from singular events which use report_id IS NULL).
+const COUNT_QUERY = "db query \"SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0\" --skip-column-names";
+const CLEAR_QUERY = "db query \"DELETE FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0\"";
 
 function distinctCount(): number {
 	return Number( wpCli( COUNT_QUERY ).trim() );
@@ -87,7 +89,7 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 		// The warning must be stored — verify by checking the level in dimensions JSON.
 		const warningCount = Number(
 			wpCli(
-				`db query "SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL AND JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.level')) = 'user_warning'" --skip-column-names`
+				`db query "SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0 AND JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.level')) = 'user_warning'" --skip-column-names`
 			).trim()
 		);
 		expect( warningCount ).toBe( 1 );
@@ -115,7 +117,7 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 		// No notice must have been stored.
 		const noticeCount = Number(
 			wpCli(
-				`db query "SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL AND JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.level')) = 'user_notice'" --skip-column-names`
+				`db query "SELECT COUNT(*) FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0 AND JSON_UNQUOTE(JSON_EXTRACT(dimensions, '$.level')) = 'user_notice'" --skip-column-names`
 			).trim()
 		);
 		expect( noticeCount ).toBe( 0 );
@@ -138,7 +140,7 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 		// The single row has value = 3 (incremented 3 times).
 		const value = Number(
 			wpCli(
-				`db query "SELECT value FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL LIMIT 1" --skip-column-names`
+				`db query "SELECT value FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0 LIMIT 1" --skip-column-names`
 			).trim()
 		);
 		expect( value ).toBe( 3 );
@@ -185,7 +187,7 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 		// Capture the lowest ID before eviction (that is the oldest row).
 		const oldestId = Number(
 			wpCli(
-				`db query "SELECT id FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id IS NULL ORDER BY id ASC LIMIT 1" --skip-column-names`
+				`db query "SELECT id FROM wp_sybgo_aggregated_events WHERE event_type='php_error' AND report_id = 0 ORDER BY id ASC LIMIT 1" --skip-column-names`
 			).trim()
 		);
 

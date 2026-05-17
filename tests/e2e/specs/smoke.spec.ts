@@ -57,18 +57,18 @@ test.describe( 'Smoke: critical happy-path workflows', () => {
 	} );
 
 	// ------------------------------------------------------------------
-	// 4. Email delivery: freeze → email cron → SENT badge
+	// 4. Email delivery: freeze (0-event report) → email cron → SENT badge
+	//
+	// wp-env has no live SMTP server.  We exercise the "quiet period" code path:
+	// when a frozen report has total_events = 0 and send_empty_reports = false,
+	// Email_Manager::send_report_email() marks the report as emailed without
+	// calling wp_mail().  Full delivery-to-mailbox tests require Mailhog (#75).
 	// ------------------------------------------------------------------
-	test( 'email delivery workflow transitions frozen report to SENT status', async ( { page } ) => {
-		// Ensure a frozen report exists (freeze may have already run above).
-		const frozen = wpCli(
-			"db query \"SELECT COUNT(*) FROM wp_sybgo_reports WHERE status='frozen'\" --skip-column-names"
-		).trim();
-
-		if ( Number( frozen ) === 0 ) {
-			wpCli( 'cron event run sybgo_freeze_weekly_report' );
-		}
-
+	test( 'email delivery — quiet period path marks 0-event frozen report as SENT', async ( { page } ) => {
+		// Clear current-period events so the next frozen report has 0 total_events.
+		wpCli( "db query \"DELETE FROM wp_sybgo_events WHERE report_id IS NULL\"" );
+		wpCli( "db query \"DELETE FROM wp_sybgo_aggregated_events WHERE report_id = 0\"" );
+		wpCli( 'cron event run sybgo_freeze_weekly_report' );
 		wpCli( 'cron event run sybgo_send_report_emails' );
 
 		const list = new ReportsListPage( page );

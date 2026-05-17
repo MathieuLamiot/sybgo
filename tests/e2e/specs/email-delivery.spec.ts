@@ -45,6 +45,13 @@ test.describe( 'Email delivery pipeline', () => {
 	test.describe( 'when a frozen report exists', () => {
 		test.beforeAll( () => {
 			runFromRepoRoot( 'bin/dev-seed.sh' );
+			// Delete all current-period events before freezing so the frozen report
+			// has total_events = 0.  This triggers the "quiet period" code path in
+			// Email_Manager::send_report_email() which marks the report as emailed
+			// without requiring a live SMTP server (unavailable in wp-env).
+			// Testing actual email delivery to a mailbox requires Mailhog — see #75.
+			wpCli( "db query \"DELETE FROM wp_sybgo_events WHERE report_id IS NULL\"" );
+			wpCli( "db query \"DELETE FROM wp_sybgo_aggregated_events WHERE report_id = 0\"" );
 			wpCli( 'cron event run sybgo_freeze_weekly_report' );
 		} );
 

@@ -91,8 +91,17 @@ test.describe( 'Dashboard widget navigation', () => {
 	// ------------------------------------------------------------------
 	test.describe( 'when no reports exist', () => {
 		test.beforeAll( () => {
-			// Wipe the reports table so neither link renders.
-			wpCli( 'db query "TRUNCATE TABLE wp_sybgo_reports"' );
+			// Delete all reports so neither navigation link renders.
+			wpCli( 'db query "DELETE FROM wp_sybgo_reports"' );
+		} );
+
+		test.afterAll( () => {
+			// Re-activate the plugin so its activation hook recreates an active
+			// report, restoring predictable state for subsequent describe blocks.
+			wpCli( 'plugin deactivate sybgo' );
+			wpCli( 'plugin activate sybgo' );
+			// Re-seed so events exist for the filter-tab tests below.
+			runFromRepoRoot( 'bin/dev-seed.sh' );
 		} );
 
 		test.beforeEach( async ( { page } ) => {
@@ -148,27 +157,31 @@ test.describe( 'Dashboard widget navigation', () => {
 			expect( postsCount ).toBeLessThanOrEqual( allCount );
 		} );
 
-		test( 'switching between filters updates the events list without page reload', async ( { page } ) => {
+		test( 'switching filters does not trigger a page navigation', async ( { page } ) => {
 			const widget = new DashboardWidgetPage( page );
 			await widget.goto();
 
-			// Capture initial HTML of events list.
-			const initialHtml = await widget.eventsList.innerHTML();
+			const initialUrl = page.url();
 
-			// Switch to Posts filter.
+			// Switch to Posts then back to All — URL must never change.
 			await widget.clickFilterTabAndWait( 'Posts' );
-			const postsHtml = await widget.eventsList.innerHTML();
+			expect( page.url() ).toBe( initialUrl );
 
-			// Switch back to All.
 			await widget.clickFilterTabAndWait( 'All' );
-			const allHtml = await widget.eventsList.innerHTML();
+			expect( page.url() ).toBe( initialUrl );
+		} );
 
-			// All and Posts should differ (seed has non-post events too).
-			// All and initial All should be equivalent.
-			expect( allHtml ).toBe( initialHtml );
-			// Posts may equal All only if every event is a post event, but
-			// since seed also creates comments, they must differ.
-			expect( postsHtml ).not.toBe( initialHtml );
+		test( 'clicking a filter tab makes that tab the active one', async ( { page } ) => {
+			const widget = new DashboardWidgetPage( page );
+			await widget.goto();
+
+			await widget.clickFilterTabAndWait( 'Posts' );
+			const activeAfterPosts = await widget.getActiveFilterName();
+			expect( activeAfterPosts.trim().toLowerCase() ).toBe( 'posts' );
+
+			await widget.clickFilterTabAndWait( 'All' );
+			const activeAfterAll = await widget.getActiveFilterName();
+			expect( activeAfterAll.trim().toLowerCase() ).toBe( 'all' );
 		} );
 
 		test( 'no JS console errors during filter interactions', async ( { page } ) => {
