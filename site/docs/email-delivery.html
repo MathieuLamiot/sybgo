@@ -1,0 +1,152 @@
+<!-- Sybgo documentation: email-delivery. Rendered from site/docs/_sources/email-delivery.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email delivery — Sybgo documentation</title>
+    <meta name="description" content="When emails are sent, who gets them, and how to troubleshoot.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html" aria-current="page">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; Email delivery</p>
+                <h1>Email delivery</h1>
+                <p>This page covers when emails are sent, who gets them, and what to do if they don't arrive.</p>
+                <h2>When is the digest sent?</h2>
+                <!-- source: lib/docs/report-lifecycle.md "Weekly Cycle Overview" and "Cron Schedule" -->
+                <p>Every week, Sybgo runs two automatic steps:</p>
+                <ol>
+                  <li><strong>Sunday at 23:55</strong> (your site's time zone): freeze the week's report. <!-- source: lib/docs/report-lifecycle.md cron table sybgo_freeze_weekly_report --></li>
+                  <li><strong>Monday at 00:05</strong> (your site's time zone): send the digest email. <!-- source: lib/docs/report-lifecycle.md cron table sybgo_send_report_emails --></li>
+                </ol>
+                <p>So Monday morning you should have a fresh digest in your inbox.</p>
+                <p>The site's time zone comes from <strong>Settings → General</strong> in WordPress.</p>
+                <h2>Who receives the email?</h2>
+                <p>By default, the digest is sent to the <strong>administrator email</strong> configured under <strong>Settings → General → Administration Email Address</strong>. <!-- source: wp-plugin/admin/class-settings-page.php render_email_recipients_field() — defaults to get_option('admin_email') --></p>
+                <p>You can change this from <strong>Settings → Sybgo → Email Configuration</strong>:</p>
+                <ul>
+                  <li><strong>Email Recipients</strong> — one email address per line. Leave blank to use the admin email.</li>
+                  <li><strong>From Name</strong> — the name shown in the "From" field of the email. Defaults to your site's title.</li>
+                  <li><strong>From Email</strong> — the email address shown in the "From" field. Defaults to the admin email.</li>
+                </ul>
+                <p>Invalid email addresses are silently ignored when you save. <!-- source: wp-plugin/admin/class-settings-page.php sanitize_settings() --></p>
+                <h2>Changing recipients</h2>
+                <ol>
+                  <li>Go to <strong>Settings → Sybgo</strong>.</li>
+                  <li>Under <strong>Email Configuration → Email Recipients</strong>, type one email per line.</li>
+                  <li>Click <strong>Save Settings</strong>.</li>
+                </ol>
+                <p>Adding several people? Keep the list reasonable (under 20 addresses is a safe rule of thumb — for larger lists, use a real mailing service). <!-- source: lib/docs/report-lifecycle.md "Performance" --></p>
+                <h2>Turning the email off</h2>
+                <p>There is no "disable email" toggle, but you have two options:</p>
+                <ul>
+                  <li><strong>Empty the recipients list.</strong> With no valid email address, no emails will be sent. <!-- TODO verify: confirm behaviour when admin email is also blank — does Sybgo still attempt to send? --></li>
+                  <li><strong>Deactivate the plugin</strong> from the Plugins screen if you don't want any Sybgo activity at all.</li>
+                </ul>
+                <h2>Empty-week emails</h2>
+                <p>By default, if a week had no tracked activity, <strong>no email is sent</strong> to avoid inbox clutter. <!-- source: lib/docs/report-lifecycle.md "Empty Reports" --></p>
+                <p>If you'd rather receive a quiet "All quiet this week" email as confirmation that monitoring is working:</p>
+                <ol>
+                  <li>Go to <strong>Settings → Sybgo</strong>.</li>
+                  <li>Under <strong>Report Settings</strong>, check <strong>"Send weekly digest even if no events occurred"</strong>. <!-- source: wp-plugin/admin/class-settings-page.php render_send_empty_reports_field() --></li>
+                  <li>Save.</li>
+                </ol>
+                <h2>Resending a past digest</h2>
+                <p>If a digest didn't arrive or you want to forward it to a new team member:</p>
+                <ol>
+                  <li>Go to <strong>Sybgo Reports</strong>.</li>
+                  <li>Find the report you want.</li>
+                  <li>Click <strong>"Resend Email"</strong> in the Actions column. <!-- source: wp-plugin/admin/class-reports-page.php render_report_row() --></li>
+                </ol>
+                <p>The email is sent immediately to all addresses currently configured under Settings → Sybgo. <!-- source: wp-plugin/admin/class-reports-page.php handle_resend_email() --></p>
+                <h2>Troubleshooting</h2>
+                <h3>"My Monday digest didn't arrive."</h3>
+                <p><strong>Check the Sybgo Reports page.</strong> If the latest report is marked <strong>SENT</strong>, the email left your server — the problem is in transit (spam folder, mail server, or recipient inbox).</p>
+                <p><strong>Check the spam folder.</strong> Default WordPress emails are often filtered as spam because they come from <code>wordpress@yourdomain.com</code>. Install a transactional email plugin like <strong>WP Mail SMTP</strong>, <strong>Post SMTP</strong>, or <strong>FluentSMTP</strong> and route mail through a real provider (Sendgrid, Mailgun, Postmark, etc.).</p>
+                <p><strong>Check WordPress cron.</strong> Sybgo relies on WordPress's scheduled-tasks system. On very low-traffic sites, cron may not fire because nobody visits the site at the scheduled time. The fix is a real system cron: see WordPress's official guide on <a href="https://developer.wordpress.org/plugins/cron/hooking-wp-cron-into-the-system-task-scheduler/" rel="noopener">hooking WP-Cron into the system task scheduler</a>.</p>
+                <p><strong>Check that your admin email is valid.</strong> Go to <strong>Settings → General</strong> and confirm that the administrator email is correct and verified.</p>
+                <h3>"I got an email, but the trends are missing."</h3>
+                <p>Trends compare this week to last week. The first time you use Sybgo, there is no previous week to compare against — trends appear from week 2 onwards. <!-- source: lib/docs/report-lifecycle.md "Trends Not Showing" --></p>
+                <h3>"I changed recipients but the next email still went to the old address."</h3>
+                <p>The recipient list is read at send time, so a change saved before Monday morning will take effect on the next send. If the email was already sent, use <strong>Resend Email</strong> from the Sybgo Reports page.</p>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./settings.html">See settings around email</a></li>
+                  <li><a href="./troubleshooting.html">Understand cron and scheduling issues</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

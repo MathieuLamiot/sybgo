@@ -1,0 +1,133 @@
+<!-- Sybgo documentation: installation. Rendered from site/docs/_sources/installation.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation — Sybgo documentation</title>
+    <meta name="description" content="How to install Sybgo on WordPress, plus system requirements.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html" aria-current="page">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; Installation</p>
+                <h1>Installation</h1>
+                <p>There are three ways to install Sybgo. Pick the one that matches how you usually manage plugins.</p>
+                <h2>Requirements</h2>
+                <!-- source: wp-plugin/docs/development.md, lib/docs/ai-transport.md -->
+                <ul>
+                  <li>WordPress 5.0 or later</li>
+                  <li>PHP 7.4 or later</li>
+                  <li>MySQL 5.7+ or MariaDB 10.2+</li>
+                  <li>WordPress 7 or later (optional — only required for <a href="./ai-summaries.html">AI summaries</a>)</li>
+                </ul>
+                <p>The plugin works with multisite. <!-- TODO verify: multisite behaviour — does each subsite get its own digest, or is there a network-level digest? --></p>
+                <h2>Option 1: Install from WordPress.org</h2>
+                <!-- TODO verify: Sybgo is not yet on the WordPress.org plugin directory. Confirm slug and update once approved. -->
+                <ol>
+                  <li>In your WordPress admin, go to <strong>Plugins → Add New</strong>.</li>
+                  <li>Search for <strong>Sybgo</strong>.</li>
+                  <li>Click <strong>Install Now</strong>, then <strong>Activate</strong>.</li>
+                </ol>
+                <h2>Option 2: Upload a release zip from GitHub</h2>
+                <ol>
+                  <li>Download the latest release zip from the <a href="https://github.com/MathieuLamiot/sybgo/releases" rel="noopener">Sybgo releases page</a>. <!-- TODO verify: confirm public release URL once first release is cut --></li>
+                  <li>In your WordPress admin, go to <strong>Plugins → Add New → Upload Plugin</strong>.</li>
+                  <li>Choose the zip file and click <strong>Install Now</strong>.</li>
+                  <li>Click <strong>Activate Plugin</strong>.</li>
+                </ol>
+                <h2>Option 3: Manual install</h2>
+                <p>If you manage your site over SFTP:</p>
+                <ol>
+                  <li>Unzip the Sybgo download on your computer.</li>
+                  <li>Upload the <code>sybgo</code> folder into <code>wp-content/plugins/</code> on your server.</li>
+                  <li>In your WordPress admin, go to <strong>Plugins</strong>, find <strong>Sybgo</strong>, and click <strong>Activate</strong>.</li>
+                </ol>
+                <h2>Where to find Sybgo after activation</h2>
+                <p>Once activated, Sybgo adds three things to your admin:</p>
+                <ul>
+                  <li><strong>Site Activity Digest</strong> widget on the main <strong>Dashboard</strong> screen <!-- source: wp-plugin/admin/class-dashboard-widget.php register_widget() --></li>
+                  <li><strong>Sybgo Reports</strong> top-level menu in the admin sidebar <!-- source: wp-plugin/admin/class-reports-page.php add_reports_page() --></li>
+                  <li><strong>Settings → Sybgo</strong> entry under the standard Settings menu <!-- source: wp-plugin/admin/class-settings-page.php add_settings_page() --></li>
+                </ul>
+                <p>Sybgo starts tracking activity immediately. Your first weekly digest will be sent on the following Monday morning.</p>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./settings.html">Configure email recipients and tracking options</a></li>
+                  <li><a href="./your-weekly-digest.html">Understand what arrives in your weekly digest</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

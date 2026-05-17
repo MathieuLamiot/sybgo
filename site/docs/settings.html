@@ -1,0 +1,143 @@
+<!-- Sybgo documentation: settings. Rendered from site/docs/_sources/settings.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — Sybgo documentation</title>
+    <meta name="description" content="Every option on the Sybgo Settings page, explained.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html" aria-current="page">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; Settings</p>
+                <h1>Settings</h1>
+                <p>All Sybgo options live on a single page: <strong>Settings → Sybgo</strong> in your WordPress admin. <!-- source: wp-plugin/admin/class-settings-page.php add_settings_page() --></p>
+                <p>The page is organised into five sections, each described below.</p>
+                <figure class="docs-figure">
+                    <img src="../assets/img/05-settings.png" alt="The Sybgo Settings page with sections for Email Configuration, Event Tracking, Edit Magnitude Threshold, Report Settings, AI Summary Settings, Database Management, and a Database Footprint table.">
+                    <figcaption>The Sybgo Settings page — everything fits on one screen.</figcaption>
+                </figure>
+                <h2>Email Configuration</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php "sybgo_email_section" -->
+                <blockquote><p>Configure who receives the weekly activity digest emails.</p></blockquote>
+                <ul>
+                  <li><strong>Email Recipients</strong> — one email address per line. Invalid addresses are skipped on save. Leave blank to use the WordPress admin email.</li>
+                  <li><strong>From Name</strong> — the name shown in the "From" field of the digest email. Defaults to your site's title.</li>
+                  <li><strong>From Email</strong> — the address shown in the "From" field. Defaults to the WordPress admin email.</li>
+                </ul>
+                <p>See <a href="./email-delivery.html">Email delivery</a> for details on when emails are sent.</p>
+                <h2>Event Tracking</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php "sybgo_tracking_section" -->
+                <blockquote><p>Choose which events to track and how sensitive tracking should be.</p></blockquote>
+                <ul>
+                  <li><strong>Enabled Event Types</strong> — a list of checkboxes, one per event type registered on your site. Uncheck any you don't want to track. The default selection enables: posts published/edited/deleted, user registered, user role changed, core updated, plugin updated, theme updated, comment posted, comment approved. <!-- source: wp-plugin/admin/class-settings-page.php get_default_event_types() --></li>
+                  <li><strong>Edit Magnitude Threshold</strong> — a number between 0 and 100 (default <strong>5</strong>). An edit must change at least this percentage of a post's content to be tracked. Set to 0 to track every keystroke; set to 25 to only track substantial rewrites.</li>
+                </ul>
+                <p>See <a href="./what-sybgo-tracks.html">What Sybgo tracks</a> for the full list of events.</p>
+                <h2>Report Settings</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php "sybgo_report_section" -->
+                <blockquote><p>Configure report generation and delivery behavior.</p></blockquote>
+                <ul>
+                  <li><strong>Send Empty Reports</strong> — a checkbox labelled <strong>"Send weekly digest even if no events occurred"</strong>. Off by default. Turn on if you'd rather receive an "All quiet this week" email as proof of life. <!-- source: wp-plugin/admin/class-settings-page.php render_send_empty_reports_field() --></li>
+                </ul>
+                <h2>AI Summary Settings</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php "sybgo_ai_section" -->
+                <p>The behaviour of this section depends on your WordPress version:</p>
+                <ul>
+                  <li><strong>WordPress 7 or later, with AI configured</strong>: the description says <em>"AI-powered summaries use the WordPress 7 native AI provider. Configure your AI connector in Settings → Connectors."</em></li>
+                  <li><strong>WordPress earlier than 7</strong>: a warning notice replaces the section, asking you to upgrade to enable AI features.</li>
+                </ul>
+                <p>There is no Sybgo-specific configuration here — the connector lives under <strong>Settings → Connectors</strong> in WordPress 7. See <a href="./ai-summaries.html">AI summaries</a>.</p>
+                <h2>Database Management</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php "sybgo_database_section" -->
+                <blockquote><p>Control how long event data is retained in the database and monitor storage usage.</p></blockquote>
+                <ul>
+                  <li><strong>Data Retention Period</strong> — number of days to keep events before automatic cleanup. Default <strong>90</strong> days. <!-- source: wp-plugin/admin/class-settings-page.php DEFAULT_RETENTION_DAYS --></li>
+                  <li><strong>Database Footprint</strong> panel — a table showing each Sybgo database table, its current row count, and its estimated size in MB. A grand total is shown at the bottom. <!-- source: wp-plugin/admin/class-settings-page.php render_database_stats_panel() --></li>
+                  <li><strong>Run Cleanup Now</strong> button — immediately deletes events and aggregated data older than the configured retention period, without waiting for the daily cleanup cron.</li>
+                </ul>
+                <p>Cleanup also runs automatically every day at 03:00 (site time zone). <!-- source: lib/docs/report-lifecycle.md cron table sybgo_cleanup_old_events --></p>
+                <h2>Quick Help panel</h2>
+                <!-- source: wp-plugin/admin/class-settings-page.php render_settings_page() "Quick Help" -->
+                <p>At the bottom of the page, a <strong>Quick Help</strong> panel summarises the most-used options. It's the same information as above, condensed for at-a-glance reference.</p>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./your-weekly-digest.html">Verify your install with the dashboard widget</a></li>
+                  <li><a href="./privacy-and-data.html">Read about data storage and privacy</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

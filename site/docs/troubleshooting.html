@@ -1,0 +1,142 @@
+<!-- Sybgo documentation: troubleshooting. Rendered from site/docs/_sources/troubleshooting.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting — Sybgo documentation</title>
+    <meta name="description" content="Fixes for the most common Sybgo issues.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html" aria-current="page">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; Troubleshooting</p>
+                <h1>Troubleshooting</h1>
+                <p>This page covers the most common problems and the concrete steps to fix them.</p>
+                <h2>The weekly email did not arrive</h2>
+                <p><strong>Step 1: Check the Sybgo Reports page.</strong></p>
+                <p>Go to <strong>Sybgo Reports</strong> in your admin sidebar. Look at the most recent report's status badge:</p>
+                <ul>
+                  <li><strong>SENT (green)</strong> — Sybgo successfully handed the email to your server. The problem is downstream: spam filter, recipient inbox, or mail server.</li>
+                  <li><strong>FROZEN (yellow)</strong> — the report was created but the email step did not complete. Click <strong>Resend Email</strong>.</li>
+                  <li><strong>ACTIVE (blue)</strong> — the week's report has not been frozen yet. Either it's still mid-week, or Sunday's freeze cron did not run.</li>
+                </ul>
+                <p><strong>Step 2: Check your spam folder.</strong></p>
+                <p>Default WordPress emails are sometimes filtered as spam. Install a transactional email plugin like <strong>WP Mail SMTP</strong>, <strong>Post SMTP</strong>, or <strong>FluentSMTP</strong> and route mail through a real provider.</p>
+                <p><strong>Step 3: Confirm your recipients are correct.</strong></p>
+                <p>Go to <strong>Settings → Sybgo → Email Recipients</strong>. One email per line. Invalid addresses are silently skipped. <!-- source: wp-plugin/admin/class-settings-page.php sanitize_settings() --></p>
+                <p><strong>Step 4: Check that WordPress cron is running.</strong></p>
+                <p>On low-traffic sites, the scheduler may not fire because nobody visits the site at 00:05 on Monday morning. Set up a system cron — see WordPress's <a href="https://developer.wordpress.org/plugins/cron/hooking-wp-cron-into-the-system-task-scheduler/" rel="noopener">official guide</a>.</p>
+                <p>If you have WP-CLI, you can trigger the send manually:</p>
+                <pre><code>wp cron event run sybgo_send_report_emails</code></pre>
+                <!-- source: lib/docs/report-lifecycle.md "Reports Not Freezing Automatically" -->
+                <h2>Reports are not freezing on Sunday night</h2>
+                <p>Same root cause as missing emails: WordPress cron requires traffic. Set up a system cron, or use the <strong>Freeze &amp; Send Now</strong> button on the Sybgo Reports page to freeze manually.</p>
+                <p>WP-CLI manual trigger:</p>
+                <pre><code>wp cron event run sybgo_freeze_weekly_report</code></pre>
+                <h2>Trends are missing from my digest</h2>
+                <p>Trend arrows compare this week to last week. If you only have one frozen report so far, there is no previous week to compare to and trends will not show. They will appear from week 2 onwards. <!-- source: lib/docs/report-lifecycle.md "Trends Not Showing" --></p>
+                <h2>An edit I made did not show up</h2>
+                <p>Two things filter out edits:</p>
+                <ul>
+                  <li><strong>The hour-per-post throttle.</strong> If you already saved the same post within the last hour, the new save will be skipped. <!-- source: lib/docs/event-tracking.md "Smart Throttling" --></li>
+                  <li><strong>The edit magnitude threshold.</strong> Edits that change less than 5% of the content (by default) are skipped. Lower the threshold under <strong>Settings → Sybgo → Edit Magnitude Threshold</strong> if you want smaller changes to be captured.</li>
+                </ul>
+                <h2>The "Get AI Summary" button is disabled</h2>
+                <p>This happens when AI summaries are not available on your site. The most common reasons:</p>
+                <ul>
+                  <li>You are on WordPress earlier than 7. AI summaries require WordPress 7 or later. <!-- source: lib/docs/ai-transport.md "WordPress 7 Requirement" --></li>
+                  <li>You are on WordPress 7+ but no AI provider is configured. Go to <strong>Settings → Connectors</strong> in your admin to set one up.</li>
+                </ul>
+                <p>If you click the button and get an error like <em>"The AI summary could not be generated. Please check your WordPress AI connector configuration"</em>, the connector is configured but failed — verify the API key and quota with your provider. <!-- source: wp-plugin/admin/class-dashboard-widget.php ajax_widget_ai_summary() --></p>
+                <h2>The dashboard widget is empty</h2>
+                <p>If the widget shows "No events tracked yet this week", Sybgo is working but the week has been quiet. Try publishing a post, updating a plugin, or waiting for normal site activity. <!-- source: wp-plugin/admin/class-dashboard-widget.php render_events_list() --></p>
+                <p>If the widget itself is missing from the dashboard, check the <strong>Screen Options</strong> dropdown at the top right of the Dashboard screen — it may have been hidden.</p>
+                <h2>The database is using more space than I expect</h2>
+                <p>Open <strong>Settings → Sybgo → Database Footprint</strong> for a per-table breakdown. <!-- source: wp-plugin/admin/class-settings-page.php render_database_stats_panel() --></p>
+                <p>If the <strong><code>wp_sybgo_aggregated_events</code></strong> table is unusually large, your site is generating a lot of PHP warnings. Fix the underlying PHP errors (or temporarily disable error tracking by unchecking it under <strong>Enabled Event Types</strong>).</p>
+                <p>To free space immediately, click <strong>Run Cleanup Now</strong> on the Settings page. To reduce retention long-term, lower the <strong>Data Retention Period</strong> value.</p>
+                <h2>Resending an email did nothing</h2>
+                <p>The <strong>Resend Email</strong> button on the Sybgo Reports page sends the digest to whichever addresses are configured <strong>at the time you click</strong> (not at the time the report was originally generated). Check <strong>Settings → Sybgo → Email Recipients</strong> is correct, then try again. <!-- source: wp-plugin/admin/class-reports-page.php handle_resend_email() --></p>
+                <h2>Still stuck?</h2>
+                <p>If none of the above resolves your issue, please open a ticket on the <a href="https://github.com/MathieuLamiot/sybgo/issues" rel="noopener">Sybgo issue tracker</a> with:</p>
+                <ul>
+                  <li>Your WordPress version, PHP version, and Sybgo version.</li>
+                  <li>The status badge of the most recent report.</li>
+                  <li>Any error message shown in the admin or in your <code>wp-content/debug.log</code>.</li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!-- Sybgo documentation: your-weekly-digest. Rendered from site/docs/_sources/your-weekly-digest.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your weekly digest — Sybgo documentation</title>
+    <meta name="description" content="The weekly email, the dashboard widget, and the Sybgo Reports page.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html" aria-current="page">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; Your weekly digest</p>
+                <h1>Your weekly digest</h1>
+                <p>The digest is Sybgo's main job: a once-a-week recap of what happened on your site. You can read it in three places:</p>
+                <ol>
+                  <li><strong>In your inbox</strong>, sent every Monday morning.</li>
+                  <li><strong>On the WordPress dashboard</strong>, in the <em>Site Activity Digest</em> widget.</li>
+                  <li><strong>On the Sybgo Reports page</strong>, which keeps a full history.</li>
+                </ol>
+                <h2>The weekly email</h2>
+                <p>Every Monday at 00:05 (in your site's time zone), Sybgo emails the digest for the week that just ended. <!-- source: lib/docs/report-lifecycle.md cron table --></p>
+                <p>The email contains:</p>
+                <ul>
+                  <li>A header with the date range covered.</li>
+                  <li>A list of plain-language highlights ("12 new posts published", "WordPress updated to 6.5").</li>
+                  <li>Statistics cards grouped by activity type, with trend arrows comparing the week to the previous week.</li>
+                  <li>A link back to your admin to see the full report.</li>
+                </ul>
+                <p>Trend arrows mean:</p>
+                <ul>
+                  <li><strong>Up arrow</strong> — more activity than last week, with the percentage change.</li>
+                  <li><strong>Down arrow</strong> — less activity than last week.</li>
+                  <li><strong>No arrow</strong> — same as last week, or no previous week to compare against.</li>
+                </ul>
+                <!-- TODO: screenshot of digest email rendered in Gmail (capture during Chrome experiment) -->
+                <p>If your site had no activity that week, Sybgo by default <strong>does not send an email</strong> (to avoid inbox clutter). You can turn on empty-week emails in <a href="./settings.html">Settings</a>. <!-- source: lib/docs/report-lifecycle.md "Empty Reports" --></p>
+                <h2>The dashboard widget</h2>
+                <p>When you log into the WordPress admin, the <strong>Dashboard</strong> screen shows a widget titled <strong>"Site Activity Digest"</strong>. <!-- source: wp-plugin/admin/class-dashboard-widget.php register_widget() --></p>
+                <p>The widget shows:</p>
+                <ul>
+                  <li>Two buttons at the top: <strong>"Preview This Week's Digest"</strong> (shows what would be sent right now) and <strong>"View Previous Digest"</strong> (shows the last digest that was sent). <!-- source: wp-plugin/admin/class-dashboard-widget.php render_widget() --></li>
+                  <li>A <strong>"Get AI Summary"</strong> button — disabled unless you have WordPress 7 and an AI provider configured. See <a href="./ai-summaries.html">AI summaries</a>.</li>
+                  <li>A section titled <strong>"This Week's Activity"</strong> with a count of events this week and filter buttons: <strong>All</strong>, <strong>Posts</strong>, <strong>Users</strong>, <strong>Updates</strong>, <strong>Comments</strong>. <!-- source: wp-plugin/admin/class-dashboard-widget.php render_filter_buttons() --></li>
+                  <li>A list of the most recent events with icons and "X minutes ago" timestamps.</li>
+                  <li>A <strong>PHP Errors</strong> section, shown only when at least one error was caught this week. It lists the top 5 errors with their file and line number. <!-- source: wp-plugin/admin/class-dashboard-widget.php render_php_errors_section() --></li>
+                </ul>
+                <figure class="docs-figure">
+                    <img src="../assets/img/02-widget.png" alt="The Site Activity Digest dashboard widget showing twelve events tracked across posts and users, three PHP errors, and the disabled 'Get AI Summary' button.">
+                    <figcaption>The dashboard widget after a typical week — events grouped by type, with a PHP errors section at the bottom.</figcaption>
+                </figure>
+                <h2>The Sybgo Reports page</h2>
+                <p>In the admin sidebar, click <strong>Sybgo Reports</strong>. You will see a table with every report Sybgo has produced. <!-- source: wp-plugin/admin/class-reports-page.php render_reports_list() --></p>
+                <p>The first row is always <strong>this week's report</strong> (the one Sybgo is still collecting events into). Below it are <strong>past reports</strong> in reverse chronological order.</p>
+                <h3>This week's report (the active row)</h3>
+                <ul>
+                  <li><strong>Period column</strong> shows the start date and the word <strong>"Now"</strong>.</li>
+                  <li><strong>Status badge</strong> shows <strong>ACTIVE</strong> in blue. <!-- source: wp-plugin/admin/class-reports-page.php render_status_badge() --></li>
+                  <li><strong>Actions</strong> include <strong>"View Details"</strong> (which generates a live preview of what the report will look like) and <strong>"Freeze &amp; Send Now"</strong> (which ends the week early, locks in the report, and sends the email immediately).</li>
+                </ul>
+                <p>Clicking <strong>"Freeze &amp; Send Now"</strong> opens a confirmation modal that explains exactly what will happen: end the current period, freeze the events, send the email, start a new period.</p>
+                <h3>Past reports</h3>
+                <p>Each past report shows:</p>
+                <ul>
+                  <li><strong>Period</strong> — the date range it covers.</li>
+                  <li><strong>Events</strong> — how many events it contains.</li>
+                  <li><strong>Status badge</strong> — <strong>FROZEN</strong> (yellow, email not yet sent) or <strong>SENT</strong> (green). <!-- source: wp-plugin/admin/class-reports-page.php render_status_badge() --></li>
+                  <li><strong>Actions</strong> — <strong>"View Details"</strong> and <strong>"Resend Email"</strong> (useful if delivery failed or you want to send to additional recipients).</li>
+                </ul>
+                <h3>Report details page</h3>
+                <p>Click <strong>"View Details"</strong> on any report to open the full report. You will see:</p>
+                <ul>
+                  <li>The report title with the period covered and a status badge.</li>
+                  <li>A <strong>Summary</strong> section with statistics cards (one per event type, with trend arrows).</li>
+                  <li>A <strong>Highlights</strong> list — short plain-language sentences describing the week.</li>
+                  <li>An <strong>AI Summary</strong> section with a <strong>"Generate AI Summary"</strong> button (or <strong>"Regenerate AI Summary"</strong> once generated). See <a href="./ai-summaries.html">AI summaries</a>. <!-- source: wp-plugin/admin/class-reports-page.php render_report_details() --></li>
+                  <li>An <strong>All Events</strong> table listing every individual event with type icon, description, and timestamp.</li>
+                  <li>A <strong>PHP Errors</strong> table, when applicable, with one row per distinct error and an occurrence count.</li>
+                </ul>
+                <figure class="docs-figure">
+                    <img src="../assets/img/07-frozen-report-details.png" alt="A frozen report detail page showing the Summary stats, Highlights bullet list, AI Summary section, All Events table, and PHP Errors table.">
+                    <figcaption>A frozen report detail page — Summary, Highlights, AI Summary, full event list, and PHP errors.</figcaption>
+                </figure>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./what-sybgo-tracks.html">See exactly which events Sybgo tracks</a></li>
+                  <li><a href="./ai-summaries.html">Turn on AI summaries</a></li>
+                  <li><a href="./email-delivery.html">Change who gets the email</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!-- Sybgo documentation: faq. Rendered from site/docs/_sources/faq.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ — Sybgo documentation</title>
+    <meta name="description" content="The ten most common questions about Sybgo.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html" aria-current="page">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; FAQ</p>
+                <h1>FAQ</h1>
+                <h2>1. Will Sybgo slow down my site?</h2>
+                <p>It shouldn't. Sybgo only writes a small row to its own database table when a tracked event happens (a post is published, a plugin is updated). It does not run on every page view. Edit events are throttled to one per post per hour, and PHP error logging is capped at five distinct errors per week to avoid loops. <!-- source: lib/docs/event-tracking.md "Smart Throttling" and "Per-period cap" --></p>
+                <h2>2. Does Sybgo send my data to your server?</h2>
+                <p>No. All event data stays in your WordPress database. The plugin itself does not phone home. The only outbound traffic is:</p>
+                <ul>
+                  <li>The weekly digest email, sent through your normal WordPress mail setup.</li>
+                  <li>AI summary requests, <strong>only if you have explicitly enabled them</strong> on WordPress 7 with a configured AI connector. See <a href="./ai-summaries.html">AI summaries</a>.</li>
+                </ul>
+                <h2>3. How much disk space does Sybgo use?</h2>
+                <p>It depends on how active your site is. A typical active site stores roughly 100 to 500 events per week, at about 1 KB per event. With the default 90-day retention, that's around 5 to 25 MB total. <!-- source: lib/docs/event-tracking.md "Performance Considerations" --></p>
+                <p>You can check the exact footprint at any time under <strong>Settings → Sybgo → Database Footprint</strong>. <!-- source: wp-plugin/admin/class-settings-page.php render_database_stats_panel() --></p>
+                <h2>4. What happens to my data if I uninstall the plugin?</h2>
+                <p>Deleting Sybgo from the Plugins screen wipes <strong>everything</strong>: all custom tables are dropped, all scheduled tasks are cancelled, and all Sybgo options are deleted. <!-- source: wp-plugin/docs/development.md "Plugin Uninstall" --></p>
+                <p>Just <strong>deactivating</strong> (without deleting) keeps the data in place so you can re-activate later without losing anything. <!-- source: wp-plugin/docs/development.md "Plugin Uninstall" — "deactivation hook only clears cron events" --></p>
+                <h2>5. Can I export my data?</h2>
+                <p>There is no built-in export button. You can query the <code>wp_sybgo_events</code> and <code>wp_sybgo_reports</code> tables directly with a tool like phpMyAdmin or WP-CLI to extract data. <!-- TODO verify: confirm no UI export exists and whether one is planned --></p>
+                <h2>6. Does Sybgo work on multisite?</h2>
+                <p>Sybgo activates per site. <!-- TODO verify: confirm multisite behaviour — network activation, separate digests per subsite, or aggregation --></p>
+                <h2>7. Can I track events from my own plugin?</h2>
+                <p>Yes. Sybgo exposes a small extension API (<code>sybgo_track_event()</code>) that any plugin can call to record custom events. WooCommerce orders, Contact Form 7 submissions, custom bookings — any plugin can plug in and have its events appear alongside the built-in ones. See the technical <a href="https://github.com/MathieuLamiot/sybgo/blob/main/lib/docs/extension-api.md" rel="noopener">Extension API guide</a> for details.</p>
+                <h2>8. When are the emails sent?</h2>
+                <p>Every Monday at 00:05 in your site's time zone, for the week that just ended (Monday through Sunday). The report is frozen on Sunday at 23:55. You can also trigger an immediate send any time from <strong>Sybgo Reports → Freeze &amp; Send Now</strong>. <!-- source: lib/docs/report-lifecycle.md "Cron Schedule" --></p>
+                <h2>9. I have a low-traffic site and the emails don't arrive on time. Why?</h2>
+                <p>WordPress's scheduling system depends on someone visiting your site. On very quiet sites, nobody triggers cron at the scheduled minute. The fix is to set up a real system cron job — see <a href="./troubleshooting.html">Troubleshooting</a>.</p>
+                <h2>10. Is the AI summary on by default?</h2>
+                <p>No. The AI summary is opt-in. Even on WordPress 7, no AI calls are made until you click <strong>"Get AI Summary"</strong> or <strong>"Generate AI Summary"</strong>. On WordPress versions earlier than 7, the AI feature is disabled entirely. See <a href="./ai-summaries.html">AI summaries</a>.</p>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./troubleshooting.html">Open the troubleshooting guide</a></li>
+                  <li><a href="./privacy-and-data.html">Read about privacy and data</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

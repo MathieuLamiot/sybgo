@@ -1,0 +1,142 @@
+<!-- Sybgo documentation: what-sybgo-tracks. Rendered from site/docs/_sources/what-sybgo-tracks.md. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Sybgo tracks — Sybgo documentation</title>
+    <meta name="description" content="Every event type Sybgo can record, grouped by category.">
+    <meta name="theme-color" content="#0d9488">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+    <div class="container nav">
+        <a href="../" class="wordmark" aria-label="Sybgo home">
+            <span class="wordmark-dot" aria-hidden="true"></span>
+            Sybgo
+        </a>
+        <nav aria-label="Primary">
+            <ul class="nav-links">
+                <li><a href="../#features">Features</a></li>
+                <li><a href="../#how-it-works">How it works</a></li>
+                <li><a href="./index.html">Documentation</a></li>
+                <li><a href="../#faq">FAQ</a></li>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<main id="main">
+    <div class="container">
+        <div class="docs-layout">
+            <aside class="docs-sidebar" aria-label="Documentation navigation">
+                <h2>User guide</h2>
+                <ul class="docs-nav-list">
+                    <li><a href="./index.html">Overview</a></li>
+                    <li><a href="./installation.html">Installation</a></li>
+                    <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                    <li><a href="./what-sybgo-tracks.html" aria-current="page">What Sybgo tracks</a></li>
+                    <li><a href="./ai-summaries.html">AI summaries</a></li>
+                    <li><a href="./recommendations.html">Recommendations</a></li>
+                    <li><a href="./email-delivery.html">Email delivery</a></li>
+                    <li><a href="./settings.html">Settings</a></li>
+                    <li><a href="./privacy-and-data.html">Privacy and data</a></li>
+                    <li><a href="./faq.html">FAQ</a></li>
+                    <li><a href="./troubleshooting.html">Troubleshooting</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <p class="docs-breadcrumb"><a href="../">Sybgo</a> &rsaquo; <a href="./index.html">Documentation</a> &rsaquo; What Sybgo tracks</p>
+                <h1>What Sybgo tracks</h1>
+                <p>Sybgo watches your site for sixteen different kinds of events, grouped into five categories. Every event is recorded with what happened, who did it, and when. You can enable or disable individual categories under <a href="./settings.html">Settings</a>.</p>
+                <!-- source: lib/docs/event-tracking.md "What Events Are Tracked" -->
+                <h2>Posts and pages</h2>
+                <p>These cover anything published or edited in your site's content.</p>
+                <ul>
+                  <li><strong>Post published</strong> — a new post or page goes live.</li>
+                  <li><strong>Post edited</strong> — an existing post or page is updated. Sybgo measures roughly how much of the content changed; tiny typo fixes can be filtered out (see <a href="./settings.html">Settings</a>).</li>
+                  <li><strong>Post deleted</strong> — a post or page is moved to the trash.</li>
+                </ul>
+                <h2>Users</h2>
+                <ul>
+                  <li><strong>User registered</strong> — a new account is created on your site.</li>
+                  <li><strong>User role changed</strong> — someone's role is changed (for example, Subscriber promoted to Editor).</li>
+                  <li><strong>User deleted</strong> — an account is removed.</li>
+                </ul>
+                <h2>WordPress updates</h2>
+                <p>These help you keep a record of every change to your site's software.</p>
+                <ul>
+                  <li><strong>Core updated</strong> — WordPress itself is updated to a new version.</li>
+                  <li><strong>Plugin installed</strong> — a new plugin is added.</li>
+                  <li><strong>Plugin activated</strong> — a plugin is turned on.</li>
+                  <li><strong>Plugin deactivated</strong> — a plugin is turned off.</li>
+                  <li><strong>Plugin updated</strong> — a plugin is upgraded to a new version.</li>
+                  <li><strong>Theme installed</strong> — a new theme is added.</li>
+                  <li><strong>Theme updated</strong> — a theme is upgraded.</li>
+                  <li><strong>Theme switched</strong> — the active theme changes.</li>
+                </ul>
+                <h2>Comments</h2>
+                <ul>
+                  <li><strong>Comment posted</strong> — a new comment is submitted.</li>
+                  <li><strong>Comment approved</strong> — a comment is approved, unapproved, or marked as spam.</li>
+                </ul>
+                <h2>PHP errors</h2>
+                <!-- source: lib/docs/event-tracking.md "PHP Error Tracking" -->
+                <p>Sybgo also quietly listens for PHP warnings, notices, and deprecation messages from your site (the kind of thing that usually only shows up in your debug log). It groups identical errors so the same warning firing 10,000 times still only takes one row of space, and it caps the list at the five most distinct errors per week to keep your database tidy.</p>
+                <ul>
+                  <li><strong>PHP error</strong> — a non-fatal PHP warning, notice, deprecation, or user error was captured.</li>
+                </ul>
+                <p>Fatal errors are also captured when they happen at the end of a request. <!-- source: lib/docs/event-tracking.md "What is captured" --></p>
+                <h2>Smart filtering for edits</h2>
+                <p>When you edit a post, Sybgo compares the old and new content to estimate how much actually changed. Two filters keep the log meaningful:</p>
+                <ul>
+                  <li><strong>At most one edit event per post per hour.</strong> Auto-saves and quick fixes don't flood the digest. <!-- source: lib/docs/event-tracking.md "Smart Throttling" --></li>
+                  <li><strong>Edits below a minimum content change are skipped.</strong> The default threshold is 5%, configurable from 0 to 100% on the Settings page.</li>
+                </ul>
+                <p>So a 10-second typo fix won't appear in your digest, but a real rewrite will.</p>
+                <h2>Custom event types from other plugins</h2>
+                <p>Other plugins can add their own event types to Sybgo (for example, WooCommerce orders or Contact Form 7 submissions). When they do, those events appear in your digest alongside the built-in ones, with their own icon and label. <!-- source: lib/docs/extension-api.md --></p>
+                <h2>Next steps</h2>
+                <ul>
+                  <li><a href="./settings.html">Turn individual event types on or off</a></li>
+                  <li><a href="./your-weekly-digest.html">See where these events appear</a></li>
+                </ul>
+            </article>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <div class="container footer-grid">
+        <div>
+            <p class="footer-brand">Sybgo</p>
+            <p class="footer-note">Built by <a href="https://mathieulamiot.com" rel="noopener">Mathieu Lamiot</a>. Free &amp; open-source under <a href="https://github.com/MathieuLamiot/sybgo/blob/main/LICENSE" rel="noopener">GPL-2.0</a>.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="./installation.html">Installation</a></li>
+                <li><a href="./your-weekly-digest.html">Your weekly digest</a></li>
+                <li><a href="./settings.html">Settings</a></li>
+                <li><a href="./faq.html">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Project</h3>
+            <ul>
+                <li><a href="https://github.com/MathieuLamiot/sybgo" rel="noopener">GitHub</a></li>
+                <li><a href="https://mathieulamiot.com" rel="noopener">mathieulamiot.com</a></li>
+                <li><a href="https://wordpress.org/plugins/sybgo/" rel="noopener">WordPress.org</a></li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>
