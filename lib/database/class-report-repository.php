@@ -150,12 +150,11 @@ class Report_Repository {
 
 		global $wpdb;
 
+		// No user input in the query — wpdb::prepare() would warn (no placeholders).
+		// Table name is a trusted internal property; statuses are literals.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Internal table name; no user input.
 		$report = $wpdb->get_row(
-			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- No user input; prepare used for consistency.
-				"SELECT * FROM {$this->table} WHERE status IN ('frozen', 'emailed') ORDER BY frozen_at DESC LIMIT 1",
-				''
-			),
+			"SELECT * FROM {$this->table} WHERE status IN ('frozen', 'emailed') ORDER BY frozen_at DESC LIMIT 1",
 			ARRAY_A
 		);
 
