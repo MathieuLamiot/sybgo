@@ -1,8 +1,9 @@
 <?php
 /**
- * Sybgo Cron Callbacks Unit Tests
+ * Cron Callbacks Regression Tests
  *
- * Regression tests for the cron callbacks exposed by the Sybgo singleton.
+ * Pins the contract for send_report_emails_callback on Cron_Manager.
+ * Previously on Sybgo — migrated as part of #87.
  *
  * @package Sybgo\Tests\Unit
  */
@@ -14,32 +15,21 @@ namespace Sybgo\Tests\Unit;
 use Brain\Monkey;
 use Mockery;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
-use Sybgo\Database\Report_Repository;
+use Sybgo\Cron_Manager;
+use Sybgo\Database\DatabaseManager;
 use Sybgo\Email\Email_Manager;
-use Sybgo\Factory;
-use Sybgo\Sybgo;
+use Sybgo\Reports\Report_Manager;
 
 /**
- * Regression tests for cron callbacks on the main plugin class.
+ * Regression tests for cron callbacks on Cron_Manager.
  */
 class SybgoCronCallbacksTest extends TestCase {
 
-	/**
-	 * Set up test environment.
-	 *
-	 * @return void
-	 */
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
 	}
 
-	/**
-	 * Tear down test environment.
-	 *
-	 * @return void
-	 */
 	protected function tearDown(): void {
 		Monkey\tearDown();
 		Mockery::close();
@@ -49,22 +39,19 @@ class SybgoCronCallbacksTest extends TestCase {
 	/**
 	 * Regression test for #68.
 	 *
-	 * `Email_Manager::send_report_email()` declares `int $report_id` under
-	 * `declare(strict_types=1)`. The repository returns rows from $wpdb where
-	 * the `id` column comes back as a string. Without an explicit cast in the
-	 * cron callback, the strict-typed call fataled.
-	 *
-	 * This test pins the callback contract: when the report repository hands
-	 * back a string id (as $wpdb does), the email manager must receive an int.
+	 * Email_Manager::send_report_email() is strictly typed (int $report_id).
+	 * $wpdb returns column values as strings. Without the explicit cast, the
+	 * call fatals under declare(strict_types=1).
 	 *
 	 * @return void
 	 */
 	public function test_send_report_emails_callback_casts_string_id_to_int(): void {
-		$report_repo   = Mockery::mock( Report_Repository::class );
-		$email_manager = Mockery::mock( Email_Manager::class );
+		$report_manager = Mockery::mock( Report_Manager::class );
+		$email_manager  = Mockery::mock( Email_Manager::class );
+		$db_manager     = Mockery::mock( DatabaseManager::class );
 
 		// Simulate the $wpdb behavior: numeric column returned as string.
-		$report_repo->shouldReceive( 'get_last_frozen' )
+		$report_manager->shouldReceive( 'get_last_frozen_report' )
 			->once()
 			->andReturn( array( 'id' => '42' ) );
 
@@ -78,16 +65,9 @@ class SybgoCronCallbacksTest extends TestCase {
 			) )
 			->andReturn( true );
 
-		$factory = Mockery::mock( Factory::class );
-		$factory->shouldReceive( 'create_report_repository' )->andReturn( $report_repo );
-		$factory->shouldReceive( 'create_email_manager' )->andReturn( $email_manager );
+		$manager = new Cron_Manager( $report_manager, $email_manager, $db_manager );
+		$manager->send_report_emails_callback();
 
-		$sybgo = $this->build_sybgo_with_factory( $factory );
-
-		// Should not raise a TypeError.
-		$sybgo->send_report_emails_callback();
-
-		// If we got here, the cast is in place.
 		$this->assertTrue( true );
 	}
 
@@ -100,40 +80,19 @@ class SybgoCronCallbacksTest extends TestCase {
 	 * @return void
 	 */
 	public function test_send_report_emails_callback_noops_when_no_frozen_report(): void {
-		$report_repo   = Mockery::mock( Report_Repository::class );
-		$email_manager = Mockery::mock( Email_Manager::class );
+		$report_manager = Mockery::mock( Report_Manager::class );
+		$email_manager  = Mockery::mock( Email_Manager::class );
+		$db_manager     = Mockery::mock( DatabaseManager::class );
 
-		$report_repo->shouldReceive( 'get_last_frozen' )
+		$report_manager->shouldReceive( 'get_last_frozen_report' )
 			->once()
 			->andReturn( null );
 
 		$email_manager->shouldNotReceive( 'send_report_email' );
 
-		$factory = Mockery::mock( Factory::class );
-		$factory->shouldReceive( 'create_report_repository' )->andReturn( $report_repo );
-		$factory->shouldReceive( 'create_email_manager' )->andReturn( $email_manager );
-
-		$sybgo = $this->build_sybgo_with_factory( $factory );
-		$sybgo->send_report_emails_callback();
+		$manager = new Cron_Manager( $report_manager, $email_manager, $db_manager );
+		$manager->send_report_emails_callback();
 
 		$this->assertTrue( true );
-	}
-
-	/**
-	 * Build a Sybgo instance bypassing the singleton & private constructor,
-	 * with the Factory replaced by a mock.
-	 *
-	 * @param Factory $factory Factory mock.
-	 * @return Sybgo
-	 */
-	private function build_sybgo_with_factory( Factory $factory ): Sybgo {
-		$reflection = new ReflectionClass( Sybgo::class );
-		$instance   = $reflection->newInstanceWithoutConstructor();
-
-		$factory_prop = $reflection->getProperty( 'factory' );
-		$factory_prop->setAccessible( true );
-		$factory_prop->setValue( $instance, $factory );
-
-		return $instance;
 	}
 }
