@@ -39,13 +39,15 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 		runFromRepoRoot( 'bin/dev-seed.sh' );
 	} );
 
-	test.beforeEach( () => {
-		// Reset current-period error rows so every test starts at 0 signatures.
-		wpCli( CLEAR_QUERY );
-	} );
-
 	test.beforeEach( async ( { page } ) => {
 		await loginAsAdmin( page );
+	} );
+
+	test.beforeEach( () => {
+		// Reset current-period error rows AFTER login so that any PHP notices
+		// captured during the admin page load do not pollute the test's count.
+		// Tests that assert low exact counts (< cap) are sensitive to stray rows.
+		wpCli( CLEAR_QUERY );
 	} );
 
 	// ------------------------------------------------------------------
@@ -210,6 +212,16 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 	// UI: dashboard widget reflects the distinct error count
 	// ------------------------------------------------------------------
 	test( 'dashboard widget error section reflects the distinct signature count', async ( { page } ) => {
+		const widget = new DashboardWidgetPage( page );
+
+		// Navigate to the dashboard first so that any PHP notices generated
+		// during the admin page load are captured before we clear the slate.
+		await widget.goto();
+
+		// Clear again after navigation: widget.goto() loads the WP admin which
+		// runs plugin init and may emit PHP notices via the error handler.
+		wpCli( CLEAR_QUERY );
+
 		// Trigger exactly 3 distinct E_USER_NOTICE errors.
 		wpCli(
 			'eval ' +
@@ -218,8 +230,8 @@ test.describe( 'Error tracker daily-limit enforcement', () => {
 			` trigger_error("widget_count_test_3",E_USER_NOTICE);'`
 		);
 
-		const widget = new DashboardWidgetPage( page );
-		await widget.goto();
+		// Reload so the widget renders with the fresh DB state.
+		await page.reload();
 
 		const displayedCount = await widget.getDistinctErrorCount();
 		expect( displayedCount ).toBe( 3 );
