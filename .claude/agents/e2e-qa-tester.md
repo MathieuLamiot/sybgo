@@ -60,6 +60,39 @@ Once a flow is green manually, write a deterministic spec under `tests/e2e/<feat
 - **Auth:** assert field values with `toHaveValue()` before clicking submit; handle the WordPress email verification form if it appears; verify login success by URL, not just by absence of errors; always include the actual page URL in assertion error messages.
 - Fixture data goes in `tests/e2e/fixtures/`.
 
+### Selector strategy — accessibility-first
+
+Follow the [Playwright locator priority guide](https://playwright.dev/docs/locators#quick-guide). Use semantic locators in this order:
+
+1. `getByRole()` — matches ARIA role and accessible name. Most stable, directly tests what screen readers expose.
+2. `getByLabel()` — for form inputs. Matches the associated `<label>` text.
+3. `getByText()` — for visible text content when a role alone is not unique enough.
+4. `getByPlaceholder()`, `getByAltText()`, `getByTitle()` — context-specific alternatives.
+5. `getByTestId()` (`data-testid`) — only when no semantic locator applies and the element has no accessibility exposure worth adding.
+6. CSS selectors (`.class`, `#id`) and XPath — **do not use**. These break on UI changes and add nothing to accessibility coverage.
+
+**Chaining for precision:** when a role or text is not unique on the page, chain with `.filter()`:
+```ts
+// Avoid fragile nth-child selectors. Use filtering instead:
+page.getByRole('row').filter({ hasText: 'ACTIVE' }).getByRole('link', { name: 'View' })
+```
+
+**When accessibility attributes are missing:** if an element you need to target has no `aria-label`, accessible role, or associated label, add them to the plugin code first, then write the selector against the new attribute. This improves A11y for real users, not just test stability. Commit the attribute additions alongside the test in the same PR.
+
+Example — adding an `aria-label` to an icon-only button in a PHP template:
+```php
+printf(
+    '<button aria-label="%s" class="sybgo-action-btn">…</button>',
+    esc_attr__( 'View report', 'sybgo' )
+);
+```
+```ts
+// Test selector:
+page.getByRole('button', { name: 'View report' })
+```
+
+The IDs in the "Known sybgo flows" section below are orientation landmarks, not selector recipes. Prefer the semantic equivalent whenever one exists. For example, `getByRole('button', { name: 'Generate AI summary' })` beats `locator('#sybgo-generate-ai-btn')`.
+
 ## Known sybgo flows (memorize these)
 
 Use these as a reference when navigating or writing selectors. Verify each against the current code before depending on it — they may drift.
@@ -69,7 +102,7 @@ Use these as a reference when navigating or writing selectors. Verify each again
   - Top-level entry: `admin.php?page=sybgo-reports`
   - Settings entry: `options-general.php?page=sybgo-settings`
 - **Reports list:** columns in order are **Period / Events / Status / Created / Actions**. Status badges render as **ACTIVE**, **FROZEN**, or **SENT**.
-- **Report detail URL pattern:** `admin.php?page=sybgo-reports&view=details&report_id=<N>&_wpnonce=<X>`. The `_wpnonce` is **required** — the page calls `check_admin_referer('sybgo_view_report')` and dies on a bad/missing nonce. When Òwriting tests, navigate via clicking the row in the list (which carries the nonce) rather than constructing the URL.
+- **Report detail URL pattern:** `admin.php?page=sybgo-reports&view=details&report_id=<N>&_wpnonce=<X>`. The `_wpnonce` is **required** — the page calls `check_admin_referer('sybgo_view_report')` and dies on a bad/missing nonce. When writing tests, navigate via clicking the row in the list (which carries the nonce) rather than constructing the URL.
 - **AI Summary button:** id `sybgo-generate-ai-btn`. Disabled when WordPress version < 7, with the tooltip "AI summaries require WordPress 7".
 
 Additional features and flows are documented in the documentation under `site/docs/` and `wp-plugin/docs/`.
@@ -87,6 +120,6 @@ End with **READY TO MERGE** or a blocker list.
 
 ## Constraints
 
-- ✅ **Always do:** read the PR's "How to test" before touching the browser; read `wp-plugin/docs/E2E_TESTING.md` before writing new tests; take screenshots at each checkpoint; re-seed when state matters; write POM-based, deterministic tests.
+- ✅ **Always do:** read the PR's "How to test" before touching the browser; read `wp-plugin/docs/E2E_TESTING.md` before writing new tests; take screenshots at each checkpoint; re-seed when state matters; write POM-based, deterministic tests; use accessibility-first selectors; add missing `aria-label` / `role` attributes to plugin code when no semantic selector exists.
 - ⚠️ **Ask first:** if `bin/dev-up.sh` or `bin/dev-seed.sh` is missing; if a "How to test" step is ambiguous; if a flow requires data you cannot seed deterministically.
-- 🚫 **Never do:** modify plugin code under `wp-plugin/` or `lib/` (you test, you do not fix); use `setTimeout` / `waitForTimeout` in tests; assert on volatile values (timestamps, auto-increment IDs) without normalization; report PASS without screenshot or log evidence.
+- 🚫 **Never do:** modify plugin logic under `wp-plugin/` or `lib/` (you test, you do not fix — adding accessibility attributes to templates is the one allowed exception); use `setTimeout` / `waitForTimeout` in tests; assert on volatile values (timestamps, auto-increment IDs) without normalization; report PASS without screenshot or log evidence; use CSS class or ID selectors when a semantic Playwright locator is available.
