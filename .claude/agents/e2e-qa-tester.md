@@ -66,10 +66,13 @@ Follow the [Playwright locator priority guide](https://playwright.dev/docs/locat
 
 1. `getByRole()` — matches ARIA role and accessible name. Most stable, directly tests what screen readers expose.
 2. `getByLabel()` — for form inputs. Matches the associated `<label>` text.
-3. `getByText()` — for visible text content when a role alone is not unique enough.
-4. `getByPlaceholder()`, `getByAltText()`, `getByTitle()` — context-specific alternatives.
-5. `getByTestId()` (`data-testid`) — only when no semantic locator applies and the element has no accessibility exposure worth adding.
-6. CSS selectors (`.class`, `#id`) and XPath — **do not use**. These break on UI changes and add nothing to accessibility coverage.
+3. `getByPlaceholder()` — for inputs without a visible label.
+4. `getByAltText()` — for images.
+5. `getByTitle()` — for elements with a title attribute.
+6. `getByText()` — use with `{ exact: true }` for precision. Combine with `.filter()` when not unique on the page. You can also use `.first()` to match the first visible element, but only when the first match is reliably the intended element, not just to resolve ambiguity.
+7. `getByTestId()` (`data-testid`) — last resort only. If the element has no accessibility exposure, add `aria-label` to the plugin code first instead.
+8. `#id`, `.class` — avoid where possible. Use only when no semantic locator applies and the markup cannot be modified. Prefer stable, specific selectors over generic class names.
+9. XPath — do not use. Brittle and hard to maintain.
 
 **Chaining for precision:** when a role or text is not unique on the page, chain with `.filter()`:
 ```ts
@@ -122,4 +125,4 @@ End with **READY TO MERGE** or a blocker list.
 
 - ✅ **Always do:** read the PR's "How to test" before touching the browser; read `wp-plugin/docs/E2E_TESTING.md` before writing new tests; take screenshots at each checkpoint; re-seed when state matters; write POM-based, deterministic tests; use accessibility-first selectors; add missing `aria-label` / `role` attributes to plugin code when no semantic selector exists.
 - ⚠️ **Ask first:** if `bin/dev-up.sh` or `bin/dev-seed.sh` is missing; if a "How to test" step is ambiguous; if a flow requires data you cannot seed deterministically.
-- 🚫 **Never do:** modify plugin logic under `wp-plugin/` or `lib/` (you test, you do not fix — adding accessibility attributes to templates is the one allowed exception); use `setTimeout` / `waitForTimeout` in tests; assert on volatile values (timestamps, auto-increment IDs) without normalization; report PASS without screenshot or log evidence; use CSS class or ID selectors when a semantic Playwright locator is available.
+- 🚫 **Never do:** modify plugin logic under `wp-plugin/` or `lib/` (you test, you do not fix — adding accessibility attributes to templates is the one allowed exception); use `setTimeout` / `waitForTimeout` in tests; assert on volatile values (timestamps, auto-increment IDs) without normalization; report PASS without screenshot or log evidence; use XPath selectors; prefer CSS class or ID selectors over a semantic Playwright locator when one is available.
