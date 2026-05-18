@@ -302,6 +302,7 @@ sybgo/
 │   └── class-report-generator.php
 │
 ├── admin/                        # WordPress admin
+│   ├── class-admin-manager.php   # Admin registration utility
 │   ├── class-dashboard-widget.php
 │   ├── class-settings-page.php
 │   ├── class-reports-page.php
