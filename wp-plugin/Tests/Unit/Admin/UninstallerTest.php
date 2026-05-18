@@ -11,8 +11,8 @@ namespace Sybgo\Tests\Unit\Admin;
 
 use Sybgo\Admin\Uninstaller;
 use Sybgo\Admin\Settings_Page;
+use Sybgo\Cron_Manager;
 use Sybgo\Database\DatabaseManager;
-use Sybgo\Sybgo;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use Mockery;
@@ -89,7 +89,7 @@ class UninstallerTest extends TestCase {
 	 * @return void
 	 */
 	public function test_clear_cron_hooks_clears_all_hooks(): void {
-		$hooks = Sybgo::get_cron_hooks();
+		$hooks = Cron_Manager::get_hooks();
 
 		Functions\expect( 'wp_clear_scheduled_hook' )
 			->times( count( $hooks ) )
@@ -127,7 +127,7 @@ class UninstallerTest extends TestCase {
 			->times( count( ( new DatabaseManager() )->get_table_names() ) );
 
 		Functions\expect( 'wp_clear_scheduled_hook' )
-			->times( count( Sybgo::get_cron_hooks() ) );
+			->times( count( Cron_Manager::get_hooks() ) );
 
 		Functions\expect( 'delete_option' )
 			->times( count( Settings_Page::get_option_names() ) );

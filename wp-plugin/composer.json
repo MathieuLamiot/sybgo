@@ -43,7 +43,8 @@
 	"autoload": {
 		"classmap": [
 			"admin/",
-			"class-sybgo.php"
+			"class-sybgo.php",
+			"class-cron-manager.php"
 		]
 	},
 	"autoload-dev": {
