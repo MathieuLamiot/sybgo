@@ -67,14 +67,7 @@ Sybgo registers two capabilities via the WP 7 Ability API on WP 7+. On WP < 7 th
 | `sybgo/generate-summary` | Generates an AI summary of the weekly activity report |
 | `sybgo/track-events` | Records WordPress site events for the weekly digest |
 
-Registration is triggered by the `wp_abilities_api_init` action hook in `class-sybgo.php::register_abilities()`.
-
-```php
-if ( ! function_exists( 'wp_register_ability' ) ) {
-    return; // WP < 7, no-op
-}
-add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-```
+Registration is handled by `Ability_Manager` (wp-plugin root). `Sybgo::init_abilities()` calls `sybgo_init_api()`, then declares both abilities via `Ability_Manager::register()`, then calls `Ability_Manager::init()`. `Ability_Manager::init()` hooks a closure on `wp_abilities_api_init` that calls `wp_register_ability()` for each declared ability. On WP < 7 the hook is skipped via a `function_exists('wp_register_ability')` guard.
 
 ## Implementing a Custom Transport
 
