@@ -140,12 +140,7 @@ class Sybgo {
 		}
 
 		// Initialize cron schedules.
-		$cron_manager = new Cron_Manager(
-			$this->factory->create_report_manager(),
-			$this->factory->create_email_manager(),
-			$this->factory->create_database_manager()
-		);
-		$cron_manager->init();
+		$this->init_cron();
 	}
 
 	/**
@@ -162,6 +157,64 @@ class Sybgo {
 
 		// Store in factory for later use.
 		$this->factory->set_event_tracker( $event_tracker );
+	}
+
+	/**
+	 * Register all plugin cron events and wire their callbacks.
+	 *
+	 * Creates services via the factory, registers closures with Cron_Manager,
+	 * then calls init() to schedule and wire everything.
+	 *
+	 * @return void
+	 */
+	private function init_cron(): void {
+		$cron_manager   = new Cron_Manager();
+		$report_manager = $this->factory->create_report_manager();
+		$email_manager  = $this->factory->create_email_manager();
+		$db_manager     = $this->factory->create_database_manager();
+
+		$cron_manager->register(
+			'sybgo_freeze_weekly_report',
+			'weekly',
+			static function () use ( $report_manager ): void {
+				$report_manager->freeze_current_report();
+			},
+			'next Sunday 23:55'
+		);
+
+		$cron_manager->register(
+			'sybgo_send_report_emails',
+			'weekly',
+			static function () use ( $report_manager, $email_manager ): void {
+				$last_frozen = $report_manager->get_last_frozen_report();
+				if ( ! $last_frozen ) {
+					return;
+				}
+				// int cast: $wpdb returns column values as strings; send_report_email() is strictly typed — see #68.
+				$email_manager->send_report_email( (int) $last_frozen['id'] );
+			},
+			'next Monday 00:05'
+		);
+
+		$cron_manager->register(
+			'sybgo_cleanup_old_events',
+			'daily',
+			static function () use ( $db_manager ): void {
+				$db_manager->cleanup_old_events( Admin\Settings_Page::get_retention_days() );
+			},
+			'tomorrow 3:00'
+		);
+
+		$cron_manager->register(
+			'sybgo_retry_failed_emails',
+			'daily',
+			static function () use ( $email_manager ): void {
+				$email_manager->retry_failed_emails();
+			},
+			'tomorrow 9:00'
+		);
+
+		$cron_manager->init();
 	}
 
 	/**

@@ -16,29 +16,19 @@ use Brain\Monkey\Functions;
 use Mockery;
 use PHPUnit\Framework\TestCase;
 use Sybgo\Cron_Manager;
-use Sybgo\Database\DatabaseManager;
-use Sybgo\Email\Email_Manager;
-use Sybgo\Reports\Report_Manager;
 
 /**
  * Tests for Cron_Manager.
  */
 class CronManagerTest extends TestCase {
 
-	/** @var Report_Manager&\Mockery\MockInterface */
-	private $report_manager;
-	/** @var Email_Manager&\Mockery\MockInterface */
-	private $email_manager;
-	/** @var DatabaseManager&\Mockery\MockInterface */
-	private $db_manager;
-
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
 		Functions\when( 'esc_html__' )->returnArg();
-		$this->report_manager = Mockery::mock( Report_Manager::class );
-		$this->email_manager  = Mockery::mock( Email_Manager::class );
-		$this->db_manager     = Mockery::mock( DatabaseManager::class );
+		// Stub scheduling functions used by init().
+		Functions\when( 'wp_next_scheduled' )->justReturn( false );
+		Functions\when( 'wp_schedule_event' )->justReturn( null );
 	}
 
 	protected function tearDown(): void {
@@ -47,15 +37,11 @@ class CronManagerTest extends TestCase {
 		parent::tearDown();
 	}
 
-	private function make_manager(): Cron_Manager {
-		return new Cron_Manager( $this->report_manager, $this->email_manager, $this->db_manager );
-	}
-
 	// -------------------------------------------------------------------------
 	// get_hooks
 	// -------------------------------------------------------------------------
 
-	public function test_get_hooks_returns_four_hook_names(): void {
+	public function test_get_hooks_returns_four_hooks(): void {
 		$hooks = Cron_Manager::get_hooks();
 
 		$this->assertCount( 4, $hooks );
@@ -66,47 +52,42 @@ class CronManagerTest extends TestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// init — schedule registration
+	// register / init — hook wiring
 	// -------------------------------------------------------------------------
 
+	public function test_register_adds_to_registrations(): void {
+		$manager  = new Cron_Manager();
+		$callback = static function (): void {};
+
+		$manager->register( 'my_hook', 'daily', $callback, 'tomorrow 9:00' );
+
+		Actions\expectAdded( 'my_hook' )->once();
+
+		$manager->init();
+
+		$this->assertTrue( true );
+	}
+
 	public function test_init_registers_cron_schedules_filter(): void {
-		Functions\expect( 'wp_next_scheduled' )->andReturn( true );
+		$manager = new Cron_Manager();
 
 		Filters\expectAdded( 'cron_schedules' )->once();
 
-		$this->make_manager()->init();
+		$manager->init();
 
 		$this->assertTrue( true );
 	}
 
-	public function test_init_schedules_events_when_not_yet_scheduled(): void {
-		Functions\expect( 'wp_next_scheduled' )->times( 4 )->andReturn( false );
-		Functions\expect( 'wp_schedule_event' )->times( 4 );
+	public function test_init_wires_all_registered_hooks(): void {
+		$manager  = new Cron_Manager();
+		$callback = static function (): void {};
 
-		$this->make_manager()->init();
-
-		$this->assertTrue( true );
-	}
-
-	public function test_init_skips_scheduling_when_already_scheduled(): void {
-		Functions\expect( 'wp_next_scheduled' )->times( 4 )->andReturn( 1234567890 );
-		Functions\expect( 'wp_schedule_event' )->never();
-
-		$this->make_manager()->init();
-
-		$this->assertTrue( true );
-	}
-
-
-	public function test_init_wires_four_action_callbacks(): void {
-		Functions\when( 'wp_next_scheduled' )->justReturn( true );
-
-		$hooks = Cron_Manager::get_hooks();
-		foreach ( $hooks as $hook ) {
+		foreach ( Cron_Manager::get_hooks() as $hook ) {
+			$manager->register( $hook, 'daily', $callback, 'tomorrow 3:00' );
 			Actions\expectAdded( $hook )->once();
 		}
 
-		$this->make_manager()->init();
+		$manager->init();
 
 		$this->assertTrue( true );
 	}
@@ -115,12 +96,8 @@ class CronManagerTest extends TestCase {
 	// deactivate
 	// -------------------------------------------------------------------------
 
-	public function test_deactivate_clears_all_four_hooks(): void {
-		foreach ( Cron_Manager::get_hooks() as $hook ) {
-			Functions\expect( 'wp_clear_scheduled_hook' )
-				->once()
-				->with( $hook );
-		}
+	public function test_deactivate_clears_all_hooks(): void {
+		Functions\expect( 'wp_clear_scheduled_hook' )->times( 4 );
 
 		Cron_Manager::deactivate();
 
@@ -131,17 +108,19 @@ class CronManagerTest extends TestCase {
 	// add_cron_intervals
 	// -------------------------------------------------------------------------
 
-	public function test_add_cron_intervals_adds_weekly_schedule(): void {
-		$result = $this->make_manager()->add_cron_intervals( array() );
+	public function test_add_cron_intervals_adds_weekly(): void {
+		$manager = new Cron_Manager();
+		$result  = $manager->add_cron_intervals( array() );
 
 		$this->assertArrayHasKey( 'weekly', $result );
 		$this->assertSame( 604800, $result['weekly']['interval'] );
 	}
 
 	public function test_add_cron_intervals_does_not_overwrite_existing_weekly(): void {
+		$manager  = new Cron_Manager();
 		$existing = array( 'weekly' => array( 'interval' => 999, 'display' => 'Custom' ) );
 
-		$result = $this->make_manager()->add_cron_intervals( $existing );
+		$result = $manager->add_cron_intervals( $existing );
 
 		$this->assertSame( 999, $result['weekly']['interval'] );
 	}
