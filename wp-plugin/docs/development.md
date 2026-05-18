@@ -280,7 +280,7 @@ wp db query "SELECT recipient, status, error_message FROM wp_sybgo_email_log WHE
 sybgo/
 ├── sybgo.php                     # Main plugin file (WordPress header)
 ├── class-sybgo.php               # Plugin lifecycle (activate/deactivate/init)
-├── class-cron-manager.php        # WP-Cron schedule registration and callbacks
+├── class-cron-manager.php        # WP-Cron registration utility
 ├── class-factory.php             # Dependency injection
 │
 ├── database/                     # Data layer
