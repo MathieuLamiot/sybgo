@@ -227,28 +227,89 @@ class Sybgo {
 	}
 
 	/**
-	 * Initialize admin interface.
+	 * Initialize admin interface via Admin_Manager.
 	 *
 	 * @return void
 	 */
 	private function init_admin(): void {
-		// Initialize dashboard widget.
-		$dashboard_widget = $this->create_dashboard_widget();
-		$dashboard_widget->init();
+		$admin_manager = new Admin\Admin_Manager();
 
-		// Initialize settings page.
-		$settings_page = $this->create_settings_page();
-		$settings_page->init();
+		$admin_manager->register_page( $this->create_dashboard_widget() );
+		$admin_manager->register_page( $this->create_settings_page() );
+		$admin_manager->register_page( $this->create_reports_page() );
 
-		// Initialize reports page.
-		$reports_page = $this->create_reports_page();
-		$reports_page->init();
+		$factory = $this->factory;
 
-		// Register manual cleanup handler.
-		add_action( 'admin_post_sybgo_run_cleanup', array( $this, 'handle_manual_cleanup' ) );
+		$admin_manager->register_cleanup_handler(
+			static function () use ( $factory ): void {
+				if (
+					! isset( $_POST['sybgo_cleanup_nonce'] ) ||
+					! wp_verify_nonce(
+						sanitize_text_field( wp_unslash( $_POST['sybgo_cleanup_nonce'] ) ),
+						'sybgo_run_cleanup'
+					)
+				) {
+					wp_die( esc_html__( 'Security check failed.', 'sybgo' ) );
+				}
 
-		// Enqueue admin assets.
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ), 5 );
+				if ( ! current_user_can( 'manage_options' ) ) {
+					wp_die( esc_html__( 'You do not have permission to perform this action.', 'sybgo' ) );
+				}
+
+				$days       = Admin\Settings_Page::get_retention_days();
+				$db_manager = $factory->create_database_manager();
+				$deleted    = $db_manager->cleanup_old_events( $days );
+
+				Logger::info( sprintf( 'Manual cleanup: deleted %d rows with %d-day retention', $deleted, $days ) );
+
+				wp_safe_redirect(
+					add_query_arg(
+						array(
+							'page'         => 'sybgo-settings',
+							'cleanup-done' => $deleted,
+						),
+						admin_url( 'options-general.php' )
+					)
+				);
+				exit;
+			}
+		);
+
+		$admin_manager->register_asset_enqueuer(
+			static function ( string $hook ): void {
+				$our_pages = array( 'toplevel_page_sybgo-reports', 'settings_page_sybgo-settings', 'index.php' );
+
+				if ( ! in_array( $hook, $our_pages, true ) ) {
+					return;
+				}
+
+				wp_enqueue_style(
+					'sybgo-admin',
+					SYBGO_PLUGIN_URL . 'assets/css/admin.css',
+					array(),
+					SYBGO_VERSION
+				);
+
+				wp_enqueue_script(
+					'sybgo-admin',
+					SYBGO_PLUGIN_URL . 'assets/js/admin.js',
+					array( 'jquery' ),
+					SYBGO_VERSION,
+					true
+				);
+
+				wp_localize_script(
+					'sybgo-admin',
+					'sybgoAdmin',
+					array(
+						'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+						'nonce'   => wp_create_nonce( 'sybgo_admin_nonce' ),
+					)
+				);
+			}
+		);
+
+		$admin_manager->init();
 	}
 
 	/**
@@ -374,22 +435,6 @@ class Sybgo {
 	}
 
 	/**
-	 * Add custom cron intervals.
-	 *
-	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
-	 * @return array<string, array<string, mixed>> Modified schedules.
-	 */
-	public function add_cron_intervals( array $schedules ): array {
-		if ( ! isset( $schedules['weekly'] ) ) {
-			$schedules['weekly'] = array(
-				'interval' => 604800, // 7 days in seconds.
-				'display'  => esc_html__( 'Once Weekly', 'sybgo' ),
-			);
-		}
-		return $schedules;
-	}
-
-	/**
 	 * Cron callback: Freeze weekly report.
 	 *
 	 * @return void
@@ -414,7 +459,6 @@ class Sybgo {
 		$report_repo   = $this->factory->create_report_repository();
 		$email_manager = $this->factory->create_email_manager();
 
-		// Get last frozen report.
 		$last_frozen = $report_repo->get_last_frozen();
 
 		if ( ! $last_frozen ) {
@@ -425,10 +469,8 @@ class Sybgo {
 		// Email_Manager::send_report_email() is strictly typed against int.
 		$report_id = (int) $last_frozen['id'];
 
-		// Send email.
 		$sent = $email_manager->send_report_email( $report_id );
 
-		// Log result.
 		if ( $sent ) {
 			Logger::info( sprintf( 'Successfully sent weekly digest for report #%d', $report_id ) );
 		} else {
@@ -446,52 +488,9 @@ class Sybgo {
 		$days       = Admin\Settings_Page::get_retention_days();
 		$deleted    = $db_manager->cleanup_old_events( $days );
 
-		// Log cleanup action.
 		if ( $deleted > 0 ) {
 			Logger::info( sprintf( 'Cleaned up %d rows (retention: %d days)', $deleted, $days ) );
 		}
-	}
-
-	/**
-	 * Handle manual cleanup form submission.
-	 *
-	 * Verifies nonce and capability, runs cleanup with the configured retention period,
-	 * then redirects back to the settings page with the deletion count in the query string.
-	 *
-	 * @return void
-	 * @since 1.1.0
-	 */
-	public function handle_manual_cleanup(): void {
-		if (
-			! isset( $_POST['sybgo_cleanup_nonce'] ) ||
-			! wp_verify_nonce(
-				sanitize_text_field( wp_unslash( $_POST['sybgo_cleanup_nonce'] ) ),
-				'sybgo_run_cleanup'
-			)
-		) {
-			wp_die( esc_html__( 'Security check failed.', 'sybgo' ) );
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action.', 'sybgo' ) );
-		}
-
-		$days       = Admin\Settings_Page::get_retention_days();
-		$db_manager = $this->factory->create_database_manager();
-		$deleted    = $db_manager->cleanup_old_events( $days );
-
-		Logger::info( sprintf( 'Manual cleanup: deleted %d rows with %d-day retention', $deleted, $days ) );
-
-		wp_safe_redirect(
-			add_query_arg(
-				array(
-					'page'         => 'sybgo-settings',
-					'cleanup-done' => $deleted,
-				),
-				admin_url( 'options-general.php' )
-			)
-		);
-		exit;
 	}
 
 	/**
@@ -501,56 +500,27 @@ class Sybgo {
 	 */
 	public function retry_failed_emails_callback(): void {
 		$email_manager = $this->factory->create_email_manager();
+		$retried       = $email_manager->retry_failed_emails();
 
-		// Retry failed emails.
-		$retried = $email_manager->retry_failed_emails();
-
-		// Log result.
 		if ( $retried > 0 ) {
 			Logger::info( sprintf( 'Retried %d failed emails', $retried ) );
 		}
 	}
 
 	/**
-	 * Enqueue admin assets.
+	 * Add custom cron intervals.
 	 *
-	 * @param string $hook Current admin page hook.
-	 * @return void
+	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
+	 * @return array<string, array<string, mixed>> Modified schedules.
 	 */
-	public function enqueue_admin_assets( string $hook ): void {
-		// Enqueue only on our admin pages and dashboard.
-		$our_pages = array( 'toplevel_page_sybgo-reports', 'settings_page_sybgo-settings', 'index.php' );
-
-		if ( ! in_array( $hook, $our_pages, true ) ) {
-			return;
+	public function add_cron_intervals( array $schedules ): array {
+		if ( ! isset( $schedules['weekly'] ) ) {
+			$schedules['weekly'] = array(
+				'interval' => 604800, // 7 days in seconds.
+				'display'  => esc_html__( 'Once Weekly', 'sybgo' ),
+			);
 		}
-
-		// Enqueue CSS.
-		wp_enqueue_style(
-			'sybgo-admin',
-			SYBGO_PLUGIN_URL . 'assets/css/admin.css',
-			array(),
-			SYBGO_VERSION
-		);
-
-		// Enqueue JS.
-		wp_enqueue_script(
-			'sybgo-admin',
-			SYBGO_PLUGIN_URL . 'assets/js/admin.js',
-			array( 'jquery' ),
-			SYBGO_VERSION,
-			true
-		);
-
-		// Localize script with data.
-		wp_localize_script(
-			'sybgo-admin',
-			'sybgoAdmin',
-			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'sybgo_admin_nonce' ),
-			)
-		);
+		return $schedules;
 	}
 
 	/**
