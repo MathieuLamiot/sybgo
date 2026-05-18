@@ -46,6 +46,10 @@ if ( ! function_exists( 'register_activation_hook' ) ) {
 if ( ! function_exists( 'register_deactivation_hook' ) ) {
 	function register_deactivation_hook( $file, $callback ) {}
 }
+if ( ! function_exists( 'wp_register_ability' ) ) {
+	function wp_register_ability( string $name, array $args ): void {}
+}
+
 if ( ! defined( 'ARRAY_A' ) ) {
 	define( 'ARRAY_A', 'ARRAY_A' );
 }

@@ -128,11 +128,8 @@ class Sybgo {
 		// Initialize event tracking.
 		$this->init_event_tracking();
 
-		// Initialize extensibility API.
-		$this->init_extensibility_api();
-
-		// Initialize WordPress 7 Ability API.
-		$this->init_wp7_abilities();
+		// Initialize extensibility API and WordPress 7 Ability API.
+		$this->init_abilities();
 
 		// Initialize admin interface.
 		if ( is_admin() ) {
@@ -218,14 +215,66 @@ class Sybgo {
 	}
 
 	/**
-	 * Initialize extensibility API.
+	 * Initialise the public extensibility API and register WordPress 7 abilities.
 	 *
 	 * @return void
 	 */
-	private function init_extensibility_api(): void {
-		// Initialize API with event repository.
+	private function init_abilities(): void {
+		// Initialise the public API so third-party plugins can track events.
 		$event_repo = $this->factory->create_event_repository();
 		\sybgo_init_api( $event_repo );
+
+		// Guard: ability registration (and the __() calls inside it) must only
+		// run on WordPress 7+.  On earlier versions wp_register_ability is
+		// undefined, and evaluating __() args inside register() too early
+		// (during plugins_loaded) triggers _doing_it_wrong() → trigger_error().
+		if ( ! function_exists( 'wp_register_ability' ) ) {
+			return;
+		}
+
+		$ability_manager = new Ability_Manager();
+		$factory         = $this->factory;
+
+		$ability_manager->register(
+			'sybgo/generate-summary',
+			array(
+				'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
+				'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
+				'category'            => 'sybgo',
+				'execute_callback'    => static function () use ( $factory ): ?string {
+					$ai_summarizer = $factory->create_ai_summarizer();
+					if ( null === $ai_summarizer ) {
+						return null;
+					}
+					$last_frozen = $factory->create_report_repository()->get_last_frozen();
+					if ( ! $last_frozen ) {
+						return null;
+					}
+					// Summary generation is handled via Report_Generator; stub for Ability API.
+					return null;
+				},
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'manage_options' );
+				},
+			)
+		);
+
+		$ability_manager->register(
+			'sybgo/track-events',
+			array(
+				'label'               => __( 'Track Site Events', 'sybgo' ),
+				'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
+				'category'            => 'sybgo',
+				'execute_callback'    => static function () use ( $factory ): bool {
+					return null !== $factory->get_event_tracker();
+				},
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'manage_options' );
+				},
+			)
+		);
+
+		$ability_manager->init();
 	}
 
 	/**
@@ -313,82 +362,6 @@ class Sybgo {
 			$aggregated_repo,
 			$ai_summarizer
 		);
-	}
-
-	/**
-	 * Initialize WordPress 7 Ability API registrations.
-	 *
-	 * No-op on WordPress < 7 (function_exists guard).
-	 *
-	 * @return void
-	 */
-	private function init_wp7_abilities(): void {
-		if ( ! function_exists( 'wp_register_ability' ) ) {
-			return;
-		}
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
-	}
-
-	/**
-	 * Register plugin capabilities via the WordPress 7 Ability API.
-	 *
-	 * Called on the wp_abilities_api_init action when running on WordPress 7+.
-	 *
-	 * @return void
-	 */
-	public function register_abilities(): void {
-		wp_register_ability(
-			'sybgo/generate-summary',
-			array(
-				'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
-				'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
-				'category'            => 'sybgo',
-				'execute_callback'    => array( $this, 'ability_generate_summary' ),
-				'permission_callback' => function () {
-					return current_user_can( 'manage_options' );
-				},
-			)
-		);
-
-		wp_register_ability(
-			'sybgo/track-events',
-			array(
-				'label'               => __( 'Track Site Events', 'sybgo' ),
-				'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
-				'category'            => 'sybgo',
-				'execute_callback'    => array( $this, 'ability_track_events' ),
-				'permission_callback' => function () {
-					return current_user_can( 'manage_options' );
-				},
-			)
-		);
-	}
-
-	/**
-	 * Execute callback for the sybgo/generate-summary ability.
-	 *
-	 * @return string|null AI-generated summary or null if unavailable.
-	 */
-	public function ability_generate_summary(): ?string {
-		$ai_summarizer = $this->factory->create_ai_summarizer();
-		if ( null === $ai_summarizer ) {
-			return null;
-		}
-		$report_repo = $this->factory->create_report_repository();
-		$last_frozen = $report_repo->get_last_frozen();
-		if ( ! $last_frozen ) {
-			return null;
-		}
-		return null; // Summary generation is handled via Report_Generator; stub for Ability API.
-	}
-
-	/**
-	 * Execute callback for the sybgo/track-events ability.
-	 *
-	 * @return bool True if event tracking is active.
-	 */
-	public function ability_track_events(): bool {
-		return null !== $this->factory->get_event_tracker();
 	}
 
 	/**
