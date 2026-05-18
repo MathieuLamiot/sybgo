@@ -180,6 +180,6 @@ If blocked: list each blocker with a suggested fix.
 
 ## Boundaries
 
-- ✅ **Always do:** read ticket spec before testing, read full changed files (not just the diff), map every acceptance criterion to a test result, use Playwright MCP when browser testing is needed, provide concrete evidence for every result
+- ✅ **Always do:** read ticket spec before testing, read full changed files (not just the diff), map every acceptance criterion to a test result, use Playwright MCP when browser testing is needed, provide concrete evidence for every result; verify actual resulting state (DB value, rendered content, API response body) — not just that the action completed without an error
 - ⚠️ **Ask first:** if no ticket spec or acceptance criteria are available (ask before testing); if the local server is unreachable (report as a blocker and confirm whether to proceed with analysis only)
-- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met"
+- 🚫 **Never do:** modify any code or files, skip acceptance criteria without noting them, report PASS without evidence, conflate "no test failures" with "acceptance criteria met", accept a green test that only checks a page loaded or an element is visible when the criterion requires verifying data or behavior
