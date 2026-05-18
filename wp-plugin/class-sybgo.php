@@ -128,11 +128,8 @@ class Sybgo {
 		// Initialize event tracking.
 		$this->init_event_tracking();
 
-		// Initialize extensibility API.
-		$this->init_extensibility_api();
-
-		// Initialize WordPress 7 Ability API.
-		$this->init_wp7_abilities();
+		// Initialize extensibility API and WordPress 7 Ability API.
+		$this->init_abilities();
 
 		// Initialize admin interface.
 		if ( is_admin() ) {
@@ -140,7 +137,77 @@ class Sybgo {
 		}
 
 		// Initialize cron schedules.
-		$this->init_cron();
+		$this->init_cron_schedules();
+	}
+
+	/**
+	 * Initialise the public extensibility API and register WordPress 7 abilities.
+	 *
+	 * @return void
+	 */
+	private function init_abilities(): void {
+		// Initialise the public API so third-party plugins can track events.
+		$event_repo = $this->factory->create_event_repository();
+		\sybgo_init_api( $event_repo );
+
+		// Guard: ability registration must only run on WordPress 7+.
+		// On earlier versions wp_register_ability is undefined.
+		if ( ! function_exists( 'wp_register_ability' ) ) {
+			return;
+		}
+
+		$factory = $this->factory;
+
+		// Defer to 'init' so the 'sybgo' text domain is loaded before __() evaluates.
+		// Calling __() during plugins_loaded on WP 6.7+ triggers _doing_it_wrong()
+		// → trigger_error() → captured by Error_Tracker, polluting DB counts.
+		add_action(
+			'init',
+			static function () use ( $factory ): void {
+				$ability_manager = new Ability_Manager();
+
+				$ability_manager->register(
+					'sybgo/generate-summary',
+					array(
+						'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
+						'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
+						'category'            => 'sybgo',
+						'execute_callback'    => static function () use ( $factory ): ?string {
+							$ai_summarizer = $factory->create_ai_summarizer();
+							if ( null === $ai_summarizer ) {
+								return null;
+							}
+							$last_frozen = $factory->create_report_repository()->get_last_frozen();
+							if ( ! $last_frozen ) {
+								return null;
+							}
+							// Summary generation is handled via Report_Generator; stub for Ability API.
+							return null;
+						},
+						'permission_callback' => static function (): bool {
+							return current_user_can( 'manage_options' );
+						},
+					)
+				);
+
+				$ability_manager->register(
+					'sybgo/track-events',
+					array(
+						'label'               => __( 'Track Site Events', 'sybgo' ),
+						'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
+						'category'            => 'sybgo',
+						'execute_callback'    => static function () use ( $factory ): bool {
+							return null !== $factory->get_event_tracker();
+						},
+						'permission_callback' => static function (): bool {
+							return current_user_can( 'manage_options' );
+						},
+					)
+				);
+
+				$ability_manager->init();
+			}
+		);
 	}
 
 	/**
@@ -157,75 +224,6 @@ class Sybgo {
 
 		// Store in factory for later use.
 		$this->factory->set_event_tracker( $event_tracker );
-	}
-
-	/**
-	 * Register all plugin cron events and wire their callbacks.
-	 *
-	 * Creates services via the factory, registers closures with Cron_Manager,
-	 * then calls init() to schedule and wire everything.
-	 *
-	 * @return void
-	 */
-	private function init_cron(): void {
-		$cron_manager   = new Cron_Manager();
-		$report_manager = $this->factory->create_report_manager();
-		$email_manager  = $this->factory->create_email_manager();
-		$db_manager     = $this->factory->create_database_manager();
-
-		$cron_manager->register(
-			'sybgo_freeze_weekly_report',
-			'weekly',
-			static function () use ( $report_manager ): void {
-				$report_manager->freeze_current_report();
-			},
-			'next Sunday 23:55'
-		);
-
-		$cron_manager->register(
-			'sybgo_send_report_emails',
-			'weekly',
-			static function () use ( $report_manager, $email_manager ): void {
-				$last_frozen = $report_manager->get_last_frozen_report();
-				if ( ! $last_frozen ) {
-					return;
-				}
-				// int cast: $wpdb returns column values as strings; send_report_email() is strictly typed — see #68.
-				$email_manager->send_report_email( (int) $last_frozen['id'] );
-			},
-			'next Monday 00:05'
-		);
-
-		$cron_manager->register(
-			'sybgo_cleanup_old_events',
-			'daily',
-			static function () use ( $db_manager ): void {
-				$db_manager->cleanup_old_events( Admin\Settings_Page::get_retention_days() );
-			},
-			'tomorrow 3:00'
-		);
-
-		$cron_manager->register(
-			'sybgo_retry_failed_emails',
-			'daily',
-			static function () use ( $email_manager ): void {
-				$email_manager->retry_failed_emails();
-			},
-			'tomorrow 9:00'
-		);
-
-		$cron_manager->init();
-	}
-
-	/**
-	 * Initialize extensibility API.
-	 *
-	 * @return void
-	 */
-	private function init_extensibility_api(): void {
-		// Initialize API with event repository.
-		$event_repo = $this->factory->create_event_repository();
-		\sybgo_init_api( $event_repo );
 	}
 
 	/**
@@ -316,79 +314,142 @@ class Sybgo {
 	}
 
 	/**
-	 * Initialize WordPress 7 Ability API registrations.
+	 * Get all cron hook names registered by the plugin.
 	 *
-	 * No-op on WordPress < 7 (function_exists guard).
+	 * Single source of truth for cron hook names, used both when scheduling
+	 * (init_cron_schedules, deactivate) and when cleaning up (Uninstaller).
+	 *
+	 * @return array<string> List of WP-Cron hook names.
+	 * @since 1.0.0
+	 */
+	public static function get_cron_hooks(): array {
+		return array(
+			'sybgo_freeze_weekly_report',
+			'sybgo_send_report_emails',
+			'sybgo_cleanup_old_events',
+			'sybgo_retry_failed_emails',
+		);
+	}
+
+	/**
+	 * Initialize cron schedules.
 	 *
 	 * @return void
 	 */
-	private function init_wp7_abilities(): void {
-		if ( ! function_exists( 'wp_register_ability' ) ) {
+	private function init_cron_schedules(): void {
+		$hooks = self::get_cron_hooks();
+
+		// Register custom cron intervals.
+		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
+
+		// Schedule weekly freeze (Sunday 23:55).
+		if ( ! wp_next_scheduled( $hooks[0] ) ) {
+			$next_sunday = strtotime( 'next Sunday 23:55' );
+			wp_schedule_event( $next_sunday, 'weekly', $hooks[0] );
+		}
+
+		// Schedule weekly email (Monday 00:05).
+		if ( ! wp_next_scheduled( $hooks[1] ) ) {
+			$next_monday = strtotime( 'next Monday 00:05' );
+			wp_schedule_event( $next_monday, 'weekly', $hooks[1] );
+		}
+
+		// Schedule daily cleanup (3am).
+		if ( ! wp_next_scheduled( $hooks[2] ) ) {
+			$next_3am = strtotime( 'tomorrow 3:00' );
+			wp_schedule_event( $next_3am, 'daily', $hooks[2] );
+		}
+
+		// Schedule daily retry failed emails (9am).
+		if ( ! wp_next_scheduled( $hooks[3] ) ) {
+			$next_9am = strtotime( 'tomorrow 9:00' );
+			wp_schedule_event( $next_9am, 'daily', $hooks[3] );
+		}
+
+		// Register cron callbacks.
+		add_action( $hooks[0], array( $this, 'freeze_weekly_report_callback' ) );
+		add_action( $hooks[1], array( $this, 'send_report_emails_callback' ) );
+		add_action( $hooks[2], array( $this, 'cleanup_old_events_callback' ) );
+		add_action( $hooks[3], array( $this, 'retry_failed_emails_callback' ) );
+	}
+
+	/**
+	 * Add custom cron intervals.
+	 *
+	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
+	 * @return array<string, array<string, mixed>> Modified schedules.
+	 */
+	public function add_cron_intervals( array $schedules ): array {
+		if ( ! isset( $schedules['weekly'] ) ) {
+			$schedules['weekly'] = array(
+				'interval' => 604800, // 7 days in seconds.
+				'display'  => esc_html__( 'Once Weekly', 'sybgo' ),
+			);
+		}
+		return $schedules;
+	}
+
+	/**
+	 * Cron callback: Freeze weekly report.
+	 *
+	 * @return void
+	 */
+	public function freeze_weekly_report_callback(): void {
+		$report_manager = $this->factory->create_report_manager();
+		$frozen_id      = $report_manager->freeze_current_report();
+
+		if ( $frozen_id ) {
+			Logger::info( sprintf( 'Weekly report #%d frozen successfully', $frozen_id ) );
+		} else {
+			Logger::info( 'No active report to freeze' );
+		}
+	}
+
+	/**
+	 * Cron callback: Send report emails.
+	 *
+	 * @return void
+	 */
+	public function send_report_emails_callback(): void {
+		$report_repo   = $this->factory->create_report_repository();
+		$email_manager = $this->factory->create_email_manager();
+
+		// Get last frozen report.
+		$last_frozen = $report_repo->get_last_frozen();
+
+		if ( ! $last_frozen ) {
 			return;
 		}
-		add_action( 'wp_abilities_api_init', array( $this, 'register_abilities' ) );
+
+		// Cast report id to int — $wpdb returns column values as strings, but
+		// Email_Manager::send_report_email() is strictly typed against int.
+		$report_id = (int) $last_frozen['id'];
+
+		// Send email.
+		$sent = $email_manager->send_report_email( $report_id );
+
+		// Log result.
+		if ( $sent ) {
+			Logger::info( sprintf( 'Successfully sent weekly digest for report #%d', $report_id ) );
+		} else {
+			Logger::error( sprintf( 'Failed to send weekly digest for report #%d', $report_id ) );
+		}
 	}
 
 	/**
-	 * Register plugin capabilities via the WordPress 7 Ability API.
-	 *
-	 * Called on the wp_abilities_api_init action when running on WordPress 7+.
+	 * Cron callback: Cleanup old events.
 	 *
 	 * @return void
 	 */
-	public function register_abilities(): void {
-		wp_register_ability(
-			'sybgo/generate-summary',
-			array(
-				'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
-				'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
-				'category'            => 'sybgo',
-				'execute_callback'    => array( $this, 'ability_generate_summary' ),
-				'permission_callback' => function () {
-					return current_user_can( 'manage_options' );
-				},
-			)
-		);
+	public function cleanup_old_events_callback(): void {
+		$db_manager = $this->factory->create_database_manager();
+		$days       = Admin\Settings_Page::get_retention_days();
+		$deleted    = $db_manager->cleanup_old_events( $days );
 
-		wp_register_ability(
-			'sybgo/track-events',
-			array(
-				'label'               => __( 'Track Site Events', 'sybgo' ),
-				'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
-				'category'            => 'sybgo',
-				'execute_callback'    => array( $this, 'ability_track_events' ),
-				'permission_callback' => function () {
-					return current_user_can( 'manage_options' );
-				},
-			)
-		);
-	}
-
-	/**
-	 * Execute callback for the sybgo/generate-summary ability.
-	 *
-	 * @return string|null AI-generated summary or null if unavailable.
-	 */
-	public function ability_generate_summary(): ?string {
-		$ai_summarizer = $this->factory->create_ai_summarizer();
-		if ( null === $ai_summarizer ) {
-			return null;
+		// Log cleanup action.
+		if ( $deleted > 0 ) {
+			Logger::info( sprintf( 'Cleaned up %d rows (retention: %d days)', $deleted, $days ) );
 		}
-		$report_repo = $this->factory->create_report_repository();
-		$last_frozen = $report_repo->get_last_frozen();
-		if ( ! $last_frozen ) {
-			return null;
-		}
-		return null; // Summary generation is handled via Report_Generator; stub for Ability API.
-	}
-
-	/**
-	 * Execute callback for the sybgo/track-events ability.
-	 *
-	 * @return bool True if event tracking is active.
-	 */
-	public function ability_track_events(): bool {
-		return null !== $this->factory->get_event_tracker();
 	}
 
 	/**
@@ -431,6 +492,23 @@ class Sybgo {
 			)
 		);
 		exit;
+	}
+
+	/**
+	 * Cron callback: Retry failed emails.
+	 *
+	 * @return void
+	 */
+	public function retry_failed_emails_callback(): void {
+		$email_manager = $this->factory->create_email_manager();
+
+		// Retry failed emails.
+		$retried = $email_manager->retry_failed_emails();
+
+		// Log result.
+		if ( $retried > 0 ) {
+			Logger::info( sprintf( 'Retried %d failed emails', $retried ) );
+		}
 	}
 
 	/**
@@ -512,7 +590,10 @@ class Sybgo {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		Cron_Manager::deactivate();
+		// Clear scheduled events.
+		foreach ( self::get_cron_hooks() as $hook ) {
+			wp_clear_scheduled_hook( $hook );
+		}
 
 		// Flush rewrite rules.
 		flush_rewrite_rules();
