@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace Sybgo\Modules;
 
 use Sybgo\Ability_Manager;
+use Sybgo\Events\Event_Tracker;
 use Sybgo\Factory;
 
 // Exit if accessed directly.
@@ -36,7 +37,6 @@ class Event_Module implements Module_Interface {
 	 * Factory instance.
 	 *
 	 * @var Factory
-	 * @phpstan-ignore property.onlyWritten (used once boot() is implemented in sub-issue #95)
 	 */
 	private Factory $factory;
 
@@ -44,7 +44,6 @@ class Event_Module implements Module_Interface {
 	 * Ability Manager instance.
 	 *
 	 * @var Ability_Manager
-	 * @phpstan-ignore property.onlyWritten (used once boot() is implemented in sub-issue #95)
 	 */
 	private Ability_Manager $abilities;
 
@@ -60,11 +59,50 @@ class Event_Module implements Module_Interface {
 	}
 
 	/**
-	 * Register event-tracking hooks and abilities.
+	 * Register event-tracking hooks and the sybgo/track-events ability.
+	 *
+	 * Initialises Event_Tracker, stores it on the factory, exposes the public
+	 * extensibility API via sybgo_init_api(), and schedules ability registration
+	 * for priority 5 on the 'init' action so that __() evaluates after the
+	 * text domain is loaded (WP 6.7+ fires _doing_it_wrong() otherwise).
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
-		// No-op stub — implementation follows in a dedicated sub-issue.
+		$event_repo      = $this->factory->create_event_repository();
+		$aggregated_repo = $this->factory->create_aggregated_event_repository();
+		$event_tracker   = new Event_Tracker( $event_repo, $aggregated_repo );
+		$event_tracker->init();
+		$this->factory->set_event_tracker( $event_tracker );
+
+		// Expose the public extensibility API.
+		\sybgo_init_api( $event_repo );
+
+		// Defer ability registration to 'init' so __() evaluates after the
+		// 'sybgo' text domain is loaded. Priority 5 ensures this runs before
+		// Ability_Manager::init() which is scheduled at priority 20.
+		$abilities = $this->abilities;
+		$factory   = $this->factory;
+
+		add_action(
+			'init',
+			static function () use ( $abilities, $factory ): void {
+				$abilities->register(
+					'sybgo/track-events',
+					array(
+						'label'               => __( 'Track Site Events', 'sybgo' ),
+						'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
+						'category'            => 'sybgo',
+						'execute_callback'    => static function () use ( $factory ): bool {
+							return null !== $factory->get_event_tracker();
+						},
+						'permission_callback' => static function (): bool {
+							return current_user_can( 'manage_options' );
+						},
+					)
+				);
+			},
+			5
+		);
 	}
 }
