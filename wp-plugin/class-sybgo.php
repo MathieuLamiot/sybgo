@@ -148,8 +148,18 @@ class Sybgo {
 			20
 		);
 
+		// Initialise the shared Cron_Manager so that Report_Module's registered
+		// cron callbacks (e.g. sybgo_freeze_weekly_report) are actually scheduled.
+		$cron->init();
+
+		// Initialise the shared Admin_Manager so that Report_Module's registered
+		// admin pages (Dashboard_Widget, Reports_Page) are actually wired up.
+		if ( is_admin() ) {
+			$admin->init();
+		}
+
 		// Legacy init_*() sub-methods keep remaining behaviour until each
-		// module's boot() is fully implemented (sub-issues #96–#99).
+		// module's boot() is fully implemented (sub-issues #97–#99).
 		// They are removed in sub-issue #100 once all modules are complete.
 		$this->init_abilities();
 		if ( is_admin() ) {
