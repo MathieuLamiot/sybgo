@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Sybgo\Admin;
 
+use Sybgo\Cron_Manager;
 use Sybgo\Database\DatabaseManager;
-use Sybgo\Sybgo;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -58,12 +58,12 @@ class Uninstaller {
 	/**
 	 * Clear all plugin-registered cron hooks.
 	 *
-	 * Hook names are sourced from the Sybgo class to avoid duplication.
+	 * Hook names are sourced from Cron_Manager::get_hooks() as the canonical source.
 	 *
 	 * @return void
 	 */
 	public function clear_cron_hooks(): void {
-		foreach ( Sybgo::get_cron_hooks() as $hook ) {
+		foreach ( Cron_Manager::get_hooks() as $hook ) {
 			wp_clear_scheduled_hook( $hook );
 		}
 	}
