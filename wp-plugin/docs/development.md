@@ -354,6 +354,23 @@ Callback methods on a module (e.g. `freeze_report_callback()`) are public named 
 
 When adding a new domain feature, identify the appropriate existing module or create a new one. Do not add hooks or domain logic to `class-sybgo.php`.
 
+### MCP_Module
+
+`MCP_Module` is a thin wrapper that calls `MCP_Helper::init()` from the `mcp-helper-lib` package. Because `MCP_Helper` is self-contained and idempotent (guarded by a static flag), `MCP_Module::boot()` is intentionally a one-liner with no dependencies on Sybgo managers.
+
+## mcp-helper-lib
+
+`mcp-helper-lib/` is a standalone Composer package (`wp-media/mcp-helper-lib`) at the repository root. It is not part of `sybgo-lib`; any WP Media plugin can depend on it independently.
+
+The lib provides a one-call integration surface — `MCP_Helper::init()` — that wires all the WordPress hooks needed to display a "Connect to AI" button on admin profile pages. When a user creates an Application Password, a button appears next to the new password. Clicking it opens a modal where the user selects an AI tool (Claude Desktop or GitHub Copilot); the modal generates the ready-to-paste MCP JSON config block client-side and offers a copy button with file-path instructions.
+
+Key classes:
+
+- `WPMedia\MCPHelper\MCP_Helper` — registers `show_user_profile`, `edit_user_profile`, `admin_enqueue_scripts`, and `wp_ajax_mcp_helper_get_tools`. All registrations are skipped on second and subsequent calls, so multiple plugins sharing the lib never produce duplicate hooks or assets.
+- `WPMedia\MCPHelper\MCP_Config_Provider` — pure data layer; returns tool metadata and generates JSON config arrays for each supported tool. Extend by subclassing and overriding `TOOLS`.
+
+Assets (`mcp-config.js`, `mcp-config.css`) are enqueued only on `profile.php` and `user-edit.php`, and only if not already registered. The JS object `mcpHelper` (localised by `MCP_Helper::enqueue_assets()`) exposes `siteUrl`, `username`, `tools` metadata, and a nonce; JSON generation happens entirely client-side so the Application Password is never sent to the server after its initial creation.
+
 ## Admin AJAX Actions
 
 The dashboard widget registers two AJAX actions, both protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body).
