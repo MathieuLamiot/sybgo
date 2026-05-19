@@ -137,10 +137,20 @@ class Sybgo {
 			$module->boot();
 		}
 
-		// Legacy init_*() sub-methods keep existing behaviour until each
-		// module's boot() is fully implemented (sub-issues #95–#99).
+		// Defer Ability_Manager::init() to the 'init' action at priority 20
+		// so that module boot() callbacks (which register abilities at priority 5
+		// on 'init') have already run before the manager wires them into WP.
+		add_action(
+			'init',
+			static function () use ( $abilities ): void {
+				$abilities->init();
+			},
+			20
+		);
+
+		// Legacy init_*() sub-methods keep remaining behaviour until each
+		// module's boot() is fully implemented (sub-issues #96–#99).
 		// They are removed in sub-issue #100 once all modules are complete.
-		$this->init_event_tracking();
 		$this->init_abilities();
 		if ( is_admin() ) {
 			$this->init_admin();
@@ -174,15 +184,16 @@ class Sybgo {
 	}
 
 	/**
-	 * Initialise the public extensibility API and register WordPress 7 abilities.
+	 * Register the sybgo/generate-summary WordPress 7 Ability.
+	 *
+	 * The sybgo_init_api() call and the sybgo/track-events ability have been
+	 * moved to Event_Module::boot() (sub-issue #95). This method registers only
+	 * the generate-summary ability and will be emptied once AI_Module::boot()
+	 * is implemented in sub-issue #98.
 	 *
 	 * @return void
 	 */
 	private function init_abilities(): void {
-		// Initialise the public API so third-party plugins can track events.
-		$event_repo = $this->factory->create_event_repository();
-		\sybgo_init_api( $event_repo );
-
 		// Guard: ability registration must only run on WordPress 7+.
 		// On earlier versions wp_register_ability is undefined.
 		if ( ! function_exists( 'wp_register_ability' ) ) {
@@ -223,40 +234,9 @@ class Sybgo {
 					)
 				);
 
-				$ability_manager->register(
-					'sybgo/track-events',
-					array(
-						'label'               => __( 'Track Site Events', 'sybgo' ),
-						'description'         => __( 'Records WordPress site events for inclusion in the weekly digest.', 'sybgo' ),
-						'category'            => 'sybgo',
-						'execute_callback'    => static function () use ( $factory ): bool {
-							return null !== $factory->get_event_tracker();
-						},
-						'permission_callback' => static function (): bool {
-							return current_user_can( 'manage_options' );
-						},
-					)
-				);
-
 				$ability_manager->init();
 			}
 		);
-	}
-
-	/**
-	 * Initialize event tracking system.
-	 *
-	 * @return void
-	 */
-	private function init_event_tracking(): void {
-		// Initialize event tracker.
-		$event_repo      = $this->factory->create_event_repository();
-		$aggregated_repo = $this->factory->create_aggregated_event_repository();
-		$event_tracker   = new Events\Event_Tracker( $event_repo, $aggregated_repo );
-		$event_tracker->init();
-
-		// Store in factory for later use.
-		$this->factory->set_event_tracker( $event_tracker );
 	}
 
 	/**
