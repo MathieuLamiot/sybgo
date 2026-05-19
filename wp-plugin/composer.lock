@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3370095ce93b33061989e903a15d0e17",
+    "content-hash": "cc8ceddaea919be806b7b686fe9e6dcf",
     "packages": [
         {
             "name": "berlindb/core",
@@ -87,7 +87,7 @@
             "dist": {
                 "type": "path",
                 "url": "../mcp-helper-lib",
-                "reference": "05120f8a2b3d3ce6c55d1ba826ea07a4e9f08093"
+                "reference": "31b094b6414dc31db3a621278512570a0e2319e5"
             },
             "type": "library",
             "autoload": {
@@ -109,6 +109,7 @@
             "description": "WordPress admin helper that generates MCP JSON config blocks for AI tools",
             "homepage": "https://github.com/wp-media/mcp-helper-lib",
             "transport-options": {
+                "symlink": false,
                 "relative": true
             }
         },
