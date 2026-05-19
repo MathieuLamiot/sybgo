@@ -365,63 +365,25 @@ class Sybgo {
 		// Register custom cron intervals.
 		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
 
-		// sybgo_freeze_weekly_report is now registered by Report_Module::boot()
-		// via CronManager — scheduling and callback are handled there.
+		// sybgo_freeze_weekly_report is now registered by Report_Module::boot().
+		// sybgo_send_report_emails and sybgo_retry_failed_emails are now registered
+		// by Email_Module::boot() via CronManager.
 
-		// Schedule weekly email (Monday 00:05).
-		if ( ! wp_next_scheduled( $hooks[1] ) ) {
-			$next_monday = strtotime( 'next Monday 00:05' );
-			wp_schedule_event( $next_monday, 'weekly', $hooks[1] );
-		}
-
-		// Schedule daily cleanup (3am).
+		// Schedule daily cleanup (3am). Moved to Settings_Module in #99.
 		if ( ! wp_next_scheduled( $hooks[2] ) ) {
 			$next_3am = strtotime( 'tomorrow 3:00' );
 			wp_schedule_event( $next_3am, 'daily', $hooks[2] );
 		}
 
-		// Schedule daily retry failed emails (9am).
-		if ( ! wp_next_scheduled( $hooks[3] ) ) {
-			$next_9am = strtotime( 'tomorrow 9:00' );
-			wp_schedule_event( $next_9am, 'daily', $hooks[3] );
-		}
-
-		// Register remaining cron callbacks (freeze is handled by Report_Module).
-		add_action( $hooks[1], array( $this, 'send_report_emails_callback' ) );
+		// Register remaining cron callback (cleanup; email callbacks handled by Email_Module).
 		add_action( $hooks[2], array( $this, 'cleanup_old_events_callback' ) );
-		add_action( $hooks[3], array( $this, 'retry_failed_emails_callback' ) );
-	}
-
-	/**
-	 * Cron callback: Send report emails.
-	 *
-	 * @return void
-	 */
-	public function send_report_emails_callback(): void {
-		$report_repo   = $this->factory->create_report_repository();
-		$email_manager = $this->factory->create_email_manager();
-
-		$last_frozen = $report_repo->get_last_frozen();
-
-		if ( ! $last_frozen ) {
-			return;
-		}
-
-		// Cast report id to int — $wpdb returns column values as strings, but
-		// Email_Manager::send_report_email() is strictly typed against int.
-		$report_id = (int) $last_frozen['id'];
-
-		$sent = $email_manager->send_report_email( $report_id );
-
-		if ( $sent ) {
-			Logger::info( sprintf( 'Successfully sent weekly digest for report #%d', $report_id ) );
-		} else {
-			Logger::error( sprintf( 'Failed to send weekly digest for report #%d', $report_id ) );
-		}
 	}
 
 	/**
 	 * Cron callback: Cleanup old events.
+	 *
+	 * Moved to Settings_Module::cleanup_old_events_callback() in #99.
+	 * Kept here temporarily until Settings_Module::boot() is wired.
 	 *
 	 * @return void
 	 */
@@ -432,20 +394,6 @@ class Sybgo {
 
 		if ( $deleted > 0 ) {
 			Logger::info( sprintf( 'Cleaned up %d rows (retention: %d days)', $deleted, $days ) );
-		}
-	}
-
-	/**
-	 * Cron callback: Retry failed emails.
-	 *
-	 * @return void
-	 */
-	public function retry_failed_emails_callback(): void {
-		$email_manager = $this->factory->create_email_manager();
-		$retried       = $email_manager->retry_failed_emails();
-
-		if ( $retried > 0 ) {
-			Logger::info( sprintf( 'Retried %d failed emails', $retried ) );
 		}
 	}
 
