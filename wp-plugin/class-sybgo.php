@@ -148,8 +148,18 @@ class Sybgo {
 			20
 		);
 
+		// Initialise the shared Cron_Manager so that Report_Module's registered
+		// cron callbacks (e.g. sybgo_freeze_weekly_report) are actually scheduled.
+		$cron->init();
+
+		// Initialise the shared Admin_Manager so that Report_Module's registered
+		// admin pages (Dashboard_Widget, Reports_Page) are actually wired up.
+		if ( is_admin() ) {
+			$admin->init();
+		}
+
 		// Legacy init_*() sub-methods keep remaining behaviour until each
-		// module's boot() is fully implemented (sub-issues #96–#99).
+		// module's boot() is fully implemented (sub-issues #97–#99).
 		// They are removed in sub-issue #100 once all modules are complete.
 		$this->init_abilities();
 		if ( is_admin() ) {
@@ -247,9 +257,8 @@ class Sybgo {
 	private function init_admin(): void {
 		$admin_manager = new Admin\Admin_Manager();
 
-		$admin_manager->register_page( $this->create_dashboard_widget() );
+		// Dashboard_Widget and Reports_Page are now registered by Report_Module::boot().
 		$admin_manager->register_page( $this->create_settings_page() );
-		$admin_manager->register_page( $this->create_reports_page() );
 
 		$factory = $this->factory;
 
@@ -326,29 +335,6 @@ class Sybgo {
 	}
 
 	/**
-	 * Create dashboard widget instance.
-	 *
-	 * @return Admin\Dashboard_Widget Dashboard widget instance.
-	 */
-	private function create_dashboard_widget(): Admin\Dashboard_Widget {
-		$event_repo       = $this->factory->create_event_repository();
-		$report_repo      = $this->factory->create_report_repository();
-		$event_registry   = $this->factory->create_event_registry();
-		$ai_summarizer    = $this->factory->create_ai_summarizer();
-		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
-		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
-
-		return new Admin\Dashboard_Widget(
-			$event_repo,
-			$report_repo,
-			$report_generator,
-			$ai_summarizer,
-			$event_registry,
-			$aggregated_repo
-		);
-	}
-
-	/**
 	 * Create settings page instance.
 	 *
 	 * @return Admin\Settings_Page Settings page instance.
@@ -358,33 +344,6 @@ class Sybgo {
 		$db_stats       = $this->factory->create_db_stats();
 
 		return new Admin\Settings_Page( $event_registry, $db_stats );
-	}
-
-	/**
-	 * Create reports page instance.
-	 *
-	 * @return Admin\Reports_Page Reports page instance.
-	 */
-	private function create_reports_page(): Admin\Reports_Page {
-		$event_repo       = $this->factory->create_event_repository();
-		$report_repo      = $this->factory->create_report_repository();
-		$event_registry   = $this->factory->create_event_registry();
-		$report_manager   = $this->factory->create_report_manager();
-		$ai_summarizer    = $this->factory->create_ai_summarizer();
-		$report_generator = new Reports\Report_Generator( $event_repo, $report_repo );
-		$email_manager    = $this->factory->create_email_manager();
-		$aggregated_repo  = $this->factory->create_aggregated_event_repository();
-
-		return new Admin\Reports_Page(
-			$event_repo,
-			$report_repo,
-			$report_manager,
-			$report_generator,
-			$email_manager,
-			$event_registry,
-			$aggregated_repo,
-			$ai_summarizer
-		);
 	}
 
 	/**
@@ -416,11 +375,8 @@ class Sybgo {
 		// Register custom cron intervals.
 		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
 
-		// Schedule weekly freeze (Sunday 23:55).
-		if ( ! wp_next_scheduled( $hooks[0] ) ) {
-			$next_sunday = strtotime( 'next Sunday 23:55' );
-			wp_schedule_event( $next_sunday, 'weekly', $hooks[0] );
-		}
+		// sybgo_freeze_weekly_report is now registered by Report_Module::boot()
+		// via CronManager — scheduling and callback are handled there.
 
 		// Schedule weekly email (Monday 00:05).
 		if ( ! wp_next_scheduled( $hooks[1] ) ) {
@@ -440,27 +396,10 @@ class Sybgo {
 			wp_schedule_event( $next_9am, 'daily', $hooks[3] );
 		}
 
-		// Register cron callbacks.
-		add_action( $hooks[0], array( $this, 'freeze_weekly_report_callback' ) );
+		// Register remaining cron callbacks (freeze is handled by Report_Module).
 		add_action( $hooks[1], array( $this, 'send_report_emails_callback' ) );
 		add_action( $hooks[2], array( $this, 'cleanup_old_events_callback' ) );
 		add_action( $hooks[3], array( $this, 'retry_failed_emails_callback' ) );
-	}
-
-	/**
-	 * Cron callback: Freeze weekly report.
-	 *
-	 * @return void
-	 */
-	public function freeze_weekly_report_callback(): void {
-		$report_manager = $this->factory->create_report_manager();
-		$frozen_id      = $report_manager->freeze_current_report();
-
-		if ( $frozen_id ) {
-			Logger::info( sprintf( 'Weekly report #%d frozen successfully', $frozen_id ) );
-		} else {
-			Logger::info( 'No active report to freeze' );
-		}
 	}
 
 	/**
