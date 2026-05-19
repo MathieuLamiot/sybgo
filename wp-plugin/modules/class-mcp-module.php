@@ -35,9 +35,19 @@ class MCP_Module implements Module_Interface {
 	/**
 	 * Boot the MCP connect helper.
 	 *
+	 * Registers the plugin's own copy of the assets so the lib never needs
+	 * its vendor directory to be web-accessible (important in Docker / wp-env).
+	 *
 	 * @return void
 	 */
 	public function boot(): void {
+		add_filter(
+			'mcp_helper_assets_url',
+			static function (): string {
+				return SYBGO_PLUGIN_URL . 'assets';
+			}
+		);
+
 		MCP_Helper::init();
 	}
 }

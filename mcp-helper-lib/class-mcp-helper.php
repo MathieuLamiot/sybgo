@@ -122,12 +122,14 @@ class MCP_Helper {
 			return;
 		}
 
-		$lib_url     = self::get_lib_url();
+		// Plugins bundling their own copy of the assets can override the base URL
+		// via the mcp_helper_assets_url filter (should include a trailing slash).
+		$assets_base = (string) apply_filters( 'mcp_helper_assets_url', rtrim( self::get_lib_url(), '/' ) . '/assets' );
 		$lib_version = '1.0.0';
 
 		wp_register_style(
 			'mcp-helper',
-			$lib_url . '/assets/css/mcp-config.css',
+			$assets_base . '/css/mcp-config.css',
 			[],
 			$lib_version
 		);
@@ -135,7 +137,7 @@ class MCP_Helper {
 
 		wp_register_script(
 			'mcp-helper',
-			$lib_url . '/assets/js/mcp-config.js',
+			$assets_base . '/js/mcp-config.js',
 			[ 'jquery' ],
 			$lib_version,
 			true
