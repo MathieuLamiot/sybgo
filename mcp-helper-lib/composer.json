@@ -1,0 +1,20 @@
+{
+	"name": "wp-media/mcp-helper-lib",
+	"description": "WordPress admin helper that generates MCP JSON config blocks for AI tools",
+	"homepage": "https://github.com/wp-media/mcp-helper-lib",
+	"license": "GPL-2.0+",
+	"authors": [
+		{
+			"name": "WP Media",
+			"email": "contact@wp-media.me",
+			"homepage": "https://wp-media.me"
+		}
+	],
+	"type": "library",
+	"autoload": {
+		"classmap": [
+			"class-mcp-helper.php",
+			"class-mcp-config-provider.php"
+		]
+	}
+}

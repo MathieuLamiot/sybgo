@@ -170,6 +170,7 @@ class Sybgo {
 			new Modules\Email_Module( $this->factory, $cron ),
 			new Modules\AI_Module( $this->factory, $abilities ),
 			new Modules\Settings_Module( $this->factory, $cron, $admin ),
+			new Modules\MCP_Module(),
 		);
 	}
 

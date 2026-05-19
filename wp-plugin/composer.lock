@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "dbbe500078ea3d6c636fc602204a8a5c",
+    "content-hash": "3370095ce93b33061989e903a15d0e17",
     "packages": [
         {
             "name": "berlindb/core",
@@ -82,8 +82,39 @@
             "time": "2024-09-16T12:21:47+00:00"
         },
         {
+            "name": "wp-media/mcp-helper-lib",
+            "version": "dev-feat/mcp-connect-helper",
+            "dist": {
+                "type": "path",
+                "url": "../mcp-helper-lib",
+                "reference": "05120f8a2b3d3ce6c55d1ba826ea07a4e9f08093"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "class-mcp-helper.php",
+                    "class-mcp-config-provider.php"
+                ]
+            },
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "WP Media",
+                    "email": "contact@wp-media.me",
+                    "homepage": "https://wp-media.me"
+                }
+            ],
+            "description": "WordPress admin helper that generates MCP JSON config blocks for AI tools",
+            "homepage": "https://github.com/wp-media/mcp-helper-lib",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
             "name": "wp-media/sybgo-lib",
-            "version": "dev-feat/php-error-tracking",
+            "version": "dev-feat/mcp-connect-helper",
             "dist": {
                 "type": "path",
                 "url": "../lib",
