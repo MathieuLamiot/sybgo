@@ -348,9 +348,22 @@ sybgo/
 
 New domain wiring goes into a feature module under `wp-plugin/modules/`, not directly into `class-sybgo.php`. Each module implements `Module_Interface` (a single `boot(): void` method) and receives only the dependencies it needs — a subset of `Factory`, `Cron_Manager`, `Admin_Manager`, and `Ability_Manager`.
 
-`Sybgo::init()` builds all modules via `build_modules()` and calls `boot()` on each before invoking the managers' own `init()` methods. This means `boot()` must only *register* on managers (e.g. `$this->cron->register(...)`, `$this->admin->register_page(...)`) — it must not execute domain logic directly.
+`Sybgo::init()` orchestrates the startup sequence:
 
-Callback methods on a module (e.g. `freeze_report_callback()`) are public named methods, making them independently testable without running `init()`.
+1. All five modules have `boot()` called on them in order. Each `boot()` only *registers* on managers — it never executes domain logic directly (e.g. `$this->cron->register(...)`, `$this->admin->register_page(...)`).
+2. `Cron_Manager::init()` is called — schedules all registered cron events and wires their `add_action` callbacks.
+3. `Admin_Manager::init()` is called (admin context only) — calls `init()` on each registered page and wires the cleanup handler and asset enqueuer.
+4. `Ability_Manager::init()` is deferred to the `init` WordPress action at priority 20 — modules register abilities at priority 5 on the same hook, so their registrations complete before the manager wires them into WP.
+
+Callback methods on a module (e.g. `freeze_report_callback()`, `cleanup_old_events_callback()`) are public named methods, making them independently testable without running `init()`.
+
+| Module | Managers | Responsibilities |
+|--------|----------|-----------------|
+| `Event_Module` | `Ability_Manager` | Event Tracker init, `sybgo_init_api()`, `sybgo/track-events` ability |
+| `Report_Module` | `Cron_Manager`, `Admin_Manager` | Dashboard_Widget, Reports_Page, freeze cron |
+| `Email_Module` | `Cron_Manager` | Send and retry email crons |
+| `AI_Module` | `Ability_Manager` | `sybgo/generate-summary` ability |
+| `Settings_Module` | `Cron_Manager`, `Admin_Manager` | Settings_Page, cleanup cron, asset enqueuer, cleanup form handler |
 
 When adding a new domain feature, identify the appropriate existing module or create a new one. Do not add hooks or domain logic to `class-sybgo.php`.
 

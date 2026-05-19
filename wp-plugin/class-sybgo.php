@@ -148,24 +148,17 @@ class Sybgo {
 			20
 		);
 
-		// Initialise the shared Cron_Manager so that Report_Module's registered
-		// cron callbacks (e.g. sybgo_freeze_weekly_report) are actually scheduled.
+		// Wire all registered cron events (schedule + add_action callbacks).
+		// Modules declare their crons via Cron_Manager::register() in boot();
+		// this single init() call schedules and wires all of them.
 		$cron->init();
 
-		// Initialise the shared Admin_Manager so that Report_Module's registered
-		// admin pages (Dashboard_Widget, Reports_Page) are actually wired up.
+		// Wire all registered admin pages and hook callbacks.
+		// Modules declare pages/handlers via Admin_Manager::register_*() in boot();
+		// this init() call initialises each page and wires enqueuer + cleanup hooks.
 		if ( is_admin() ) {
 			$admin->init();
 		}
-
-		// Legacy init_*() sub-methods keep remaining behaviour until each
-		// module's boot() is fully implemented (sub-issues #97–#99).
-		// They are removed in sub-issue #100 once all modules are complete.
-		// init_abilities() removed in sub-issue #98 (AI_Module owns generate-summary).
-		if ( is_admin() ) {
-			$this->init_admin();
-		}
-		$this->init_cron_schedules();
 	}
 
 	/**
@@ -194,177 +187,17 @@ class Sybgo {
 	}
 
 	/**
-	 * Initialize admin interface via Admin_Manager.
-	 *
-	 * @return void
-	 */
-	private function init_admin(): void {
-		$admin_manager = new Admin\Admin_Manager();
-
-		// Dashboard_Widget and Reports_Page are now registered by Report_Module::boot().
-		$admin_manager->register_page( $this->create_settings_page() );
-
-		$factory = $this->factory;
-
-		$admin_manager->register_cleanup_handler(
-			static function () use ( $factory ): void {
-				if (
-					! isset( $_POST['sybgo_cleanup_nonce'] ) ||
-					! wp_verify_nonce(
-						sanitize_text_field( wp_unslash( $_POST['sybgo_cleanup_nonce'] ) ),
-						'sybgo_run_cleanup'
-					)
-				) {
-					wp_die( esc_html__( 'Security check failed.', 'sybgo' ) );
-				}
-
-				if ( ! current_user_can( 'manage_options' ) ) {
-					wp_die( esc_html__( 'You do not have permission to perform this action.', 'sybgo' ) );
-				}
-
-				$days       = Admin\Settings_Page::get_retention_days();
-				$db_manager = $factory->create_database_manager();
-				$deleted    = $db_manager->cleanup_old_events( $days );
-
-				Logger::info( sprintf( 'Manual cleanup: deleted %d rows with %d-day retention', $deleted, $days ) );
-
-				wp_safe_redirect(
-					add_query_arg(
-						array(
-							'page'         => 'sybgo-settings',
-							'cleanup-done' => $deleted,
-						),
-						admin_url( 'options-general.php' )
-					)
-				);
-				exit;
-			}
-		);
-
-		$admin_manager->register_asset_enqueuer(
-			static function ( string $hook ): void {
-				$our_pages = array( 'toplevel_page_sybgo-reports', 'settings_page_sybgo-settings', 'index.php' );
-
-				if ( ! in_array( $hook, $our_pages, true ) ) {
-					return;
-				}
-
-				wp_enqueue_style(
-					'sybgo-admin',
-					SYBGO_PLUGIN_URL . 'assets/css/admin.css',
-					array(),
-					SYBGO_VERSION
-				);
-
-				wp_enqueue_script(
-					'sybgo-admin',
-					SYBGO_PLUGIN_URL . 'assets/js/admin.js',
-					array( 'jquery' ),
-					SYBGO_VERSION,
-					true
-				);
-
-				wp_localize_script(
-					'sybgo-admin',
-					'sybgoAdmin',
-					array(
-						'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-						'nonce'   => wp_create_nonce( 'sybgo_admin_nonce' ),
-					)
-				);
-			}
-		);
-
-		$admin_manager->init();
-	}
-
-	/**
-	 * Create settings page instance.
-	 *
-	 * @return Admin\Settings_Page Settings page instance.
-	 */
-	private function create_settings_page(): Admin\Settings_Page {
-		$event_registry = $this->factory->create_event_registry();
-		$db_stats       = $this->factory->create_db_stats();
-
-		return new Admin\Settings_Page( $event_registry, $db_stats );
-	}
-
-	/**
 	 * Get all cron hook names registered by the plugin.
 	 *
-	 * Single source of truth for cron hook names, used both when scheduling
-	 * (init_cron_schedules, deactivate) and when cleaning up (Uninstaller).
+	 * Used by deactivate() and Uninstaller. Delegates to Cron_Manager::get_hooks()
+	 * as the canonical source. Kept here for the deactivation hook until sub-issue
+	 * #100 removes it.
 	 *
 	 * @return array<string> List of WP-Cron hook names.
 	 * @since 1.0.0
 	 */
 	public static function get_cron_hooks(): array {
-		return array(
-			'sybgo_freeze_weekly_report',
-			'sybgo_send_report_emails',
-			'sybgo_cleanup_old_events',
-			'sybgo_retry_failed_emails',
-		);
-	}
-
-	/**
-	 * Initialize cron schedules.
-	 *
-	 * @return void
-	 */
-	private function init_cron_schedules(): void {
-		$hooks = self::get_cron_hooks();
-
-		// Register custom cron intervals.
-		add_filter( 'cron_schedules', array( $this, 'add_cron_intervals' ) );
-
-		// sybgo_freeze_weekly_report is now registered by Report_Module::boot().
-		// sybgo_send_report_emails and sybgo_retry_failed_emails are now registered
-		// by Email_Module::boot() via CronManager.
-
-		// Schedule daily cleanup (3am). Moved to Settings_Module in #99.
-		if ( ! wp_next_scheduled( $hooks[2] ) ) {
-			$next_3am = strtotime( 'tomorrow 3:00' );
-			wp_schedule_event( $next_3am, 'daily', $hooks[2] );
-		}
-
-		// Register remaining cron callback (cleanup; email callbacks handled by Email_Module).
-		add_action( $hooks[2], array( $this, 'cleanup_old_events_callback' ) );
-	}
-
-	/**
-	 * Cron callback: Cleanup old events.
-	 *
-	 * Moved to Settings_Module::cleanup_old_events_callback() in #99.
-	 * Kept here temporarily until Settings_Module::boot() is wired.
-	 *
-	 * @return void
-	 */
-	public function cleanup_old_events_callback(): void {
-		$db_manager = $this->factory->create_database_manager();
-		$days       = Admin\Settings_Page::get_retention_days();
-		$deleted    = $db_manager->cleanup_old_events( $days );
-
-		if ( $deleted > 0 ) {
-			Logger::info( sprintf( 'Cleaned up %d rows (retention: %d days)', $deleted, $days ) );
-		}
-	}
-
-	/**
-	 * Add custom cron intervals.
-	 *
-	 * @param array<string, array<string, mixed>> $schedules Existing schedules.
-	 * @return array<string, array<string, mixed>> Modified schedules.
-	 */
-	public function add_cron_intervals( array $schedules ): array {
-		if ( ! isset( $schedules['weekly'] ) ) {
-			$schedules['weekly'] = array(
-				'interval' => 604800, // 7 days in seconds.
-				'display'  => esc_html__( 'Once Weekly', 'sybgo' ),
-			);
-		}
-		return $schedules;
+		return Cron_Manager::get_hooks();
 	}
 
 	/**
