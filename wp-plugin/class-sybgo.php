@@ -165,7 +165,8 @@ class Sybgo {
 	 * Build the list of feature modules.
 	 *
 	 * Each module receives only the deps it needs. The order determines boot()
-	 * call order; for the scaffold phase all boot() methods are no-ops.
+	 * call order; Event_Module must boot first so the Event_Tracker is available
+	 * before other modules may depend on it.
 	 *
 	 * @param Cron_Manager        $cron      Cron Manager instance.
 	 * @param Admin\Admin_Manager $admin     Admin Manager instance.
@@ -184,20 +185,6 @@ class Sybgo {
 			new Modules\AI_Module( $this->factory, $abilities ),
 			new Modules\Settings_Module( $this->factory, $cron, $admin ),
 		);
-	}
-
-	/**
-	 * Get all cron hook names registered by the plugin.
-	 *
-	 * Used by deactivate() and Uninstaller. Delegates to Cron_Manager::get_hooks()
-	 * as the canonical source. Kept here for the deactivation hook until sub-issue
-	 * #100 removes it.
-	 *
-	 * @return array<string> List of WP-Cron hook names.
-	 * @since 1.0.0
-	 */
-	public static function get_cron_hooks(): array {
-		return Cron_Manager::get_hooks();
 	}
 
 	/**
@@ -238,7 +225,7 @@ class Sybgo {
 	 */
 	public function deactivate(): void {
 		// Clear scheduled events.
-		foreach ( self::get_cron_hooks() as $hook ) {
+		foreach ( Cron_Manager::get_hooks() as $hook ) {
 			wp_clear_scheduled_hook( $hook );
 		}
 
