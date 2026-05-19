@@ -119,25 +119,58 @@ class Sybgo {
 	/**
 	 * Initialize plugin subsystems.
 	 *
+	 * Creates the three manager instances, boots all feature modules, then
+	 * initialises each manager. Module boot() calls only register on the
+	 * managers — they do not execute domain logic directly.
+	 *
 	 * @return void
 	 */
 	public function init(): void {
 		// Initialize database.
 		$this->factory->create_database_manager();
 
-		// Initialize event tracking.
+		$cron      = new Cron_Manager();
+		$admin     = new Admin\Admin_Manager();
+		$abilities = new Ability_Manager();
+
+		foreach ( $this->build_modules( $cron, $admin, $abilities ) as $module ) {
+			$module->boot();
+		}
+
+		// Legacy init_*() sub-methods keep existing behaviour until each
+		// module's boot() is fully implemented (sub-issues #95–#99).
+		// They are removed in sub-issue #100 once all modules are complete.
 		$this->init_event_tracking();
-
-		// Initialize extensibility API and WordPress 7 Ability API.
 		$this->init_abilities();
-
-		// Initialize admin interface.
 		if ( is_admin() ) {
 			$this->init_admin();
 		}
-
-		// Initialize cron schedules.
 		$this->init_cron_schedules();
+	}
+
+	/**
+	 * Build the list of feature modules.
+	 *
+	 * Each module receives only the deps it needs. The order determines boot()
+	 * call order; for the scaffold phase all boot() methods are no-ops.
+	 *
+	 * @param Cron_Manager        $cron      Cron Manager instance.
+	 * @param Admin\Admin_Manager $admin     Admin Manager instance.
+	 * @param Ability_Manager     $abilities Ability Manager instance.
+	 * @return Modules\Module_Interface[] Ordered list of feature modules.
+	 */
+	private function build_modules(
+		Cron_Manager $cron,
+		Admin\Admin_Manager $admin,
+		Ability_Manager $abilities
+	): array {
+		return array(
+			new Modules\Event_Module( $this->factory, $abilities ),
+			new Modules\Report_Module( $this->factory, $cron, $admin ),
+			new Modules\Email_Module( $this->factory, $cron ),
+			new Modules\AI_Module( $this->factory, $abilities ),
+			new Modules\Settings_Module( $this->factory, $cron, $admin ),
+		);
 	}
 
 	/**
