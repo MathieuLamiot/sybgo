@@ -281,7 +281,16 @@ sybgo/
 ├── sybgo.php                     # Main plugin file (WordPress header)
 ├── class-sybgo.php               # Lifecycle orchestrator (activate, deactivate, init)
 ├── class-ability-manager.php     # WP7 Ability API registration utility
+├── class-cron-manager.php        # WP-Cron registration utility
 ├── class-factory.php             # Dependency injection
+│
+├── modules/                      # Feature modules (one per domain area)
+│   ├── interface-module.php      # Module_Interface contract
+│   ├── class-event-module.php    # Event tracking wiring
+│   ├── class-report-module.php   # Reporting UI and freeze cron
+│   ├── class-email-module.php    # Email delivery crons
+│   ├── class-ai-module.php       # AI ability registration
+│   └── class-settings-module.php # Settings UI, cleanup cron
 │
 ├── database/                     # Data layer
 │   ├── class-databasemanager.php
@@ -334,6 +343,16 @@ sybgo/
     │   └── Admin/
     └── Integration/
 ```
+
+## Feature Module Architecture
+
+New domain wiring goes into a feature module under `wp-plugin/modules/`, not directly into `class-sybgo.php`. Each module implements `Module_Interface` (a single `boot(): void` method) and receives only the dependencies it needs — a subset of `Factory`, `Cron_Manager`, `Admin_Manager`, and `Ability_Manager`.
+
+`Sybgo::init()` builds all modules via `build_modules()` and calls `boot()` on each before invoking the managers' own `init()` methods. This means `boot()` must only *register* on managers (e.g. `$this->cron->register(...)`, `$this->admin->register_page(...)`) — it must not execute domain logic directly.
+
+Callback methods on a module (e.g. `freeze_report_callback()`) are public named methods, making them independently testable without running `init()`.
+
+When adding a new domain feature, identify the appropriate existing module or create a new one. Do not add hooks or domain logic to `class-sybgo.php`.
 
 ## Admin AJAX Actions
 
