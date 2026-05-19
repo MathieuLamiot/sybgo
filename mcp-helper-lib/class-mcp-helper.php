@@ -75,12 +75,14 @@ class MCP_Helper {
 
 				<div class="mcp-helper-tabs" role="tablist">
 					<button
+						type="button"
 						class="mcp-helper-tab-btn active"
 						data-tool="claude-desktop"
 						role="tab"
 						aria-selected="true"
 					><?php esc_html_e( 'Claude Desktop', 'mcp-helper' ); ?></button>
 					<button
+						type="button"
 						class="mcp-helper-tab-btn"
 						data-tool="github-copilot"
 						role="tab"
@@ -91,7 +93,7 @@ class MCP_Helper {
 				<div class="mcp-helper-config-block">
 					<div class="mcp-helper-code-header">
 						<span class="mcp-helper-filename-label"></span>
-						<button id="mcp-helper-copy-btn" class="button button-secondary">
+						<button type="button" id="mcp-helper-copy-btn" class="button button-secondary">
 							<?php esc_html_e( 'Copy JSON', 'mcp-helper' ); ?>
 						</button>
 					</div>
