@@ -61,3 +61,22 @@ Registered in `Dashboard_Widget::init()` and handled by `Dashboard_Widget::ajax_
 |-----------|--------|-------------|
 | `nonce` | `$_POST` | Nonce verified against `sybgo_widget_nonce` |
 | `filter` | `$_POST` | Event type to filter (`all`, `post`, `user`, `update`, `comment`) |
+
+## mcp_helper_get_tools
+
+Returns the metadata for all supported AI tools (labels, config-file paths, setup instructions). Primarily used as a server-side fallback; the same data is also available via the `mcpHelper` JS object localised on profile pages.
+
+Registered and handled by `MCP_Helper` in `mcp-helper-lib/class-mcp-helper.php`.
+
+| Parameter | Source | Description |
+|-----------|--------|-------------|
+| `nonce` | `$_POST` | Nonce verified against `mcp_helper_get_tools` via `check_ajax_referer` |
+
+**Capability required:** `edit_users`
+
+**Success response:**
+```json
+{ "success": true, "data": { "claude-desktop": { ... }, "github-copilot": { ... } } }
+```
+
+See `MCP_Config_Provider::get_tools_metadata()` for the exact shape of each tool entry.

@@ -10,6 +10,9 @@
 if ( ! defined( 'SYBGO_PLUGIN_DIR' ) ) {
 	define( 'SYBGO_PLUGIN_DIR', __DIR__ . '/' );
 }
+if ( ! defined( 'SYBGO_PLUGIN_URL' ) ) {
+	define( 'SYBGO_PLUGIN_URL', 'http://localhost/wp-content/plugins/sybgo/' );
+}
 if ( ! defined( 'SYBGO_VERSION' ) ) {
 	define( 'SYBGO_VERSION', '1.0.0' );
 }
