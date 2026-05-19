@@ -354,6 +354,17 @@ Callback methods on a module (e.g. `freeze_report_callback()`) are public named 
 
 When adding a new domain feature, identify the appropriate existing module or create a new one. Do not add hooks or domain logic to `class-sybgo.php`.
 
+## WP7 Ability API Registrations
+
+Sybgo registers two abilities with the WordPress 7 Ability API via `Ability_Manager`. Both are registered at `init` priority 5 so the `sybgo` text domain is loaded before `__()` evaluates, while `Ability_Manager::init()` (which wires them into WP) runs at priority 20.
+
+| Ability name | Registered by | Permission |
+|---|---|---|
+| `sybgo/track-events` | `Event_Module` | `manage_options` |
+| `sybgo/generate-summary` | `AI_Module` | `manage_options` |
+
+`sybgo/track-events` confirms that the Event Tracker is active. `sybgo/generate-summary` proxies the AI summariser; its execute_callback returns `null` when the summariser is unavailable (WP < 7 or no AI transport configured).
+
 ## Admin AJAX Actions
 
 The dashboard widget registers two AJAX actions, both protected by the `sybgo_widget_nonce` nonce (key: `nonce` in the POST body).
