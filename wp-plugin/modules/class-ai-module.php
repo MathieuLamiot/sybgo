@@ -3,8 +3,7 @@
  * AI Module class file.
  *
  * Owns all WordPress integration wiring for the AI summarisation domain:
- * creates the AI_Summarizer via the factory and registers the
- * sybgo/generate-summary Ability.
+ * registers the sybgo/generate-summary Ability via the WordPress 7 Ability API.
  *
  * @package Sybgo\Modules
  * @since   1.0.0
@@ -25,8 +24,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * AI Module.
  *
- * Responsible for AI summary generation and the sybgo/generate-summary
- * WordPress 7 Ability registration.
+ * Responsible for the sybgo/generate-summary WordPress 7 Ability registration.
+ * The execute_callback lazily creates the AI_Summarizer via the factory, so
+ * the ability is registered on all WP7+ installs regardless of whether AI is
+ * configured — the callback returns null when the summarizer is unavailable.
  *
  * @since 1.0.0
  */
@@ -36,7 +37,6 @@ class AI_Module implements Module_Interface {
 	 * Factory instance.
 	 *
 	 * @var Factory
-	 * @phpstan-ignore property.onlyWritten (used once boot() is implemented in sub-issue #98)
 	 */
 	private Factory $factory;
 
@@ -44,7 +44,6 @@ class AI_Module implements Module_Interface {
 	 * Ability Manager instance.
 	 *
 	 * @var Ability_Manager
-	 * @phpstan-ignore property.onlyWritten (used once boot() is implemented in sub-issue #98)
 	 */
 	private Ability_Manager $abilities;
 
@@ -60,11 +59,46 @@ class AI_Module implements Module_Interface {
 	}
 
 	/**
-	 * Register AI ability and hooks.
+	 * Register the sybgo/generate-summary ability.
+	 *
+	 * Deferred to the 'init' hook at priority 5 so that __() evaluates after
+	 * the 'sybgo' text domain is loaded. See Event_Module::boot() for the same
+	 * rationale. Ability_Manager::init() runs at priority 20 on the same hook.
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
-		// No-op stub — implementation follows in a dedicated sub-issue.
+		$abilities = $this->abilities;
+		$factory   = $this->factory;
+
+		add_action(
+			'init',
+			static function () use ( $abilities, $factory ): void {
+				$abilities->register(
+					'sybgo/generate-summary',
+					array(
+						'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
+						'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
+						'category'            => 'sybgo',
+						'execute_callback'    => static function () use ( $factory ): ?string {
+							$ai_summarizer = $factory->create_ai_summarizer();
+							if ( null === $ai_summarizer ) {
+								return null;
+							}
+							$last_frozen = $factory->create_report_repository()->get_last_frozen();
+							if ( ! $last_frozen ) {
+								return null;
+							}
+							// Summary generation is handled via Report_Generator; stub for Ability API.
+							return null;
+						},
+						'permission_callback' => static function (): bool {
+							return current_user_can( 'manage_options' );
+						},
+					)
+				);
+			},
+			5
+		);
 	}
 }

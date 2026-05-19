@@ -161,7 +161,7 @@ class Sybgo {
 		// Legacy init_*() sub-methods keep remaining behaviour until each
 		// module's boot() is fully implemented (sub-issues #97–#99).
 		// They are removed in sub-issue #100 once all modules are complete.
-		$this->init_abilities();
+		// init_abilities() removed in sub-issue #98 (AI_Module owns generate-summary).
 		if ( is_admin() ) {
 			$this->init_admin();
 		}
@@ -190,62 +190,6 @@ class Sybgo {
 			new Modules\Email_Module( $this->factory, $cron ),
 			new Modules\AI_Module( $this->factory, $abilities ),
 			new Modules\Settings_Module( $this->factory, $cron, $admin ),
-		);
-	}
-
-	/**
-	 * Register the sybgo/generate-summary WordPress 7 Ability.
-	 *
-	 * The sybgo_init_api() call and the sybgo/track-events ability have been
-	 * moved to Event_Module::boot() (sub-issue #95). This method registers only
-	 * the generate-summary ability and will be emptied once AI_Module::boot()
-	 * is implemented in sub-issue #98.
-	 *
-	 * @return void
-	 */
-	private function init_abilities(): void {
-		// Guard: ability registration must only run on WordPress 7+.
-		// On earlier versions wp_register_ability is undefined.
-		if ( ! function_exists( 'wp_register_ability' ) ) {
-			return;
-		}
-
-		$factory = $this->factory;
-
-		// Defer to 'init' so the 'sybgo' text domain is loaded before __() evaluates.
-		// Calling __() during plugins_loaded on WP 6.7+ triggers _doing_it_wrong()
-		// → trigger_error() → captured by Error_Tracker, polluting DB counts.
-		add_action(
-			'init',
-			static function () use ( $factory ): void {
-				$ability_manager = new Ability_Manager();
-
-				$ability_manager->register(
-					'sybgo/generate-summary',
-					array(
-						'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
-						'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
-						'category'            => 'sybgo',
-						'execute_callback'    => static function () use ( $factory ): ?string {
-							$ai_summarizer = $factory->create_ai_summarizer();
-							if ( null === $ai_summarizer ) {
-								return null;
-							}
-							$last_frozen = $factory->create_report_repository()->get_last_frozen();
-							if ( ! $last_frozen ) {
-								return null;
-							}
-							// Summary generation is handled via Report_Generator; stub for Ability API.
-							return null;
-						},
-						'permission_callback' => static function (): bool {
-							return current_user_can( 'manage_options' );
-						},
-					)
-				);
-
-				$ability_manager->init();
-			}
 		);
 	}
 
