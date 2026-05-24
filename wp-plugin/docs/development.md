@@ -284,6 +284,8 @@ sybgo/
 ├── class-cron-manager.php        # WP-Cron registration utility
 ├── class-factory.php             # Dependency injection
 │
+├── src/MCP/Auth/                 # Self-contained OAuth 2.1 layer (see mcp-auth.md)
+│
 ├── modules/                      # Feature modules (one per domain area)
 │   ├── interface-module.php      # Module_Interface contract
 │   ├── class-event-module.php    # Event tracking wiring
@@ -607,3 +609,4 @@ Closes #123
 - [Event Tracking](event-tracking.md) - Understanding event system
 - [Report Lifecycle](report-lifecycle.md) - How reports work
 - [Extension API](extension-api.md) - Plugin integration
+- [MCP Authentication](mcp-auth.md) - OAuth 2.1 JWT façade for MCP clients

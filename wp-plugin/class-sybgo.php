@@ -93,6 +93,9 @@ class Sybgo {
 
 		// Initialize plugin.
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
+
+		// Bootstrap the MCP OAuth layer (JWT façade over Application Passwords).
+		MCP\Auth\Mcp_Auth::boot();
 	}
 
 	/**
@@ -213,6 +216,9 @@ class Sybgo {
 		if ( false === get_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS ) ) {
 			update_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS, get_option( 'admin_email' ) );
 		}
+
+		// Initialise the MCP OAuth layer (generates JWT secret, registers rewrite rules).
+		MCP\Auth\Mcp_Auth::on_activation();
 
 		// Flush rewrite rules.
 		flush_rewrite_rules();
