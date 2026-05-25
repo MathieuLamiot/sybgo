@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP OAuth Layer — Handover Document</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #5b7fff;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --orange: #f97316;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --code-bg: #0d1117;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 260px;
+      min-width: 260px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 28px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav .logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 20px 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    nav a {
+      display: block;
+      padding: 6px 20px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color .15s, background .15s;
+      border-left: 2px solid transparent;
+    }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+    nav a.active { color: var(--accent); border-left-color: var(--accent); }
+    nav .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 16px 20px 4px;
+    }
+    main {
+      flex: 1;
+      padding: 48px 64px;
+      max-width: 960px;
+    }
+
+    /* ── Typography ── */
+    h1 { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    h2 { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 52px 0 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+    h3 { font-size: 1.05rem; font-weight: 700; color: var(--accent); margin: 32px 0 12px; }
+    h4 { font-size: .9rem; font-weight: 700; color: var(--muted); margin: 20px 0 8px; text-transform: uppercase; letter-spacing: .06em; }
+    p { margin-bottom: 14px; color: var(--text); }
+    ul, ol { padding-left: 22px; margin-bottom: 14px; }
+    li { margin-bottom: 5px; }
+    strong { color: #fff; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Code ── */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: #a5f3fc;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 14px 0 20px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+    pre code { background: none; border: none; padding: 0; color: #e2e8f0; }
+    .comment { color: #6272a4; }
+    .key { color: #8be9fd; }
+    .str { color: #f1fa8c; }
+    .kw { color: #ff79c6; }
+    .num { color: #bd93f9; }
+    .fn { color: #50fa7b; }
+
+    /* ── Cards / Callouts ── */
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--surface2);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 18px 0;
+    }
+    .callout.warning { border-left-color: var(--yellow); }
+    .callout.danger  { border-left-color: var(--red); }
+    .callout.success { border-left-color: var(--green); }
+    .callout.open    { border-left-color: var(--orange); }
+    .callout-title { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; color: var(--accent); }
+    .callout.warning .callout-title { color: var(--yellow); }
+    .callout.danger  .callout-title { color: var(--red); }
+    .callout.success .callout-title { color: var(--green); }
+    .callout.open    .callout-title { color: var(--orange); }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13.5px; }
+    th { background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── Step flow ── */
+    .step-grid { display: grid; gap: 12px; margin: 20px 0; }
+    .step {
+      display: flex;
+      gap: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .step-num {
+      width: 32px; height: 32px;
+      background: var(--accent2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 14px;
+      flex-shrink: 0;
+      color: #fff;
+    }
+    .step-body h4 { margin: 0 0 5px; color: #fff; font-size: 14px; text-transform: none; letter-spacing: 0; }
+    .step-body p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+    /* ── Diagrams ── */
+    .diagram-wrap {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 20px 0 28px;
+    }
+    .diagram-title {
+      background: var(--surface2);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    svg { display: block; }
+
+    /* ── Badge pills ── */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: .04em;
+    }
+    .badge-blue   { background: rgba(91,127,255,.18); color: #7eb8ff; border: 1px solid rgba(91,127,255,.35); }
+    .badge-green  { background: rgba(34,197,94,.15);  color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+    .badge-yellow { background: rgba(234,179,8,.15);  color: #fbbf24; border: 1px solid rgba(234,179,8,.3); }
+    .badge-red    { background: rgba(239,68,68,.15);  color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+    .badge-purple { background: rgba(124,58,237,.2);  color: #c084fc; border: 1px solid rgba(124,58,237,.4); }
+
+    /* ── File path ── */
+    .filepath {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+    }
+
+    /* ── Open question box ── */
+    .open-question {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 24px 0;
+      overflow: hidden;
+    }
+    .oq-header {
+      background: var(--surface2);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .oq-num {
+      background: var(--orange);
+      color: #000;
+      font-weight: 800;
+      font-size: 12px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .oq-title { font-weight: 700; color: #fff; font-size: 14px; }
+    .oq-body { padding: 16px 18px; }
+    .oq-body p { margin-bottom: 10px; }
+    .oq-body p:last-child { margin-bottom: 0; }
+    .oq-suggestion {
+      background: rgba(249,115,22,.08);
+      border: 1px solid rgba(249,115,22,.25);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 13.5px;
+    }
+    .oq-suggestion strong { color: var(--orange); }
+
+    .hero-subtitle { color: var(--muted); font-size: 14px; margin-top: 6px; margin-bottom: 32px; }
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 24px; }
+
+    /* class map */
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .class-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .class-card .class-name { font-family: monospace; font-size: 13px; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+    .class-card .class-file { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .class-card .class-desc { font-size: 12.5px; color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═══════════════ SIDEBAR NAV ═══════════════ -->
+<nav>
+  <div class="logo">MCP OAuth — Handover</div>
+  <div class="section-label">Overview</div>
+  <a href="#overview">What was built</a>
+  <a href="#concepts">Key concepts</a>
+  <a href="#architecture">Architecture map</a>
+
+  <div class="section-label">The OAuth Flow</div>
+  <a href="#flow-overview">Flow overview</a>
+  <a href="#step1">1 · Protected resource</a>
+  <a href="#step2">2 · AS metadata</a>
+  <a href="#step3">3 · Client registration</a>
+  <a href="#step4">4 · Authorize</a>
+  <a href="#step5">5 · Callback</a>
+  <a href="#step6">6 · Token exchange</a>
+  <a href="#step7">7 · MCP requests</a>
+
+  <div class="section-label">Under the Hood</div>
+  <a href="#codebase">Codebase map</a>
+  <a href="#mcp-adapter">MCP adapter integration</a>
+  <a href="#bypasses">Bypasses &amp; workarounds</a>
+  <a href="#abilities">Abilities API</a>
+  <a href="#tokens">JWT &amp; sessions</a>
+
+  <div class="section-label">Operations</div>
+  <a href="#debug">Debug &amp; logging</a>
+  <a href="#pitfalls">Known pitfalls</a>
+
+  <div class="section-label">Next Steps</div>
+  <a href="#open-questions">Open questions</a>
+</nav>
+
+<!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+<main>
+
+<!-- ───────────── OVERVIEW ───────────── -->
+<section id="overview">
+  <h1>MCP OAuth Layer — Handover</h1>
+  <p class="hero-subtitle">A complete transfer of knowledge from the PoC on Sybgo to the team taking it to production and beyond.</p>
+  <div class="pill-row">
+    <span class="badge badge-blue">OAuth 2.1 + PKCE</span>
+    <span class="badge badge-purple">JWT HS256</span>
+    <span class="badge badge-green">WP Application Passwords</span>
+    <span class="badge badge-yellow">wordpress/mcp-adapter</span>
+    <span class="badge badge-red">PoC → Production</span>
+  </div>
+
+  <p>
+    This document describes an OAuth 2.1 authentication layer built on top of <strong>wordpress/mcp-adapter</strong>,
+    allowing AI clients (Claude, and others) to authenticate against a WordPress site and access registered plugin
+    capabilities — called <em>Abilities</em> — through the Model Context Protocol (MCP).
+  </p>
+  <p>
+    The PoC was built inside the Sybgo plugin. The goal now is to turn it into something
+    any wp-media plugin can wire up with minimal effort. This document gives the team everything
+    they need to understand the current state, what works, what is rough, and where to go next.
+  </p>
+</section>
+
+<!-- ───────────── KEY CONCEPTS ───────────── -->
+<section id="concepts">
+  <h2>Key concepts (no prior OAuth knowledge assumed)</h2>
+
+  <h3>What is OAuth 2.1?</h3>
+  <p>
+    OAuth is a protocol that lets a third-party application (here: Claude) act on behalf of a user
+    <em>without ever knowing the user's password</em>. Instead of sharing credentials, the user
+    approves access through a web browser and the application receives a short-lived <strong>access token</strong>.
+  </p>
+  <p>
+    <strong>PKCE</strong> (Proof Key for Code Exchange, pronounced "pixie") is a security extension
+    that prevents token theft even if someone intercepts the authorization code. The client generates
+    a random secret, hashes it, and sends the hash upfront. When exchanging the code for a token it
+    proves it holds the original secret. This makes it safe to use OAuth without a client secret.
+  </p>
+
+  <h3>What is a JWT?</h3>
+  <p>
+    A <strong>JSON Web Token</strong> is a compact, self-contained credential. It has three
+    base64-encoded parts separated by dots: <code>header.payload.signature</code>. The signature
+    is produced with a secret key known only to the server. Anyone who receives the token can read
+    the payload (it is not encrypted) but cannot forge a valid signature without the secret.
+  </p>
+  <p>
+    We use JWTs as the access tokens Claude presents on every MCP request. The server validates the
+    signature, checks the expiry (<code>exp</code>), and checks the audience (<code>aud</code> —
+    the exact URL of the MCP endpoint) before granting access.
+  </p>
+
+  <h3>What is MCP?</h3>
+  <p>
+    The <strong>Model Context Protocol</strong> is a JSON-RPC-based protocol that AI clients use to
+    discover and call tools exposed by a server. Claude speaks MCP; our WordPress plugin acts as an
+    MCP server. The <code>wordpress/mcp-adapter</code> library handles the MCP wire protocol; our
+    code handles authentication and registers the capabilities (Abilities) the AI can invoke.
+  </p>
+
+  <h3>What are WordPress Application Passwords?</h3>
+  <p>
+    WordPress 5.6+ has a built-in system for generating named application passwords per user.
+    Each password has a UUID. Deleting the password in the WordPress admin immediately revokes
+    access. We use these as the <em>backing credential</em> for MCP sessions — each OAuth login
+    creates one Application Password; the UUID is embedded in the JWT. On every MCP request we
+    check that the UUID still exists, giving users a one-click revocation mechanism.
+  </p>
+</section>
+
+<!-- ───────────── ARCHITECTURE MAP ───────────── -->
+<section id="architecture">
+  <h2>Architecture map</h2>
+
+  <p>
+    There are three layers. The <strong>OAuth layer</strong> (our code, in
+    <code>src/MCP/Auth/</code>) authenticates the AI client and issues JWTs.
+    The <strong>MCP adapter library</strong> (<code>wordpress/mcp-adapter</code>) handles
+    the JSON-RPC wire protocol and routes tool calls to Ability callbacks.
+    <strong>Plugin code</strong> (Sybgo modules, or any future plugin) registers Abilities
+    that become tools the AI can use.
+  </p>
+
+  <div class="diagram-wrap">
+    <div class="diagram-title">System layers</div>
+    <svg viewBox="0 0 860 360" xmlns="http://www.w3.org/2000/svg" width="100%">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b7fff"/>
+        </marker>
+        <marker id="arrow-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"/>
+        </marker>
+      </defs>
+
+      <!-- AI Client -->
+      <rect x="20" y="140" width="140" height="60" rx="8" fill="#1a1d27" stroke="#5b7fff" stroke-width="1.5"/>
+      <text x="90" y="167" text-anchor="middle" fill="#7eb8ff" font-size="13" font-weight="700">AI Client</text>
+      <text x="90" y="184" text-anchor="middle" fill="#8892a4" font-size="11">(Claude)</text>
+
+      <!-- OAuth Layer box -->
+      <rect x="220" y="20" width="220" height="300" rx="10" fill="#1a1d27" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="330" y="44" text-anchor="middle" fill="#c084fc" font-size="11" font-weight="700" letter-spacing="1">OAUTH LAYER</text>
+      <text x="330" y="58" text-anchor="middle" fill="#8892a4" font-size="10">src/MCP/Auth/</text>
+
+      <rect x="238" y="70" width="184" height="34" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="91" text-anchor="middle" fill="#e2e8f0" font-size="12">DiscoveryEndpoints</text>
+
+      <rect x="238" y="114" width="184" height="34" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="135" text-anchor="middle" fill="#e2e8f0" font-size="12">ClientRegistration</text>
+
+      <rect x="238" y="158" width="184" height="34" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="179" text-anchor="middle" fill="#e2e8f0" font-size="12">AuthorizeEndpoint</text>
+
+      <rect x="238" y="202" width="184" height="34" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="223" text-anchor="middle" fill="#e2e8f0" font-size="12">TokenEndpoint</text>
+
+      <rect x="238" y="246" width="184" height="34" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="267" text-anchor="middle" fill="#e2e8f0" font-size="12">RequestValidator</text>
+
+      <rect x="238" y="290" width="184" height="20" rx="4" fill="#22263a" stroke="#2e3250"/>
+      <text x="330" y="304" text-anchor="middle" fill="#8892a4" font-size="10">SecretManager · JWT · McpLogger</text>
+
+      <!-- MCP Adapter box -->
+      <rect x="500" y="80" width="200" height="160" rx="10" fill="#1a1d27" stroke="#eab308" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="600" y="104" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="700" letter-spacing="1">MCP ADAPTER LIB</text>
+      <text x="600" y="118" text-anchor="middle" fill="#8892a4" font-size="10">wordpress/mcp-adapter</text>
+
+      <rect x="518" y="130" width="164" height="30" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="600" y="149" text-anchor="middle" fill="#e2e8f0" font-size="12">HttpTransport</text>
+
+      <rect x="518" y="170" width="164" height="30" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="600" y="189" text-anchor="middle" fill="#e2e8f0" font-size="12">McpAdapter (server)</text>
+
+      <rect x="518" y="210" width="164" height="18" rx="4" fill="#22263a" stroke="#2e3250"/>
+      <text x="600" y="223" text-anchor="middle" fill="#8892a4" font-size="10">DiscoverAbilitiesAbility…</text>
+
+      <!-- Plugin Abilities box -->
+      <rect x="500" y="265" width="200" height="80" rx="10" fill="#1a1d27" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="600" y="288" text-anchor="middle" fill="#4ade80" font-size="11" font-weight="700" letter-spacing="1">PLUGIN CODE</text>
+      <text x="600" y="302" text-anchor="middle" fill="#8892a4" font-size="10">Any plugin (Sybgo, etc.)</text>
+      <rect x="518" y="308" width="164" height="26" rx="6" fill="#22263a" stroke="#2e3250"/>
+      <text x="600" y="325" text-anchor="middle" fill="#e2e8f0" font-size="12">Abilities (tools for AI)</text>
+
+      <!-- Arrows -->
+      <!-- AI → OAuth (OAuth flow) -->
+      <line x1="160" y1="160" x2="218" y2="160" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <text x="189" y="153" text-anchor="middle" fill="#5b7fff" font-size="10">OAuth</text>
+
+      <!-- AI → MCP Adapter (MCP requests) -->
+      <path d="M 160 175 Q 340 340 498 175" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arrow-g)"/>
+      <text x="330" y="355" text-anchor="middle" fill="#4ade80" font-size="10">Bearer JWT → MCP requests</text>
+
+      <!-- OAuth → MCP Adapter (permission check) -->
+      <line x1="440" y1="263" x2="498" y2="175" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4 3"/>
+      <text x="478" y="230" text-anchor="middle" fill="#c084fc" font-size="10">validates</text>
+
+      <!-- MCP → Abilities -->
+      <line x1="600" y1="240" x2="600" y2="263" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <text x="624" y="257" fill="#fbbf24" font-size="10">calls</text>
+    </svg>
+  </div>
+
+  <p>
+    The AI client runs two separate interaction types: the <strong>OAuth flow</strong> (a one-time
+    browser-based login to establish a session) and <strong>MCP requests</strong> (ongoing API calls
+    using the issued JWT). The OAuth layer and the MCP adapter are independent — the adapter knows
+    nothing about our JWT scheme; we slot in by intercepting WordPress REST hooks before the adapter
+    sees the request.
+  </p>
+</section>
+
+<!-- ───────────── FLOW OVERVIEW ───────────── -->
+<section id="flow-overview">
+  <h2>The full OAuth → MCP flow</h2>
+
+  <p>
+    The first time Claude connects to a WordPress site it goes through a 7-step sequence. Steps 1–6
+    happen once per session (or once per client registration). Step 7 repeats for every tool call.
+  </p>
+
+  <div class="step-grid">
+    <div class="step"><div class="step-num">1</div><div class="step-body"><h4>Protected resource discovery</h4><p>Claude reads <code>/.well-known/oauth-protected-resource</code> to find out which auth server protects the MCP endpoint.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-body"><h4>Auth server metadata</h4><p>Claude reads <code>/.well-known/oauth-authorization-server</code> to learn all OAuth endpoint URLs.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-body"><h4>Dynamic client registration</h4><p>Claude registers itself as an OAuth client, receiving a <code>client_id</code>. This happens once per client install.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-body"><h4>Authorization request</h4><p>Claude sends the user's browser to <code>/oauth/authorize</code>. The server redirects to the WordPress login page.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-body"><h4>Post-login callback</h4><p>After login, WordPress redirects back to <code>/oauth/authorize-callback</code>. An authorization code is issued and sent to Claude's redirect URI.</p></div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-body"><h4>Token exchange</h4><p>Claude POSTs the code + PKCE verifier to <code>/oauth/token</code>. The server creates a WordPress Application Password and issues a JWT access + refresh token pair.</p></div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-body"><h4>Authenticated MCP requests</h4><p>Claude attaches the JWT as <code>Authorization: Bearer &lt;token&gt;</code> on every MCP call. The server validates the JWT, sets the current WP user, and routes the JSON-RPC request to the appropriate Ability.</p></div></div>
+  </div>
+
+  <div class="diagram-wrap">
+    <div class="diagram-title">Full sequence diagram</div>
+    <svg viewBox="0 0 860 760" xmlns="http://www.w3.org/2000/svg" width="100%">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#8892a4"/>
+        </marker>
+        <marker id="arr-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5b7fff"/>
+        </marker>
+        <marker id="arr-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"/>
+        </marker>
+        <marker id="arr-y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#eab308"/>
+        </marker>
+      </defs>
+
+      <!-- Lifelines -->
+      <text x="70"  y="28" text-anchor="middle" fill="#7eb8ff" font-size="12" font-weight="700">AI Client</text>
+      <text x="70"  y="40" text-anchor="middle" fill="#8892a4" font-size="10">(Claude)</text>
+      <line x1="70"  y1="50" x2="70"  y2="750" stroke="#2e3250" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <text x="270" y="28" text-anchor="middle" fill="#c084fc" font-size="12" font-weight="700">OAuth Layer</text>
+      <text x="270" y="40" text-anchor="middle" fill="#8892a4" font-size="10">(src/MCP/Auth/)</text>
+      <line x1="270" y1="50" x2="270" y2="750" stroke="#2e3250" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <text x="530" y="28" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="700">MCP Adapter</text>
+      <text x="530" y="40" text-anchor="middle" fill="#8892a4" font-size="10">(library)</text>
+      <line x1="530" y1="50" x2="530" y2="750" stroke="#2e3250" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <text x="740" y="28" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="700">WordPress</text>
+      <text x="740" y="40" text-anchor="middle" fill="#8892a4" font-size="10">(WP core / DB)</text>
+      <line x1="740" y1="50" x2="740" y2="750" stroke="#2e3250" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <!-- ── Phase labels ── -->
+      <rect x="0" y="56" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="69" fill="#5b7fff" font-size="10" font-weight="700" letter-spacing="1">DISCOVERY</text>
+
+      <!-- Step 1 -->
+      <line x1="70" y1="84" x2="268" y2="84" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="79" text-anchor="middle" fill="#5b7fff" font-size="10">GET /.well-known/oauth-protected-resource</text>
+      <line x1="268" y1="96" x2="72" y2="96" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="108" text-anchor="middle" fill="#8892a4" font-size="10">200 · resource URL + auth server</text>
+
+      <!-- Step 2 -->
+      <line x1="70" y1="122" x2="268" y2="122" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="117" text-anchor="middle" fill="#5b7fff" font-size="10">GET /.well-known/oauth-authorization-server</text>
+      <line x1="268" y1="134" x2="72" y2="134" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="146" text-anchor="middle" fill="#8892a4" font-size="10">200 · all OAuth endpoint URLs</text>
+
+      <!-- Phase: Registration -->
+      <rect x="0" y="154" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="167" fill="#5b7fff" font-size="10" font-weight="700" letter-spacing="1">CLIENT REGISTRATION (once per client)</text>
+
+      <!-- Step 3 -->
+      <line x1="70" y1="182" x2="268" y2="182" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="177" text-anchor="middle" fill="#5b7fff" font-size="10">POST /oauth/register · client_name, redirect_uris</text>
+      <line x1="268" y1="194" x2="738" y2="194" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      <text x="503" y="190" text-anchor="middle" fill="#c084fc" font-size="9">store client in wp_options</text>
+      <line x1="268" y1="206" x2="72" y2="206" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="218" text-anchor="middle" fill="#8892a4" font-size="10">201 · client_id + client_secret</text>
+
+      <!-- Phase: Authorization -->
+      <rect x="0" y="226" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="239" fill="#5b7fff" font-size="10" font-weight="700" letter-spacing="1">AUTHORIZATION (user browser)</text>
+
+      <!-- Step 4 -->
+      <line x1="70" y1="254" x2="268" y2="254" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="249" text-anchor="middle" fill="#5b7fff" font-size="10">GET /oauth/authorize · code_challenge (PKCE)</text>
+      <line x1="268" y1="266" x2="738" y2="266" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      <text x="503" y="262" text-anchor="middle" fill="#c084fc" font-size="9">store state transient (60s TTL)</text>
+      <line x1="268" y1="278" x2="72" y2="278" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="290" text-anchor="middle" fill="#8892a4" font-size="10">302 → wp-login.php (user logs in)</text>
+
+      <!-- Step 5 -->
+      <rect x="20" y="298" width="100" height="20" rx="4" fill="#22263a"/>
+      <text x="70" y="312" text-anchor="middle" fill="#fbbf24" font-size="10">[user logs in]</text>
+      <line x1="70" y1="326" x2="268" y2="326" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="321" text-anchor="middle" fill="#5b7fff" font-size="10">GET /oauth/authorize-callback · state</text>
+      <line x1="268" y1="338" x2="738" y2="338" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      <text x="503" y="334" text-anchor="middle" fill="#c084fc" font-size="9">store auth_code transient (60s TTL)</text>
+      <line x1="268" y1="350" x2="72" y2="350" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="362" text-anchor="middle" fill="#8892a4" font-size="10">302 → claude.ai/callback?code=…</text>
+
+      <!-- Phase: Token -->
+      <rect x="0" y="370" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="383" fill="#5b7fff" font-size="10" font-weight="700" letter-spacing="1">TOKEN EXCHANGE</text>
+
+      <!-- Step 6 -->
+      <line x1="70" y1="398" x2="268" y2="398" stroke="#5b7fff" stroke-width="1.5" marker-end="url(#arr-b)"/>
+      <text x="169" y="393" text-anchor="middle" fill="#5b7fff" font-size="10">POST /oauth/token · code + code_verifier (PKCE)</text>
+      <line x1="268" y1="410" x2="738" y2="410" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      <text x="503" y="406" text-anchor="middle" fill="#c084fc" font-size="9">verify PKCE · create Application Password</text>
+      <line x1="268" y1="426" x2="72" y2="426" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-g)" stroke-dasharray="5 3"/>
+      <text x="169" y="438" text-anchor="middle" fill="#22c55e" font-size="10">200 · access_token (JWT, 1h) + refresh_token (JWT, 30d)</text>
+
+      <!-- Phase: MCP -->
+      <rect x="0" y="446" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="459" fill="#22c55e" font-size="10" font-weight="700" letter-spacing="1">MCP TOOL REQUESTS (repeated per call)</text>
+
+      <!-- Step 7a: unauthenticated probe -->
+      <line x1="70" y1="474" x2="528" y2="474" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="299" y="469" text-anchor="middle" fill="#8892a4" font-size="10">POST /wp-json/mcp/…  (no token — first probe)</text>
+      <line x1="268" y1="486" x2="72" y2="486" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="169" y="498" text-anchor="middle" fill="#ef4444" font-size="10">401 · WWW-Authenticate: Bearer realm=… (challenge)</text>
+
+      <!-- Step 7b: authenticated -->
+      <line x1="70" y1="516" x2="268" y2="516" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <text x="169" y="511" text-anchor="middle" fill="#22c55e" font-size="10">Authorization: Bearer &lt;JWT&gt;</text>
+      <line x1="268" y1="516" x2="528" y2="516" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <text x="399" y="511" text-anchor="middle" fill="#22c55e" font-size="10">validate JWT → wp_set_current_user()</text>
+      <line x1="268" y1="530" x2="738" y2="530" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#arr)"/>
+      <text x="503" y="526" text-anchor="middle" fill="#c084fc" font-size="9">revocation check (Application Password still exists?)</text>
+
+      <!-- tools/list -->
+      <line x1="70" y1="554" x2="528" y2="554" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <text x="299" y="549" text-anchor="middle" fill="#22c55e" font-size="10">tools/list → discover-abilities → wp_get_abilities()</text>
+      <line x1="528" y1="570" x2="72" y2="570" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="299" y="582" text-anchor="middle" fill="#8892a4" font-size="10">200 · [{name: "sybgo-generate-summary", …}]</text>
+
+      <!-- tools/call -->
+      <line x1="70" y1="600" x2="528" y2="600" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <text x="299" y="595" text-anchor="middle" fill="#22c55e" font-size="10">tools/call → execute-ability → execute_callback()</text>
+      <line x1="528" y1="616" x2="72" y2="616" stroke="#8892a4" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5 3"/>
+      <text x="299" y="628" text-anchor="middle" fill="#8892a4" font-size="10">200 · JSON-RPC result</text>
+
+      <!-- Token refresh -->
+      <rect x="0" y="636" width="860" height="18" fill="#1a1d27"/>
+      <text x="10" y="649" fill="#eab308" font-size="10" font-weight="700" letter-spacing="1">TOKEN REFRESH (when access token expires)</text>
+
+      <line x1="70" y1="664" x2="268" y2="664" stroke="#eab308" stroke-width="1.5" marker-end="url(#arr-y)"/>
+      <text x="169" y="659" text-anchor="middle" fill="#eab308" font-size="10">POST /oauth/token · grant_type=refresh_token</text>
+      <line x1="268" y1="680" x2="72" y2="680" stroke="#eab308" stroke-width="1.5" marker-end="url(#arr-y)" stroke-dasharray="5 3"/>
+      <text x="169" y="692" text-anchor="middle" fill="#eab308" font-size="10">200 · new access_token + new refresh_token (rotated)</text>
+
+      <text x="430" y="740" text-anchor="middle" fill="#2e3250" font-size="10">— response — — — — request —→</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ───────────── STEP BY STEP ───────────── -->
+<section id="step1">
+  <h2>Step 1 — Protected resource discovery</h2>
+  <p>
+    The very first thing Claude does when connecting to a new site is probe the
+    <code>/.well-known/oauth-protected-resource</code> URL. This is a standard defined in
+    <a href="https://www.rfc-editor.org/rfc/rfc9728">RFC 9728</a>. It tells the AI client
+    which URL is the actual MCP endpoint, and which authorization server (OAuth server) protects it.
+  </p>
+  <pre><code><span class="comment">-- Request --</span>
+<span class="kw">GET</span> /.well-known/oauth-protected-resource
+
+<span class="comment">-- Response (200) --</span>
+{
+  <span class="key">"resource"</span>: <span class="str">"https://example.com/wp-json/mcp/mcp-adapter-default-server"</span>,
+  <span class="key">"authorization_servers"</span>: [<span class="str">"https://example.com"</span>],
+  <span class="key">"bearer_methods_supported"</span>: [<span class="str">"header"</span>],
+  <span class="key">"scopes_supported"</span>: [<span class="str">"mcp"</span>]
+}</code></pre>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/DiscoveryEndpoints.php</span>
+    — <code>handle_request()</code> with <code>discovery === 'protected-resource'</code>.
+    Served via WordPress rewrite rules, not the REST API.
+  </p>
+</section>
+
+<section id="step2">
+  <h2>Step 2 — Authorization server metadata</h2>
+  <p>
+    Having learned the authorization server URL from step 1, Claude fetches its metadata document.
+    This tells Claude all of the OAuth endpoint URLs it will need, plus supported features.
+    Defined in <a href="https://www.rfc-editor.org/rfc/rfc8414">RFC 8414</a>.
+  </p>
+  <pre><code><span class="comment">-- Request --</span>
+<span class="kw">GET</span> /.well-known/oauth-authorization-server
+
+<span class="comment">-- Response (200) --</span>
+{
+  <span class="key">"issuer"</span>: <span class="str">"https://example.com"</span>,
+  <span class="key">"authorization_endpoint"</span>: <span class="str">"https://example.com/oauth/authorize"</span>,
+  <span class="key">"token_endpoint"</span>: <span class="str">"https://example.com/oauth/token"</span>,
+  <span class="key">"registration_endpoint"</span>: <span class="str">"https://example.com/oauth/register"</span>,
+  <span class="key">"response_types_supported"</span>: [<span class="str">"code"</span>],
+  <span class="key">"grant_types_supported"</span>: [<span class="str">"authorization_code"</span>, <span class="str">"refresh_token"</span>],
+  <span class="key">"code_challenge_methods_supported"</span>: [<span class="str">"S256"</span>],
+  <span class="key">"scopes_supported"</span>: [<span class="str">"mcp"</span>]
+}</code></pre>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/DiscoveryEndpoints.php</span>
+    — same class, different branch. Both <code>.well-known</code> URLs are served by the same handler.
+  </p>
+</section>
+
+<section id="step3">
+  <h2>Step 3 — Dynamic client registration</h2>
+  <p>
+    Claude registers itself as an OAuth client once per installation. This is <strong>RFC 7591</strong>
+    (Dynamic Client Registration). Claude sends its name and the redirect URI it expects
+    authorization codes to be delivered to. The server returns a <code>client_id</code>
+    (and a <code>client_secret</code>, though it is not verified in the current PoC).
+  </p>
+  <pre><code><span class="comment">-- Request --</span>
+<span class="kw">POST</span> /oauth/register
+Content-Type: application/json
+
+{
+  <span class="key">"client_name"</span>: <span class="str">"Claude"</span>,
+  <span class="key">"redirect_uris"</span>: [<span class="str">"https://claude.ai/api/mcp/auth_callback"</span>],
+  <span class="key">"grant_types"</span>: [<span class="str">"authorization_code"</span>, <span class="str">"refresh_token"</span>]
+}
+
+<span class="comment">-- Response (201) --</span>
+{
+  <span class="key">"client_id"</span>: <span class="str">"550e8400-e29b-41d4-a716-446655440000"</span>,
+  <span class="key">"client_secret"</span>: <span class="str">"a9f3d...84cc"</span>,
+  <span class="key">"client_name"</span>: <span class="str">"Claude"</span>,
+  <span class="key">"redirect_uris"</span>: [<span class="str">"https://claude.ai/api/mcp/auth_callback"</span>],
+  <span class="key">"grant_types"</span>: [<span class="str">"authorization_code"</span>, <span class="str">"refresh_token"</span>],
+  <span class="key">"client_id_issued_at"</span>: <span class="num">1748000000</span>
+}</code></pre>
+  <p>
+    <strong>Storage:</strong> clients are stored in <code>wp_options</code> under the key
+    <code>mcp_oauth_clients</code> as a JSON object keyed by <code>client_id</code>.
+  </p>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/ClientRegistration.php</span>
+  </p>
+</section>
+
+<section id="step4">
+  <h2>Step 4 — Authorization request</h2>
+  <p>
+    Claude opens a browser window and sends the user to <code>/oauth/authorize</code>. This is where
+    the PKCE challenge is introduced. Before the request, Claude generates:
+  </p>
+  <ol>
+    <li>A random <strong>code verifier</strong> (a long random string).</li>
+    <li>A <strong>code challenge</strong> = <code>BASE64URL(SHA256(code_verifier))</code>.</li>
+  </ol>
+  <p>
+    Only the <em>challenge</em> (the hash) is sent in this step. The verifier stays secret in Claude
+    until step 6. This prevents an attacker who intercepts the authorization code from using it
+    without also knowing the original random verifier.
+  </p>
+  <pre><code><span class="comment">-- Request (browser URL) --</span>
+<span class="kw">GET</span> /oauth/authorize
+  ?response_type=code
+  &amp;client_id=550e8400-…
+  &amp;redirect_uri=https://claude.ai/api/mcp/auth_callback
+  &amp;code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+  &amp;code_challenge_method=S256
+  &amp;state=abc123random
+  &amp;scope=mcp
+
+<span class="comment">-- What the server does --</span>
+1. Validates client_id, redirect_uri, code_challenge_method = S256
+2. Stores transient: mcp_oauth_state_{state}  →  {client_id, code_challenge, redirect_uri, …}  TTL: 60s
+3. Redirects browser to: wp-login.php?redirect_to=/oauth/authorize-callback?state=abc123random</code></pre>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/AuthorizeEndpoint.php</span>
+  </p>
+  <div class="callout warning">
+    <div class="callout-title">⚠ Timing constraint</div>
+    The state transient has a <strong>60-second TTL</strong>. If the user takes longer than 60 seconds
+    to complete login, the state is gone and the flow will fail. Consider raising this for production.
+  </div>
+</section>
+
+<section id="step5">
+  <h2>Step 5 — Authorization callback</h2>
+  <p>
+    After the user logs in to WordPress, the login form redirects them to
+    <code>/oauth/authorize-callback?state=abc123random</code>.
+    This endpoint checks <code>is_user_logged_in()</code>, reads the state transient (and deletes
+    it — single use), generates a random <strong>authorization code</strong>, stores it as another
+    transient, and finally redirects to Claude's <code>redirect_uri</code>.
+  </p>
+  <pre><code><span class="comment">-- Request --</span>
+<span class="kw">GET</span> /oauth/authorize-callback?state=abc123random
+<span class="comment">  (user must be logged in — WordPress session cookie present)</span>
+
+<span class="comment">-- What the server does --</span>
+1. Checks is_user_logged_in()
+2. Reads + deletes transient mcp_oauth_state_{state}
+3. auth_code = bin2hex(random_bytes(32))
+4. Stores transient: mcp_oauth_code_{auth_code}  →  {user_id, client_id, code_challenge, redirect_uri}  TTL: 60s
+5. Redirects: https://claude.ai/api/mcp/auth_callback?code={auth_code}&amp;state=abc123random</code></pre>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/AuthorizeCallback.php</span>
+  </p>
+  <div class="callout danger">
+    <div class="callout-title">🔴 Security gap (open question #4)</div>
+    The callback fires immediately after login with <em>no consent screen</em>. A user who happens
+    to be already logged in when they visit <code>/oauth/authorize</code> will be silently granted
+    a session without seeing which client is requesting access or what it can do.
+    A consent screen showing the client name and requested scopes is strongly recommended before
+    production.
+  </div>
+</section>
+
+<section id="step6">
+  <h2>Step 6 — Token exchange</h2>
+  <p>
+    Claude posts the authorization code <em>plus the original code verifier</em> to the token
+    endpoint. The server verifies that <code>BASE64URL(SHA256(verifier)) == stored_challenge</code>,
+    proving Claude was the entity that initiated the flow. Only then does it create a WordPress
+    Application Password and issue JWTs.
+  </p>
+  <pre><code><span class="comment">-- Request --</span>
+<span class="kw">POST</span> /oauth/token
+Content-Type: application/json
+
+{
+  <span class="key">"grant_type"</span>: <span class="str">"authorization_code"</span>,
+  <span class="key">"code"</span>: <span class="str">"7f3a9c…"</span>,
+  <span class="key">"code_verifier"</span>: <span class="str">"dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"</span>,
+  <span class="key">"redirect_uri"</span>: <span class="str">"https://claude.ai/api/mcp/auth_callback"</span>
+}
+
+<span class="comment">-- What the server does --</span>
+1. Read + delete code transient (single-use)
+2. Verify PKCE: BASE64URL(SHA256(code_verifier)) == stored code_challenge
+3. WP_Application_Passwords::create_new_application_password(user_id, ['name' => 'MCP Session – 2026-05-25 10:39'])
+4. Discard raw password. Keep only $result[1]['uuid'].
+5. Issue JWT pair (see below)
+
+<span class="comment">-- Response (200) --</span>
+{
+  <span class="key">"access_token"</span>:  <span class="str">"eyJ…"</span>,   <span class="comment">/* JWT, 1 hour */</span>
+  <span class="key">"token_type"</span>:    <span class="str">"Bearer"</span>,
+  <span class="key">"expires_in"</span>:    <span class="num">3600</span>,
+  <span class="key">"refresh_token"</span>: <span class="str">"eyJ…"</span>,   <span class="comment">/* JWT, 30 days */</span>
+  <span class="key">"scope"</span>:         <span class="str">"mcp"</span>
+}</code></pre>
+  <p>
+    <strong>Handler:</strong> <span class="filepath">src/MCP/Auth/TokenEndpoint.php</span>
+    — <code>handle_authorization_code()</code>
+  </p>
+
+  <h3>JWT payload — access token</h3>
+  <pre><code>{
+  <span class="key">"iss"</span>:         <span class="str">"https://example.com"</span>,
+  <span class="key">"aud"</span>:         <span class="str">"https://example.com/wp-json/mcp/mcp-adapter-default-server"</span>,
+  <span class="key">"sub"</span>:         <span class="str">"42"</span>,                          <span class="comment">/* WordPress user ID */</span>
+  <span class="key">"app_pass_id"</span>: <span class="str">"f939a91e-6f62-4a9b-ad21-…"</span>,  <span class="comment">/* Application Password UUID */</span>
+  <span class="key">"scope"</span>:       <span class="str">"mcp"</span>,
+  <span class="key">"iat"</span>:         <span class="num">1748000000</span>,
+  <span class="key">"exp"</span>:         <span class="num">1748003600</span>                      <span class="comment">/* iat + 1 hour */</span>
+}</code></pre>
+
+  <h3>JWT payload — refresh token</h3>
+  <pre><code>{
+  <span class="key">"iss"</span>:         <span class="str">"https://example.com"</span>,
+  <span class="key">"sub"</span>:         <span class="str">"42"</span>,
+  <span class="key">"app_pass_id"</span>: <span class="str">"f939a91e-…"</span>,
+  <span class="key">"type"</span>:        <span class="str">"refresh"</span>,                     <span class="comment">/* distinguishes from access token */</span>
+  <span class="key">"iat"</span>:         <span class="num">1748000000</span>,
+  <span class="key">"exp"</span>:         <span class="num">1750592000</span>                      <span class="comment">/* iat + 30 days */</span>
+}</code></pre>
+  <p>
+    Both tokens are signed with <strong>HS256</strong> using a 32-byte random secret generated at
+    plugin activation and stored in <code>wp_options</code> under <code>mcp_jwt_secret</code>
+    (managed by <span class="filepath">src/MCP/Auth/SecretManager.php</span>).
+    Note that the refresh token has <strong>no <code>aud</code> claim</strong> — it is only
+    presented to the token endpoint, not to the MCP REST route.
+  </p>
+
+  <h3>Token refresh</h3>
+  <pre><code><span class="kw">POST</span> /oauth/token
+{ <span class="key">"grant_type"</span>: <span class="str">"refresh_token"</span>, <span class="key">"refresh_token"</span>: <span class="str">"eyJ…"</span> }
+
+<span class="comment">Server verifies: type="refresh", Application Password still exists, issues new pair (both rotated)</span></code></pre>
+</section>
+
+<section id="step7">
+  <h2>Step 7 — Authenticated MCP requests</h2>
+  <p>
+    All MCP communication goes through a single REST endpoint:
+    <code>POST /wp-json/mcp/mcp-adapter-default-server</code>. The body is JSON-RPC 2.0.
+    Claude attaches the JWT access token as a Bearer token on every call.
+  </p>
+  <pre><code><span class="kw">POST</span> /wp-json/mcp/mcp-adapter-default-server
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9…
+Content-Type: application/json
+MCP-Protocol-Version: 2025-11-25
+
+{<span class="key">"jsonrpc"</span>:<span class="str">"2.0"</span>,<span class="key">"id"</span>:<span class="num">1</span>,<span class="key">"method"</span>:<span class="str">"tools/list"</span>,<span class="key">"params"</span>:{}}</code></pre>
+
+  <h3>Handler chain inside WordPress</h3>
+  <div class="step-grid">
+    <div class="step"><div class="step-num">①</div><div class="step-body"><h4><code>rest_pre_dispatch</code> filter (McpAuth::boot)</h4><p>Fires before any permission check. Calls <code>Request_Validator::validate_request()</code>. If no Bearer token or JWT is invalid → returns a <code>WP_REST_Response(401)</code> with <code>WWW-Authenticate</code> header immediately, short-circuiting all further processing.</p></div></div>
+    <div class="step"><div class="step-num">②</div><div class="step-body"><h4><code>RequestValidator::validate_request()</code></h4><p>Decodes JWT (HS256 + secret), checks <code>exp</code>, checks <code>aud</code> matches the exact MCP endpoint URL, checks Application Password still exists (revocation), resolves the WP user. Then calls <strong><code>wp_set_current_user($user_id)</code></strong> — critical step explained below.</p></div></div>
+    <div class="step"><div class="step-num">③</div><div class="step-body"><h4>Normal WordPress REST dispatch continues</h4><p>Since <code>rest_pre_dispatch</code> returned <code>null</code> (no early response), WordPress routes the request to <code>HttpTransport::handle_request()</code> in the mcp-adapter library.</p></div></div>
+    <div class="step"><div class="step-num">④</div><div class="step-body"><h4><code>HttpTransport</code> permission callback (second validation)</h4><p>The adapter calls our permission closure a second time. This is redundant but harmless — it passes because the JWT is still valid and the user is now set. A future improvement could cache the first validation result.</p></div></div>
+    <div class="step"><div class="step-num">⑤</div><div class="step-body"><h4>JSON-RPC routing</h4><p>The adapter parses the JSON-RPC body and routes <code>tools/list</code>, <code>tools/call</code>, etc. to the appropriate Ability callbacks registered in WordPress.</p></div></div>
+  </div>
+
+  <div class="callout danger">
+    <div class="callout-title">🔴 Critical: wp_set_current_user()</div>
+    <code>wp_set_current_user($user_id)</code> <strong>must</strong> be called inside
+    <code>validate_request()</code> before returning the <code>WP_User</code>. Without it,
+    <code>get_current_user_id()</code> returns <code>0</code> for the rest of the request lifecycle.
+    The mcp-adapter's <code>HttpSessionValidator::create_session()</code> calls
+    <code>get_current_user_id()</code> internally and would return a <code>-32010</code>
+    "User authentication required for session creation" JSON-RPC error if this is missing.
+  </div>
+</section>
+
+<!-- ───────────── CODEBASE MAP ───────────── -->
+<section id="codebase">
+  <h2>Codebase map</h2>
+  <p>
+    All OAuth auth code lives in <code>wp-plugin/src/MCP/Auth/</code> under the
+    <code>Sybgo\MCP\Auth</code> namespace. The files were designed to be portable — the
+    only Sybgo-specific strings are the text domain and a reference to the plugin file constant.
+  </p>
+
+  <div class="class-grid">
+    <div class="class-card">
+      <div class="class-name">Mcp_Auth</div>
+      <div class="class-file">McpAuth.php</div>
+      <div class="class-desc">Single entry point. Call <code>Mcp_Auth::boot()</code> once. Registers all WordPress hooks for OAuth routing, discovery, REST pre/post dispatch filters.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Discovery_Endpoints</div>
+      <div class="class-file">DiscoveryEndpoints.php</div>
+      <div class="class-desc">Serves <code>/.well-known/oauth-protected-resource</code> and <code>/.well-known/oauth-authorization-server</code>.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Client_Registration</div>
+      <div class="class-file">ClientRegistration.php</div>
+      <div class="class-desc">Handles <code>POST /oauth/register</code>. Stores clients in <code>wp_options</code>.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Authorize_Endpoint</div>
+      <div class="class-file">AuthorizeEndpoint.php</div>
+      <div class="class-desc">Handles <code>GET /oauth/authorize</code>. Validates PKCE challenge, stores state transient, redirects to WP login.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Authorize_Callback</div>
+      <div class="class-file">AuthorizeCallback.php</div>
+      <div class="class-desc">Handles <code>GET /oauth/authorize-callback</code>. Issues auth code, redirects to client.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Token_Endpoint</div>
+      <div class="class-file">TokenEndpoint.php</div>
+      <div class="class-desc">Handles <code>POST /oauth/token</code>. PKCE verification, creates Application Password, issues JWT pair. Also handles <code>refresh_token</code> grant.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Request_Validator</div>
+      <div class="class-file">RequestValidator.php</div>
+      <div class="class-desc">JWT middleware. Called on every MCP request. Returns <code>WP_User</code> or <code>WP_Error</code>. Also available as global function <code>mcp_validate_request()</code>.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">JWT</div>
+      <div class="class-file">JWT.php</div>
+      <div class="class-desc">Minimal HS256 encode/decode. <code>JWT::encode($payload, $secret)</code> / <code>JWT::decode($token, $secret)</code> → claims array or <code>null</code>.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Secret_Manager</div>
+      <div class="class-file">SecretManager.php</div>
+      <div class="class-desc">Manages the JWT signing secret in <code>wp_options</code>. <code>ensure_secret()</code> generates on first use; <code>get_secret()</code> retrieves.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Mcp_Logger</div>
+      <div class="class-file">McpLogger.php</div>
+      <div class="class-desc">Structured <code>[MCP][SCOPE]</code> logger. Redacts auth credentials. Verbose traces gated behind <code>WP_DEBUG</code> / <code>SYBGO_MCP_DEBUG</code>.</div>
+    </div>
+    <div class="class-card">
+      <div class="class-name">Admin_Page</div>
+      <div class="class-file">AdminPage.php</div>
+      <div class="class-desc">WordPress admin UI under Settings → MCP Sessions. Lists active sessions (Application Passwords) with last-used timestamps.</div>
+    </div>
+  </div>
+
+  <p>
+    The WordPress integration glue (adapter server creation, Ability Manager) lives in:
+  </p>
+  <table>
+    <thead><tr><th>File</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><span class="filepath">class-sybgo.php</span></td><td>Plugin constructor: calls <code>Mcp_Auth::boot()</code>, suppresses default server, wires <code>mcp_adapter_init</code> to create the JWT-protected server.</td></tr>
+      <tr><td><span class="filepath">class-ability-manager.php</span></td><td>Buffers ability definitions, then registers them on <code>wp_abilities_api_categories_init</code> / <code>wp_abilities_api_init</code> (WP 6.9+ hook timing requirement).</td></tr>
+      <tr><td><span class="filepath">modules/class-ai-module.php</span></td><td>Registers the <code>sybgo/generate-summary</code> ability with <code>mcp.public=true</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ───────────── MCP ADAPTER INTEGRATION ───────────── -->
+<section id="mcp-adapter">
+  <h2>MCP adapter library integration</h2>
+
+  <p>
+    The <strong><code>wordpress/mcp-adapter</code></strong> library (Composer package) handles the
+    MCP wire protocol. It registers a REST route, parses JSON-RPC, and dispatches to
+    WordPress Abilities. Our code wraps around it rather than modifying it.
+  </p>
+
+  <h3>Autoloader setup</h3>
+  <p>
+    The library ships with its own autoloader that tries to load its own <code>vendor/autoload.php</code>.
+    Since Sybgo already has a Composer autoloader that covers all classes, we need to prevent the
+    double-load conflict:
+  </p>
+  <pre><code><span class="comment">// Must be set before requiring mcp-adapter.php</span>
+<span class="kw">define</span>( <span class="str">'WP_MCP_AUTOLOAD'</span>, <span class="kw">false</span> );
+<span class="fn">require_once</span> SYBGO_PLUGIN_DIR . <span class="str">'vendor/wordpress/mcp-adapter/mcp-adapter.php'</span>;</code></pre>
+
+  <h3>Suppressing the default server and recreating it</h3>
+  <p>
+    The library automatically creates a default MCP server (<code>mcp-adapter-default-server</code>)
+    using a simple WordPress capability check for authentication. We need to replace that check with
+    our JWT validator. Since the library's <code>DefaultServerFactory</code> does not expose a
+    hook to change the permission callback, we suppress it entirely and recreate the server
+    with our own callback via <code>mcp_adapter_init</code>:
+  </p>
+  <pre><code><span class="comment">// 1. Suppress default server creation</span>
+<span class="fn">add_filter</span>( <span class="str">'mcp_adapter_create_default_server'</span>, <span class="str">'__return_false'</span> );
+
+<span class="comment">// 2. Re-register the abilities the default server normally wires</span>
+<span class="fn">add_action</span>( <span class="str">'wp_abilities_api_categories_init'</span>, [ McpAdapter::instance(), <span class="str">'register_default_category'</span> ] );
+<span class="fn">add_action</span>( <span class="str">'wp_abilities_api_init'</span>,            [ McpAdapter::instance(), <span class="str">'register_default_abilities'</span> ] );
+
+<span class="comment">// 3. Recreate the server on mcp_adapter_init with our JWT permission callback</span>
+<span class="fn">add_action</span>( <span class="str">'mcp_adapter_init'</span>, <span class="kw">static function</span>( $adapter ) {
+    $adapter->create_server(
+        <span class="str">'mcp-adapter-default-server'</span>,  <span class="comment">// same ID → same REST route</span>
+        <span class="str">'mcp'</span>,
+        <span class="str">'mcp-adapter-default-server'</span>,
+        <span class="str">'MCP Adapter Default Server'</span>,
+        <span class="str">'…'</span>, <span class="str">'v1.0.0'</span>,
+        [ HttpTransport::class ],
+        ErrorLogMcpErrorHandler::class,
+        NullMcpObservabilityHandler::class,
+        [ <span class="str">'mcp-adapter/discover-abilities'</span>, <span class="str">'mcp-adapter/get-ability-info'</span>, <span class="str">'mcp-adapter/execute-ability'</span> ],
+        [], [],
+        <span class="kw">static function</span>( $request ) {              <span class="comment">// ← our JWT permission callback</span>
+            <span class="kw">return</span> Request_Validator::validate_request( $request );
+        }
+    );
+} );</code></pre>
+  <p>
+    Using the same server ID (<code>mcp-adapter-default-server</code>) keeps the REST route URL
+    identical, which means the <code>aud</code> claim in the JWT does not need to change.
+  </p>
+</section>
+
+<!-- ───────────── BYPASSES ───────────── -->
+<section id="bypasses">
+  <h2>Bypasses and workarounds</h2>
+  <p>
+    Several non-obvious behaviors in the WordPress REST stack required workarounds.
+    Understanding these is essential for anyone changing the authentication flow.
+  </p>
+
+  <h3>Bypass 1 — The WWW-Authenticate problem</h3>
+  <p>
+    When a request arrives with no Bearer token (or an invalid one), the MCP adapter's
+    <code>HttpTransport::check_permission()</code> method receives a <code>WP_Error</code>
+    from our permission callback but <strong>swallows it</strong>: it returns
+    <code>false</code> instead of propagating the error. WordPress then emits a generic
+    <code>403 rest_forbidden</code> response with no <code>WWW-Authenticate</code> header.
+  </p>
+  <p>
+    AI clients (Claude) require a <code>401</code> with a <code>WWW-Authenticate: Bearer…</code>
+    challenge header to know they should start the OAuth flow. Without it they get stuck.
+  </p>
+  <p>
+    <strong>Fix:</strong> We hook into <code>rest_pre_dispatch</code>, which fires <em>before</em>
+    the route's permission callback. We validate the JWT there ourselves, and if it fails we return
+    a <code>WP_REST_Response(401)</code> with the correct header immediately, short-circuiting the
+    whole dispatch:
+  </p>
+  <pre><code><span class="fn">add_filter</span>( <span class="str">'rest_pre_dispatch'</span>, <span class="kw">function</span>( $result, $server, $request ) {
+    <span class="kw">if</span> ( <span class="kw">null</span> !== $result ) <span class="kw">return</span> $result; <span class="comment">// already handled</span>
+    <span class="kw">if</span> ( ! str_contains( $request->get_route(), <span class="str">'/mcp/mcp-adapter-default-server'</span> ) ) <span class="kw">return</span> $result;
+
+    $auth = Request_Validator::validate_request( $request );
+    <span class="kw">if</span> ( ! is_wp_error( $auth ) ) <span class="kw">return</span> $result; <span class="comment">// valid → let normal dispatch continue</span>
+
+    <span class="comment">// Invalid → return 401 + WWW-Authenticate immediately</span>
+    $response = <span class="kw">new</span> WP_REST_Response( […], <span class="num">401</span> );
+    $response->header( <span class="str">'WWW-Authenticate'</span>, $auth->get_error_data()[<span class="str">'WWW-Authenticate'</span>] );
+    <span class="kw">return</span> $response;
+}, <span class="num">10</span>, <span class="num">3</span> );</code></pre>
+
+  <h3>Bypass 2 — Double validation</h3>
+  <p>
+    As a consequence of bypass 1, the JWT is validated <strong>twice</strong> per request: once in
+    <code>rest_pre_dispatch</code> and once by the permission callback registered on the server.
+    This is redundant but harmless. The first check is the authoritative one; the second is a
+    no-op for valid requests. A future improvement could cache the validation result in a request
+    attribute.
+  </p>
+
+  <h3>Bypass 3 — wp_set_current_user()</h3>
+  <p>
+    WordPress REST API authentication normally works via cookies or Basic Auth headers, and
+    WordPress sets <code>get_current_user_id()</code> as part of that process. When we use
+    JWT authentication via <code>rest_pre_dispatch</code>, we bypass all of that — so
+    <code>get_current_user_id()</code> returns <code>0</code> for the rest of the lifecycle.
+  </p>
+  <p>
+    The mcp-adapter library's <code>HttpSessionValidator::create_session()</code> calls
+    <code>get_current_user_id()</code> internally. Without our fix it would return
+    <code>-32010 "User authentication required for session creation"</code>.
+    We solve this by explicitly calling <code>wp_set_current_user($user_id)</code> at the end of
+    <code>Request_Validator::validate_request()</code> before returning the <code>WP_User</code>.
+  </p>
+</section>
+
+<!-- ───────────── ABILITIES API ───────────── -->
+<section id="abilities">
+  <h2>WordPress Abilities API &amp; tool registration</h2>
+
+  <p>
+    The MCP adapter exposes registered WordPress Abilities as tools to AI clients.
+    WordPress 6.9 introduced strict hook-timing rules for the Abilities API:
+  </p>
+
+  <table>
+    <thead><tr><th>Function</th><th>Must be called on this action</th></tr></thead>
+    <tbody>
+      <tr><td><code>wp_register_ability_category()</code></td><td><code>wp_abilities_api_categories_init</code></td></tr>
+      <tr><td><code>wp_register_ability()</code></td><td><code>wp_abilities_api_init</code></td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    Calling these functions outside of these actions results in a <code>_doing_it_wrong</code> PHP notice and
+    the ability is <strong>silently not registered</strong> — it simply never appears in
+    <code>wp_get_abilities()</code>. This was the root cause of the empty <code>tools/list</code>
+    responses during the PoC.
+  </p>
+
+  <h3>Correct hook sequence in Sybgo</h3>
+  <pre><code><span class="comment">// hooks fire in this order:</span>
+
+plugins_loaded          <span class="comment">// Module::boot() calls $abilities->register() → populates cache</span>
+init                    <span class="comment">// text domain loads</span>
+wp_abilities_api_categories_init  <span class="comment">// Ability_Manager registers category</span>
+wp_abilities_api_init             <span class="comment">// Ability_Manager calls wp_register_ability() for each cached entry</span>
+rest_api_init           <span class="comment">// mcp-adapter registers REST route</span>
+[REST request arrives]  <span class="comment">// wp_get_abilities() returns all registered abilities</span></code></pre>
+
+  <p>
+    <strong>Key insight:</strong> modules must call <code>$abilityManager->register()</code>
+    during <code>plugins_loaded</code> (in <code>boot()</code>), <em>not</em> on <code>init</code>.
+    <code>wp_abilities_api_init</code> fires before early <code>init</code> priorities. If you
+    defer ability registration to <code>init@5</code> (as the original code did), the abilities
+    actions will have already fired and your abilities will never be registered.
+  </p>
+
+  <h3>Exposing an ability as an MCP tool</h3>
+  <p>
+    Any WordPress Ability becomes an MCP tool automatically once it has <code>mcp.public = true</code>
+    and <code>mcp.type = 'tool'</code> in its <code>meta</code> array:
+  </p>
+  <pre><code><span class="fn">wp_register_ability</span>( <span class="str">'my-plugin/do-something'</span>, [
+    <span class="key">'label'</span>               => <span class="fn">__</span>( <span class="str">'Do Something'</span>, <span class="str">'my-plugin'</span> ),
+    <span class="key">'description'</span>         => <span class="fn">__</span>( <span class="str">'Does the thing.'</span>, <span class="str">'my-plugin'</span> ),
+    <span class="key">'category'</span>            => <span class="str">'my-plugin'</span>,
+    <span class="key">'execute_callback'</span>    => <span class="kw">static function</span>(): string { <span class="kw">return</span> <span class="str">'result'</span>; },
+    <span class="key">'permission_callback'</span> => <span class="kw">static function</span>(): bool { <span class="kw">return</span> current_user_can( <span class="str">'manage_options'</span> ); },
+    <span class="key">'meta'</span>                => [
+        <span class="str">'mcp'</span> => [ <span class="str">'public'</span> => <span class="kw">true</span>, <span class="str">'type'</span> => <span class="str">'tool'</span> ],
+    ],
+] );</code></pre>
+
+  <p>
+    The <code>DiscoverAbilitiesAbility::execute()</code> in the library filters
+    <code>wp_get_abilities()</code> by <code>$ability->get_meta()['mcp']['public'] === true</code>
+    and <code>['mcp']['type'] === 'tool'</code>. Tools are then presented to Claude under a
+    sanitized slug (slashes become dashes: <code>sybgo/generate-summary</code> →
+    <code>sybgo-generate-summary</code>).
+  </p>
+</section>
+
+<!-- ───────────── JWT & SESSIONS ───────────── -->
+<section id="tokens">
+  <h2>JWT &amp; session lifecycle</h2>
+
+  <h3>Token lifetimes</h3>
+  <table>
+    <thead><tr><th>Token</th><th>Lifetime</th><th>Claims</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td>Access token</td><td>1 hour</td><td><code>iss, aud, sub, app_pass_id, scope, iat, exp</code></td><td>Bearer token on every MCP request</td></tr>
+      <tr><td>Refresh token</td><td>30 days</td><td><code>iss, sub, app_pass_id, type="refresh", iat, exp</code></td><td>Exchanged at token endpoint for new pair</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Revocation</h3>
+  <p>
+    Sessions can be revoked by deleting the Application Password in the WordPress admin:
+    <strong>Users → Profile → Application Passwords</strong>. On every MCP request,
+    <code>RequestValidator</code> calls
+    <code>WP_Application_Passwords::get_user_application_password($user_id, $uuid)</code>.
+    If the password no longer exists the request is rejected immediately with
+    <code>401 "MCP session has been revoked."</code>
+  </p>
+  <p>
+    The admin page at <strong>Settings → MCP Sessions</strong> (registered by
+    <span class="filepath">src/MCP/Auth/AdminPage.php</span>) provides a list of active sessions
+    with last-used timestamps and a revoke button.
+  </p>
+
+  <h3>JWT signing secret</h3>
+  <p>
+    A 32-byte random secret is generated at plugin activation by
+    <code>Secret_Manager::ensure_secret()</code> and stored in <code>wp_options</code>.
+    If the secret is rotated (e.g., by deleting the option and reactivating), all existing JWTs
+    immediately become invalid — equivalent to revoking all sessions at once.
+  </p>
+</section>
+
+<!-- ───────────── DEBUG & LOGGING ───────────── -->
+<section id="debug">
+  <h2>Debug &amp; logging</h2>
+
+  <h3>Enable verbose logging</h3>
+  <p>
+    Add to <code>wp-config.php</code> on the target site:
+  </p>
+  <pre><code><span class="fn">define</span>( <span class="str">'WP_DEBUG'</span>, <span class="kw">true</span> );
+<span class="fn">define</span>( <span class="str">'WP_DEBUG_LOG'</span>, <span class="kw">true</span> );
+<span class="fn">define</span>( <span class="str">'WP_DEBUG_DISPLAY'</span>, <span class="kw">false</span> );
+
+<span class="comment">// Or for MCP-only verbose logging without full WP_DEBUG:</span>
+<span class="fn">define</span>( <span class="str">'SYBGO_MCP_DEBUG'</span>, <span class="kw">true</span> );</code></pre>
+
+  <h3>Grepping the log</h3>
+  <pre><code><span class="comment"># All MCP events</span>
+grep '\[MCP\]' /path/to/wp-content/debug.log
+
+<span class="comment"># Auth failures only (always logged)</span>
+grep '\[MCP\]\[VALIDATOR\].*rejected' debug.log
+
+<span class="comment"># Ability registration trace (only with SYBGO_MCP_DEBUG)</span>
+grep '\[MCP\]\[ABILITIES\]' debug.log
+
+<span class="comment"># Full OAuth flow for one session (trace a flow end-to-end)</span>
+grep -E '\[MCP\]\[(REG|AUTHORIZE|CALLBACK|TOKEN|VALIDATOR)\]' debug.log</code></pre>
+
+  <h3>Log scope reference</h3>
+  <table>
+    <thead><tr><th>Scope</th><th>Events logged</th><th>Debug-only?</th></tr></thead>
+    <tbody>
+      <tr><td><code>[BOOT]</code></td><td>Adapter init, server creation success/failure</td><td>No</td></tr>
+      <tr><td><code>[ABILITIES]</code></td><td>Category registration, per-ability registration (name, mcp_public flag)</td><td>Yes</td></tr>
+      <tr><td><code>[DISCOVERY]</code></td><td>Each <code>.well-known</code> document served with full response body</td><td>No</td></tr>
+      <tr><td><code>[REG]</code></td><td>Client registration entry, rejections, success (client_id logged)</td><td>No</td></tr>
+      <tr><td><code>[AUTHORIZE]</code></td><td>Authorize request received, rejections, redirect target</td><td>No</td></tr>
+      <tr><td><code>[CALLBACK]</code></td><td>Callback received, rejections, auth code issued</td><td>No</td></tr>
+      <tr><td><code>[TOKEN]</code></td><td>Token request, PKCE checks, app password creation, token pair issued</td><td>No</td></tr>
+      <tr><td><code>[VALIDATOR]</code></td><td>Full header/body dump on entry (debug-only); all rejections + success (always)</td><td>Partial</td></tr>
+      <tr><td><code>[DISPATCH]</code></td><td><code>rest_pre_dispatch</code> happy path (debug); 401 challenge (always); <code>rest_post_dispatch</code> success (debug), errors (always)</td><td>Partial</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <div class="callout-title">Security guarantee</div>
+    Raw JWT strings, Application Password raw values, and cookie header values are
+    <strong>never written to logs</strong>. Authorization header credentials are truncated to
+    <code>scheme first12chars...last6chars</code>. The <code>code_verifier</code>,
+    <code>client_secret</code>, <code>access_token</code>, <code>refresh_token</code>,
+    and <code>password</code> fields in request bodies are replaced with
+    <code>&lt;redacted&gt;</code>.
+  </div>
+</section>
+
+<!-- ───────────── KNOWN PITFALLS ───────────── -->
+<section id="pitfalls">
+  <h2>Known pitfalls &amp; past failures</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Root cause</th><th>Fix / status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>404 on <code>/wp-json/mcp/mcp-adapter-default-server</code></td>
+        <td>Library not loaded, or server not created</td>
+        <td>✅ <code>WP_MCP_AUTOLOAD=false</code> + <code>create_server()</code> in <code>mcp_adapter_init</code></td>
+      </tr>
+      <tr>
+        <td>403 with no <code>WWW-Authenticate</code> header</td>
+        <td><code>HttpTransport::check_permission()</code> swallows <code>WP_Error</code></td>
+        <td>✅ <code>rest_pre_dispatch</code> returns 401 + header early</td>
+      </tr>
+      <tr>
+        <td><code>-32010 "User authentication required"</code> JSON-RPC error</td>
+        <td><code>wp_set_current_user()</code> not called; <code>get_current_user_id()</code> returned 0</td>
+        <td>✅ Added <code>wp_set_current_user($user_id)</code> in <code>RequestValidator</code></td>
+      </tr>
+      <tr>
+        <td><code>tools/list</code> returns empty <code>[]</code></td>
+        <td>Abilities registered outside the required <code>wp_abilities_api_init</code> hook</td>
+        <td>✅ <code>Ability_Manager::init()</code> now hooks onto the correct actions; modules populate cache in <code>boot()</code></td>
+      </tr>
+      <tr>
+        <td><code>mcp-adapter-discover-abilities</code> returns <code>[]</code> even after registration log appears</td>
+        <td>Registration ran on <code>init@5</code>; <code>wp_abilities_api_init</code> fires <em>before</em> that priority</td>
+        <td>✅ Moved <code>$abilities->register()</code> to <code>boot()</code> (before any <code>init</code>)</td>
+      </tr>
+      <tr>
+        <td><code>_doing_it_wrong</code> notice for <code>wp_register_ability</code></td>
+        <td>Called outside the required action</td>
+        <td>✅ Now called only inside <code>wp_abilities_api_init</code> callback</td>
+      </tr>
+      <tr>
+        <td><code>_load_textdomain_just_in_time</code> notice</td>
+        <td><code>__()</code> called in <code>boot()</code> before text domain loads on <code>init</code></td>
+        <td>⚠️ Known / accepted. Labels are English; abilities work correctly.</td>
+      </tr>
+      <tr>
+        <td>JWT audience mismatch</td>
+        <td><code>aud</code> in token was generated with a different site URL</td>
+        <td>Check: <code>get_rest_url(null, 'mcp/mcp-adapter-default-server')</code> must match what <code>TokenEndpoint::issue_token_pair()</code> stored at token issue time</td>
+      </tr>
+      <tr>
+        <td><code>vendor/wordpress/mcp-adapter/vendor/autoload.php</code> not found</td>
+        <td>Library tries to load its own Composer deps</td>
+        <td>✅ <code>define('WP_MCP_AUTOLOAD', false)</code> before <code>require_once</code></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ───────────── OPEN QUESTIONS ───────────── -->
+<section id="open-questions">
+  <h2>Open questions for the team</h2>
+
+  <div class="open-question">
+    <div class="oq-header">
+      <div class="oq-num">1</div>
+      <div class="oq-title">Automated curl-based test script for the OAuth flow</div>
+    </div>
+    <div class="oq-body">
+      <p>
+        Currently, testing the OAuth flow requires a real browser (because step 4 redirects to
+        <code>wp-login.php</code>). There is no scripted way to validate that all steps work after
+        a deploy or code change, which slows down investigation.
+      </p>
+      <p>
+        A shell script could automate steps 1–3 and 6–7 entirely in curl. Step 4–5 (the browser
+        login) could be simulated by directly calling the WordPress login form with credentials
+        and following the redirect chain. This is non-trivial but doable with
+        <code>curl -c cookies.txt -b cookies.txt</code> and <code>-L</code>.
+      </p>
+      <div class="oq-suggestion">
+        <strong>Suggestion:</strong> Build <code>bin/test-mcp-oauth.sh &lt;site_url&gt; &lt;username&gt; &lt;password&gt;</code>
+        that walks all 7 steps, prints each HTTP status, and dumps the final <code>tools/list</code>
+        result. Gate it behind a <code>TEST_MODE=1</code> flag that relaxes the state transient TTL
+        (or use the admin API to inject a code transient directly). Even a partial script covering
+        steps 1–3 and 6 would cut investigation time significantly.
+      </div>
+    </div>
+  </div>
+
+  <div class="open-question">
+    <div class="oq-header">
+      <div class="oq-num">2</div>
+      <div class="oq-title">Streamlining integration across many plugins</div>
+    </div>
+    <div class="oq-body">
+      <p>
+        Currently, the integration wiring (suppressing the default server, recreating it, calling
+        <code>Mcp_Auth::boot()</code>, registering abilities on the correct hooks) lives in
+        <span class="filepath">class-sybgo.php</span>. Every new plugin would have to repeat this
+        boilerplate — copy the <code>src/MCP/Auth/</code> directory, update the namespace, and
+        re-implement the same glue code. That is error-prone and will diverge over time.
+      </p>
+      <div class="oq-suggestion">
+        <strong>Suggestion:</strong> Extract <code>src/MCP/Auth/</code> into a standalone Composer
+        package (e.g., <code>wp-media/wp-mcp-auth</code>) and introduce a minimal bootstrap class:
+        <pre><code><span class="comment">// In any plugin's main file — 3 lines to integrate:</span>
+\WPMedia\McpAuth\Bootstrapper::boot([
+    'text_domain'       => 'my-plugin',
+    'plugin_file'       => MY_PLUGIN_FILE,
+]);
+</code></pre>
+        The <code>Bootstrapper</code> would own the default-server suppression, recreation, and
+        <code>Mcp_Auth::boot()</code> call. Each plugin only needs to register its own Abilities.
+        The <code>Ability_Manager</code> pattern from Sybgo is already a good model to replicate
+        as a standalone utility class in the shared package.
+      </div>
+    </div>
+  </div>
+
+  <div class="open-question">
+    <div class="oq-header">
+      <div class="oq-num">3</div>
+      <div class="oq-title">Default server hijack — co-existence or user-configurable choice?</div>
+    </div>
+    <div class="oq-body">
+      <p>
+        The current implementation suppresses the mcp-adapter's default server entirely and
+        recreates it with the same ID and route. This means if two plugins both try to do this,
+        the last one wins and they will conflict. It also means users cannot use the library's
+        default (simpler) auth if they want to.
+      </p>
+      <p>
+        Two possible futures:
+      </p>
+      <ul>
+        <li>
+          <strong>Co-existence:</strong> Create a second MCP server with a different ID and route
+          (e.g., <code>mcp/secure</code>) alongside the library's default. Plugins register their
+          Abilities on this second server by adding their ability names to its allow-list.
+          No suppression required; both servers run independently. The cost: the JWT
+          <code>aud</code> claim would need to reflect the new URL, and the discovery
+          <code>.well-known</code> document would need to point to the correct server.
+        </li>
+        <li>
+          <strong>Filter-configurable:</strong> Use a WordPress filter to let site owners choose
+          whether to use the JWT-protected server, the default capability-based server, or both.
+          E.g., <code>apply_filters('wp_media_mcp_auth_mode', 'jwt')</code>.
+        </li>
+      </ul>
+      <div class="oq-suggestion">
+        <strong>Suggestion:</strong> The co-existence approach is cleaner architecturally and
+        avoids the conflict problem. Register a dedicated secure route (e.g., <code>/wp-json/mcp/secure</code>)
+        and update the <code>.well-known</code> documents to advertise it. Site owners who want
+        the default unauthenticated adapter can still use it. The JWT auth layer becomes an opt-in
+        overlay rather than a global hijack.
+      </div>
+    </div>
+  </div>
+
+  <div class="open-question">
+    <div class="oq-header">
+      <div class="oq-num">4</div>
+      <div class="oq-title">Missing consent screen &amp; session hijack risk</div>
+    </div>
+    <div class="oq-body">
+      <p>
+        A teammate raised two related security concerns with the current flow:
+      </p>
+      <p>
+        <strong>(a) No consent screen.</strong> After WordPress login, the callback fires
+        immediately and issues a session token. The user never sees which client is requesting
+        access, what it will be able to do, or a button to explicitly grant or deny. This is
+        non-standard and considered insecure for production OAuth servers — RFC 6749 requires the
+        authorization server to obtain the resource owner's authorization explicitly.
+      </p>
+      <p>
+        <strong>(b) Post-login session hijack.</strong> Because the authorization callback fires
+        on the redirect from <code>wp-login.php</code>, anyone who is already logged in and visits
+        <code>/oauth/authorize</code> will be granted a session without any confirmation. An
+        attacker who tricks a logged-in admin into clicking a crafted link would silently get a
+        valid JWT.
+      </p>
+      <div class="oq-suggestion">
+        <strong>Suggestion:</strong> Before implementing a consent screen, add a CSRF-protected
+        confirmation step in the callback: instead of immediately issuing an auth code, render an
+        HTML page that shows the client name, requested scope, and a single "Allow access" button.
+        The button POSTs with a nonce. Only the nonce-verified POST issues the auth code. This
+        mitigates the hijack vector and provides the foundation for a full consent screen showing
+        the client logo and a list of what the MCP tools can access.
+        <br><br>
+        This is also where displaying the registered <code>client_name</code> (from step 3)
+        becomes valuable — it's already stored in <code>wp_options</code>, just not yet surfaced
+        to the user.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── FOOTER ───────────── -->
+<footer style="margin-top:60px; padding-top:24px; border-top:1px solid #2e3250; color:#8892a4; font-size:12px; padding-bottom:48px;">
+  <p>Generated from the Sybgo PoC on branch <code>feature/mcp-oauth-layer</code> · May 2026 · For internal team use.</p>
+  <p style="margin-top:4px;">Live reference: <span class="filepath">wp-plugin/docs/mcp-flow-braindump.md</span> — kept in sync with code changes.</p>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

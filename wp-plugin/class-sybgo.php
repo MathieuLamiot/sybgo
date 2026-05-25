@@ -44,6 +44,34 @@ if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 	require_once SYBGO_PLUGIN_DIR . 'vendor/autoload.php';
 }
 
+// Bootstrap the MCP Adapter library. WP_MCP_AUTOLOAD=false tells its Autoloader to skip
+// looking for its own vendor/autoload.php — Sybgo's Composer autoloader already covers all classes.
+if ( ! defined( 'WP_MCP_AUTOLOAD' ) ) {
+	define( 'WP_MCP_AUTOLOAD', false ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- Third-party constant for wordpress/mcp-adapter Autoloader.
+}
+if ( file_exists( SYBGO_PLUGIN_DIR . 'vendor/wordpress/mcp-adapter/mcp-adapter.php' ) ) {
+	require_once SYBGO_PLUGIN_DIR . 'vendor/wordpress/mcp-adapter/mcp-adapter.php';
+}
+
+add_action(
+	'rest_api_init',
+	static function (): void {
+		$adapter     = \WP\MCP\Core\McpAdapter::instance();
+		$all_servers = array_keys( $adapter->get_servers() );
+		$has_server  = null !== $adapter->get_server( 'mcp-adapter-default-server' );
+		MCP\Auth\Mcp_Logger::log(
+			'BOOT',
+			'rest_api_init@20 — adapter state',
+			array(
+				'wp_register_ability' => function_exists( 'wp_register_ability' ) ? 'yes' : 'no',
+				'servers'             => $all_servers,
+				'default_server'      => $has_server ? 'yes' : 'no',
+			)
+		);
+	},
+	20
+);
+
 
 /**
  * Main Sybgo Plugin Class.
@@ -93,6 +121,57 @@ class Sybgo {
 
 		// Initialize plugin.
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
+
+		// Bootstrap the MCP OAuth layer (JWT façade over Application Passwords).
+		MCP\Auth\Mcp_Auth::boot();
+
+		// Suppress the default server so we can recreate it with our JWT permission callback.
+		add_filter( 'mcp_adapter_create_default_server', '__return_false' );
+
+		// Register the default abilities (discover, get-info, execute) that the
+		// default server would normally wire up, since we suppress DefaultServerFactory.
+		add_action( 'wp_abilities_api_categories_init', array( \WP\MCP\Core\McpAdapter::instance(), 'register_default_category' ) );
+		add_action( 'wp_abilities_api_init', array( \WP\MCP\Core\McpAdapter::instance(), 'register_default_abilities' ) );
+
+		add_action(
+			'mcp_adapter_init',
+			static function ( \WP\MCP\Core\McpAdapter $adapter ): void {
+				MCP\Auth\Mcp_Logger::log( 'BOOT', 'mcp_adapter_init fired — creating server' );
+				$result = $adapter->create_server(
+					'mcp-adapter-default-server',
+					'mcp',
+					'mcp-adapter-default-server',
+					'MCP Adapter Default Server',
+					'Default MCP server for WordPress abilities discovery and execution',
+					'v1.0.0',
+					array( \WP\MCP\Transport\HttpTransport::class ),
+					\WP\MCP\Infrastructure\ErrorHandling\ErrorLogMcpErrorHandler::class,
+					\WP\MCP\Infrastructure\Observability\NullMcpObservabilityHandler::class,
+					array(
+						'mcp-adapter/discover-abilities',
+						'mcp-adapter/get-ability-info',
+						'mcp-adapter/execute-ability',
+					),
+					array(),
+					array(),
+					static function ( \WP_REST_Request $request ) {
+						return MCP\Auth\Request_Validator::validate_request( $request );
+					}
+				);
+				if ( is_wp_error( $result ) ) {
+					MCP\Auth\Mcp_Logger::log(
+						'BOOT',
+						'create_server failed',
+						array(
+							'error_code'    => $result->get_error_code(),
+							'error_message' => $result->get_error_message(),
+						)
+					);
+				} else {
+					MCP\Auth\Mcp_Logger::log( 'BOOT', 'create_server succeeded' );
+				}
+			}
+		);
 	}
 
 	/**
@@ -137,16 +216,10 @@ class Sybgo {
 			$module->boot();
 		}
 
-		// Defer Ability_Manager::init() to the 'init' action at priority 20
-		// so that module boot() callbacks (which register abilities at priority 5
-		// on 'init') have already run before the manager wires them into WP.
-		add_action(
-			'init',
-			static function () use ( $abilities ): void {
-				$abilities->init();
-			},
-			20
-		);
+		// Wire abilities onto the correct WP Abilities API hooks.
+		// Modules populate $abilities via register() on 'init@5'; both WP abilities
+		// actions fire after 'init', so the cache is populated in time.
+		$abilities->init();
 
 		// Wire all registered cron events (schedule + add_action callbacks).
 		// Modules declare their crons via Cron_Manager::register() in boot();
@@ -213,6 +286,9 @@ class Sybgo {
 		if ( false === get_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS ) ) {
 			update_option( Admin\Settings_Page::LEGACY_OPTION_EMAIL_RECIPIENTS, get_option( 'admin_email' ) );
 		}
+
+		// Initialise the MCP OAuth layer (generates JWT secret, registers rewrite rules).
+		MCP\Auth\Mcp_Auth::on_activation();
 
 		// Flush rewrite rules.
 		flush_rewrite_rules();

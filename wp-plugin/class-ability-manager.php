@@ -52,24 +52,63 @@ class Ability_Manager {
 	}
 
 	/**
-	 * Wire all registered abilities into WordPress.
+	 * Wire all registered abilities into WordPress on the correct WP Abilities API hooks.
 	 *
-	 * Safe to call on any WordPress version — the WP7 block is guarded by
-	 * function_exists( 'wp_register_ability' ).
+	 * WordPress 6.9+ requires:
+	 *   - wp_register_ability_category() on wp_abilities_api_categories_init
+	 *   - wp_register_ability()          on wp_abilities_api_init
+	 *
+	 * Both actions fire after 'init', so modules must populate $this->abilities
+	 * (via register()) before these hooks run — typically in Module::boot().
 	 *
 	 * @return void
 	 */
 	public function init(): void {
 		if ( ! function_exists( 'wp_register_ability' ) ) {
+			MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_register_ability not found — skipping', array(), true );
 			return;
 		}
 
 		$abilities = $this->abilities;
 
 		add_action(
+			'wp_abilities_api_categories_init',
+			static function () use ( $abilities ): void {
+				MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_abilities_api_categories_init — registering sybgo category', array(), true );
+				wp_register_ability_category(
+					'sybgo',
+					array(
+						'label'       => __( 'Sybgo', 'sybgo' ),
+						'description' => __( 'Site activity tracking and reporting abilities.', 'sybgo' ),
+					)
+				);
+			}
+		);
+
+		add_action(
 			'wp_abilities_api_init',
 			static function () use ( $abilities ): void {
+				MCP\Auth\Mcp_Logger::log(
+					'ABILITIES',
+					'wp_abilities_api_init — registering abilities',
+					array(
+						'count' => count( $abilities ),
+						'names' => array_keys( $abilities ),
+					),
+					true
+				);
 				foreach ( $abilities as $name => $args ) {
+					$mcp_public = $args['meta']['mcp']['public'] ?? false;
+					MCP\Auth\Mcp_Logger::log(
+						'ABILITIES',
+						'registering ability',
+						array(
+							'name'       => $name,
+							'mcp_public' => $mcp_public ? 'yes' : 'no',
+							'has_meta'   => isset( $args['meta'] ) ? 'yes' : 'no',
+						),
+						true
+					);
 					wp_register_ability( $name, $args );
 				}
 			}

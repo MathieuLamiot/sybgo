@@ -26,7 +26,8 @@
 		}
 	],
 	"require": {
-		"wp-media/sybgo-lib": "*"
+		"wp-media/sybgo-lib": "*",
+		"wordpress/mcp-adapter": "^0.5"
 	},
 	"require-dev": {
 		"php": "^7 || ^8",
@@ -44,6 +45,7 @@
 		"classmap": [
 			"admin/",
 			"modules/",
+			"src/",
 			"class-sybgo.php",
 			"class-cron-manager.php",
 			"class-ability-manager.php"
