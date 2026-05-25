@@ -44,12 +44,24 @@ class Mcp_Logger {
 	/**
 	 * Write a structured [MCP] log entry.
 	 *
-	 * @param string               $scope   Short uppercase scope tag, e.g. 'TOKEN', 'VALIDATOR'.
-	 * @param string               $message Human-readable description.
-	 * @param array<string, mixed> $context Key-value pairs serialised as JSON.
+	 * Pass $debug_only = true for verbose happy-path traces (e.g. per-request
+	 * header dumps, per-ability registration details) that are useful when
+	 * diagnosing issues but too noisy for production.  Security events and
+	 * failure paths should always use $debug_only = false (the default).
+	 *
+	 * Debug-only entries fire when either SYBGO_MCP_DEBUG or WP_DEBUG is true.
+	 *
+	 * @param string               $scope      Short uppercase scope tag, e.g. 'TOKEN', 'VALIDATOR'.
+	 * @param string               $message    Human-readable description.
+	 * @param array<string, mixed> $context    Key-value pairs serialised as JSON.
+	 * @param bool                 $debug_only When true, only log if WP_DEBUG / SYBGO_MCP_DEBUG is enabled.
 	 * @return void
 	 */
-	public static function log( string $scope, string $message, array $context = array() ): void {
+	public static function log( string $scope, string $message, array $context = array(), bool $debug_only = false ): void {
+		if ( $debug_only && ! self::is_debug_enabled() ) {
+			return;
+		}
+
 		$line = sprintf(
 			'[MCP][%s] %s %s',
 			strtoupper( $scope ),
@@ -57,6 +69,20 @@ class Mcp_Logger {
 			empty( $context ) ? '' : wp_json_encode( $context )
 		);
 		error_log( trim( $line ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+	}
+
+	/**
+	 * Whether MCP debug logging is enabled.
+	 *
+	 * True when SYBGO_MCP_DEBUG is defined and truthy, or when WP_DEBUG is true.
+	 *
+	 * @return bool
+	 */
+	private static function is_debug_enabled(): bool {
+		if ( defined( 'SYBGO_MCP_DEBUG' ) && SYBGO_MCP_DEBUG ) {
+			return true;
+		}
+		return defined( 'WP_DEBUG' ) && WP_DEBUG;
 	}
 
 	/**

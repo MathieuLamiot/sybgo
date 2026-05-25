@@ -72,7 +72,7 @@ class AI_Module implements Module_Interface {
 		$factory = $this->factory;
 
 		// Register the ability into the cache immediately — see Event_Module for rationale.
-		Mcp_Logger::log( 'ABILITIES', 'AI_Module: registering sybgo/generate-summary into cache' );
+		Mcp_Logger::log( 'ABILITIES', 'AI_Module: registering sybgo/generate-summary into cache', array(), true );
 		$this->abilities->register(
 			'sybgo/generate-summary',
 			array(

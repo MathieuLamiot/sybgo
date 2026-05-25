@@ -59,13 +59,13 @@ class Ability_Manager {
 	 *   - wp_register_ability()          on wp_abilities_api_init
 	 *
 	 * Both actions fire after 'init', so modules must populate $this->abilities
-	 * (via register()) before these hooks run — typically on 'init' at priority 5.
+	 * (via register()) before these hooks run — typically in Module::boot().
 	 *
 	 * @return void
 	 */
 	public function init(): void {
 		if ( ! function_exists( 'wp_register_ability' ) ) {
-			MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_register_ability not found — skipping' );
+			MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_register_ability not found — skipping', array(), true );
 			return;
 		}
 
@@ -74,7 +74,7 @@ class Ability_Manager {
 		add_action(
 			'wp_abilities_api_categories_init',
 			static function () use ( $abilities ): void {
-				MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_abilities_api_categories_init — registering sybgo category' );
+				MCP\Auth\Mcp_Logger::log( 'ABILITIES', 'wp_abilities_api_categories_init — registering sybgo category', array(), true );
 				wp_register_ability_category(
 					'sybgo',
 					array(
@@ -94,7 +94,8 @@ class Ability_Manager {
 					array(
 						'count' => count( $abilities ),
 						'names' => array_keys( $abilities ),
-					)
+					),
+					true
 				);
 				foreach ( $abilities as $name => $args ) {
 					$mcp_public = $args['meta']['mcp']['public'] ?? false;
@@ -105,7 +106,8 @@ class Ability_Manager {
 							'name'       => $name,
 							'mcp_public' => $mcp_public ? 'yes' : 'no',
 							'has_meta'   => isset( $args['meta'] ) ? 'yes' : 'no',
-						)
+						),
+						true
 					);
 					wp_register_ability( $name, $args );
 				}

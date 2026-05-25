@@ -67,7 +67,8 @@ class Request_Validator {
 				'route'   => $route,
 				'headers' => $all_headers,
 				'body'    => Mcp_Logger::safe_request_body(),
-			)
+			),
+			true
 		);
 
 		if ( empty( $authorization ) || 0 !== strpos( $authorization, 'Bearer ' ) ) {

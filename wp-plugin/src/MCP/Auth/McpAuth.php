@@ -90,7 +90,8 @@ class Mcp_Auth {
 						'auth_result' => is_wp_error( $auth_result )
 							? 'WP_Error:' . $auth_result->get_error_code()
 							: ( $auth_result instanceof \WP_User ? 'WP_User:' . $auth_result->user_login : 'unknown' ),
-					)
+					),
+					true
 				);
 
 				if ( ! is_wp_error( $auth_result ) ) {
@@ -135,7 +136,8 @@ class Mcp_Auth {
 					return $response;
 				}
 
-				$body = $response->get_data();
+				$body      = $response->get_data();
+				$has_error = is_array( $body ) && isset( $body['error'] );
 
 				Mcp_Logger::log(
 					'DISPATCH',
@@ -148,10 +150,11 @@ class Mcp_Auth {
 						'body_keys'   => is_array( $body ) ? array_keys( $body ) : null,
 						'jsonrpc_id'  => is_array( $body ) && isset( $body['id'] ) ? $body['id'] : null,
 						'has_result'  => is_array( $body ) && isset( $body['result'] ) ? 'yes' : 'no',
-						'has_error'   => is_array( $body ) && isset( $body['error'] ) ? 'yes' : 'no',
-						'error_code'  => is_array( $body ) && isset( $body['error']['code'] ) ? $body['error']['code'] : null,
-						'error_msg'   => is_array( $body ) && isset( $body['error']['message'] ) ? $body['error']['message'] : null,
-					)
+						'has_error'   => $has_error ? 'yes' : 'no',
+						'error_code'  => $has_error && isset( $body['error']['code'] ) ? $body['error']['code'] : null,
+						'error_msg'   => $has_error && isset( $body['error']['message'] ) ? $body['error']['message'] : null,
+					),
+					! $has_error  // debug-only when successful; always log errors
 				);
 
 				return $response;
