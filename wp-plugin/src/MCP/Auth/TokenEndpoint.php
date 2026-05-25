@@ -37,8 +37,23 @@ class Token_Endpoint {
 	 */
 	public function handle_request(): void {
 		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
+		$content_type   = isset( $_SERVER['CONTENT_TYPE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['CONTENT_TYPE'] ) ) : '';
+
+		Mcp_Logger::log(
+			'TOKEN',
+			'token request received',
+			array(
+				'method'       => $request_method,
+				'content_type' => $content_type,
+				'remote_addr'  => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+				'user_agent'   => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+				'headers'      => Mcp_Logger::safe_request_headers(),
+				'body'         => Mcp_Logger::safe_request_body(),
+			)
+		);
 
 		if ( 'POST' !== $request_method ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: wrong method', array( 'method' => $request_method ) );
 			$this->send_error( 405, 'invalid_request', 'Method not allowed.' );
 			return;
 		}
@@ -47,11 +62,14 @@ class Token_Endpoint {
 
 		$grant_type = sanitize_text_field( $body['grant_type'] ?? '' );
 
+		Mcp_Logger::log( 'TOKEN', 'grant_type received', array( 'grant_type' => $grant_type ) );
+
 		if ( 'authorization_code' === $grant_type ) {
 			$this->handle_authorization_code( $body );
 		} elseif ( 'refresh_token' === $grant_type ) {
 			$this->handle_refresh_token( $body );
 		} else {
+			Mcp_Logger::log( 'TOKEN', 'rejected: unsupported grant_type', array( 'grant_type' => $grant_type ) );
 			$this->send_error( 400, 'unsupported_grant_type' );
 		}
 	}
@@ -67,7 +85,18 @@ class Token_Endpoint {
 		$code_verifier = sanitize_text_field( $body['code_verifier'] ?? '' );
 		$redirect_uri  = esc_url_raw( $body['redirect_uri'] ?? '' );
 
+		Mcp_Logger::log(
+			'TOKEN',
+			'authorization_code exchange: params',
+			array(
+				'has_code'          => '' !== $code ? 'yes' : 'no',
+				'has_code_verifier' => '' !== $code_verifier ? 'yes' : 'no',
+				'redirect_uri'      => $redirect_uri,
+			)
+		);
+
 		if ( '' === $code || '' === $code_verifier ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: missing code or code_verifier' );
 			$this->send_error( 400, 'invalid_request', 'code and code_verifier are required.' );
 			return;
 		}
@@ -76,6 +105,7 @@ class Token_Endpoint {
 		$code_data = get_transient( 'mcp_oauth_code_' . $code );
 
 		if ( false === $code_data || ! is_array( $code_data ) ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: auth code transient missing or expired (60 s window)' );
 			$this->send_error( 400, 'invalid_grant', 'Code is invalid or has expired.' );
 			return;
 		}
@@ -86,17 +116,28 @@ class Token_Endpoint {
 		$expected = rtrim( strtr( base64_encode( hash( 'sha256', $code_verifier, true ) ), '+/', '-_' ), '=' ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 
 		if ( ! hash_equals( (string) $code_data['code_challenge'], $expected ) ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: PKCE code_verifier does not match challenge' );
 			$this->send_error( 400, 'invalid_grant', 'PKCE code_verifier does not match challenge.' );
 			return;
 		}
 
 		// Optional redirect_uri check.
 		if ( '' !== $redirect_uri && $redirect_uri !== $code_data['redirect_uri'] ) {
+			Mcp_Logger::log(
+				'TOKEN',
+				'rejected: redirect_uri mismatch',
+				array(
+					'provided' => $redirect_uri,
+					'stored'   => $code_data['redirect_uri'],
+				)
+			);
 			$this->send_error( 400, 'invalid_grant', 'redirect_uri mismatch.' );
 			return;
 		}
 
 		$user_id = (int) $code_data['user_id'];
+
+		Mcp_Logger::log( 'TOKEN', 'PKCE verified — creating Application Password', array( 'user_id' => $user_id ) );
 
 		// Create a WordPress Application Password (raw password is discarded).
 		$result = \WP_Application_Passwords::create_new_application_password(
@@ -105,12 +146,30 @@ class Token_Endpoint {
 		);
 
 		if ( \is_wp_error( $result ) ) {
+			Mcp_Logger::log(
+				'TOKEN',
+				'server_error: Application Password creation failed',
+				array(
+					'wp_error_code'    => $result->get_error_code(),
+					'wp_error_message' => $result->get_error_message(),
+					'user_id'          => $user_id,
+				)
+			);
 			$this->send_error( 500, 'server_error', 'Could not create MCP session.' );
 			return;
 		}
 
 		// create_new_application_password() returns [raw_password, metadata]. Raw password is discarded.
 		$app_pass_uuid = (string) $result[1]['uuid'];
+
+		Mcp_Logger::log(
+			'TOKEN',
+			'Application Password created — issuing token pair',
+			array(
+				'user_id'       => $user_id,
+				'app_pass_uuid' => $app_pass_uuid,
+			)
+		);
 
 		$this->issue_token_pair( $user_id, $app_pass_uuid );
 	}
@@ -124,7 +183,10 @@ class Token_Endpoint {
 	private function handle_refresh_token( array $body ): void {
 		$refresh_token = sanitize_text_field( $body['refresh_token'] ?? '' );
 
+		Mcp_Logger::log( 'TOKEN', 'refresh_token grant: validating', array( 'has_refresh_token' => '' !== $refresh_token ? 'yes' : 'no' ) );
+
 		if ( '' === $refresh_token ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: refresh_token missing' );
 			$this->send_error( 400, 'invalid_request', 'refresh_token is required.' );
 			return;
 		}
@@ -133,6 +195,14 @@ class Token_Endpoint {
 		$claims = JWT::decode( $refresh_token, $secret );
 
 		if ( null === $claims || 'refresh' !== ( $claims['type'] ?? '' ) ) {
+			Mcp_Logger::log(
+				'TOKEN',
+				'rejected: refresh token decode failed or wrong type',
+				array(
+					'claims_null' => null === $claims ? 'yes' : 'no',
+					'type'        => null !== $claims ? ( $claims['type'] ?? '(missing)' ) : 'n/a',
+				)
+			);
 			$this->send_error( 401, 'invalid_token', 'Refresh token is invalid or expired.' );
 			return;
 		}
@@ -140,13 +210,18 @@ class Token_Endpoint {
 		$user_id       = (int) $claims['sub'];
 		$app_pass_uuid = (string) ( $claims['app_pass_id'] ?? '' );
 
+		Mcp_Logger::log( 'TOKEN', 'refresh token decoded — checking revocation', array( 'user_id' => $user_id, 'app_pass_uuid' => $app_pass_uuid ) );
+
 		// Revocation check: if the Application Password was deleted the session is gone.
 		$app_pass = \WP_Application_Passwords::get_user_application_password( $user_id, $app_pass_uuid );
 
 		if ( ! is_array( $app_pass ) ) {
+			Mcp_Logger::log( 'TOKEN', 'rejected: Application Password revoked or not found', array( 'user_id' => $user_id, 'app_pass_uuid' => $app_pass_uuid ) );
 			$this->send_error( 401, 'invalid_token', 'MCP session has been revoked.' );
 			return;
 		}
+
+		Mcp_Logger::log( 'TOKEN', 'refresh token valid — issuing new token pair', array( 'user_id' => $user_id, 'app_pass_uuid' => $app_pass_uuid ) );
 
 		// Issue a new access token; rotate the refresh token as well.
 		$this->issue_token_pair( $user_id, $app_pass_uuid );
@@ -184,12 +259,27 @@ class Token_Endpoint {
 			'exp'         => $now + ( 30 * DAY_IN_SECONDS ),
 		);
 
+		$access_token  = JWT::encode( $access_payload, $secret );
+		$refresh_token = JWT::encode( $refresh_payload, $secret );
+
+		Mcp_Logger::log(
+			'TOKEN',
+			'token pair issued',
+			array(
+				'user_id'          => $user_id,
+				'app_pass_uuid'    => $app_pass_uuid,
+				'access_exp'       => $access_payload['exp'],
+				'refresh_exp'      => $refresh_payload['exp'],
+				'access_token_len' => strlen( $access_token ),
+			)
+		);
+
 		wp_send_json(
 			array(
-				'access_token'  => JWT::encode( $access_payload, $secret ),
+				'access_token'  => $access_token,
 				'token_type'    => 'Bearer',
 				'expires_in'    => HOUR_IN_SECONDS,
-				'refresh_token' => JWT::encode( $refresh_payload, $secret ),
+				'refresh_token' => $refresh_token,
 				'scope'         => 'mcp',
 			)
 		);

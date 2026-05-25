@@ -39,20 +39,34 @@ class Authorize_Callback {
 	 * @return void
 	 */
 	public function handle_request(): void {
-		if ( ! is_user_logged_in() ) {
-			wp_die( esc_html__( 'You must be logged in to authorise an MCP session.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 401 ) );
-		}
-
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$state = sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) );
 
+		Mcp_Logger::log(
+			'CALLBACK',
+			'authorize-callback received',
+			array(
+				'is_logged_in' => is_user_logged_in() ? 'yes' : 'no',
+				'user_id'      => is_user_logged_in() ? get_current_user_id() : 0,
+				'has_state'    => '' !== $state ? 'yes' : 'no',
+				'remote_addr'  => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+			)
+		);
+
+		if ( ! is_user_logged_in() ) {
+			Mcp_Logger::log( 'CALLBACK', 'rejected: user not logged in' );
+			wp_die( esc_html__( 'You must be logged in to authorise an MCP session.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 401 ) );
+		}
+
 		if ( '' === $state ) {
+			Mcp_Logger::log( 'CALLBACK', 'rejected: missing state' );
 			wp_die( esc_html__( 'Missing state parameter.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 400 ) );
 		}
 
 		$state_data = get_transient( 'mcp_oauth_state_' . $state );
 
 		if ( false === $state_data || ! is_array( $state_data ) ) {
+			Mcp_Logger::log( 'CALLBACK', 'rejected: state transient not found or expired', array( 'state' => $state ) );
 			wp_die( esc_html__( 'Invalid or expired state.  Please restart the authorization flow.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 400 ) );
 		}
 
@@ -71,6 +85,17 @@ class Authorize_Callback {
 				'redirect_uri'   => $state_data['redirect_uri'],
 			),
 			self::CODE_TTL
+		);
+
+		Mcp_Logger::log(
+			'CALLBACK',
+			'auth code issued',
+			array(
+				'user_id'      => $user_id,
+				'client_id'    => $state_data['client_id'],
+				'redirect_uri' => $state_data['redirect_uri'],
+				'code_ttl_s'   => self::CODE_TTL,
+			)
 		);
 
 		$redirect = add_query_arg(

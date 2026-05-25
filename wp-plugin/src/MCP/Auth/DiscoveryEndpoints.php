@@ -91,28 +91,38 @@ class Discovery_Endpoints {
 
 		$site_url = get_site_url();
 
+		Mcp_Logger::log(
+			'DISCOVERY',
+			'request received',
+			array(
+				'document'    => $discovery,
+				'remote_addr' => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+				'user_agent'  => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+			)
+		);
+
 		if ( 'protected-resource' === $discovery ) {
-			wp_send_json(
-				array(
-					'resource'                 => get_rest_url( null, 'mcp/mcp-adapter-default-server' ),
-					'authorization_servers'    => array( $site_url ),
-					'bearer_methods_supported' => array( 'header' ),
-					'scopes_supported'         => array( 'mcp' ),
-				)
+			$body = array(
+				'resource'                 => get_rest_url( null, 'mcp/mcp-adapter-default-server' ),
+				'authorization_servers'    => array( $site_url ),
+				'bearer_methods_supported' => array( 'header' ),
+				'scopes_supported'         => array( 'mcp' ),
 			);
+			Mcp_Logger::log( 'DISCOVERY', 'serving protected-resource document', $body );
+			wp_send_json( $body );
 		} elseif ( 'authorization-server' === $discovery ) {
-			wp_send_json(
-				array(
-					'issuer'                           => $site_url,
-					'authorization_endpoint'           => $site_url . '/oauth/authorize',
-					'token_endpoint'                   => $site_url . '/oauth/token',
-					'response_types_supported'         => array( 'code' ),
-					'grant_types_supported'            => array( 'authorization_code', 'refresh_token' ),
-					'code_challenge_methods_supported' => array( 'S256' ),
-					'scopes_supported'                 => array( 'mcp' ),
-					'registration_endpoint'            => $site_url . '/oauth/register',
-				)
+			$body = array(
+				'issuer'                           => $site_url,
+				'authorization_endpoint'           => $site_url . '/oauth/authorize',
+				'token_endpoint'                   => $site_url . '/oauth/token',
+				'response_types_supported'         => array( 'code' ),
+				'grant_types_supported'            => array( 'authorization_code', 'refresh_token' ),
+				'code_challenge_methods_supported' => array( 'S256' ),
+				'scopes_supported'                 => array( 'mcp' ),
+				'registration_endpoint'            => $site_url . '/oauth/register',
 			);
+			Mcp_Logger::log( 'DISCOVERY', 'serving authorization-server document', $body );
+			wp_send_json( $body );
 		}
 	}
 }

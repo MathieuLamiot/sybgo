@@ -47,22 +47,56 @@ class Authorize_Endpoint {
 		$state                 = sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
+		Mcp_Logger::log(
+			'AUTHORIZE',
+			'authorization request received',
+			array(
+				'response_type'         => $response_type,
+				'client_id'             => $client_id,
+				'redirect_uri'          => $redirect_uri,
+				'code_challenge_method' => $code_challenge_method,
+				'has_code_challenge'    => '' !== $code_challenge ? 'yes' : 'no',
+				'has_state'             => '' !== $state ? 'yes' : 'no',
+				'remote_addr'           => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+			)
+		);
+
 		if ( 'code' !== $response_type ) {
+			Mcp_Logger::log( 'AUTHORIZE', 'rejected: unsupported response_type', array( 'response_type' => $response_type ) );
 			$this->send_error( $redirect_uri, 'unsupported_response_type', $state );
 			return;
 		}
 
 		if ( '' === $client_id || '' === $redirect_uri || '' === $code_challenge || 'S256' !== $code_challenge_method ) {
+			Mcp_Logger::log(
+				'AUTHORIZE',
+				'rejected: missing or invalid params',
+				array(
+					'has_client_id'             => '' !== $client_id ? 'yes' : 'no',
+					'has_redirect_uri'          => '' !== $redirect_uri ? 'yes' : 'no',
+					'has_code_challenge'        => '' !== $code_challenge ? 'yes' : 'no',
+					'code_challenge_method'     => $code_challenge_method,
+				)
+			);
 			$this->send_error( $redirect_uri, 'invalid_request', $state );
 			return;
 		}
 
 		$client = Client_Registration::get_client( $client_id );
 		if ( null === $client ) {
+			Mcp_Logger::log( 'AUTHORIZE', 'rejected: unknown client_id', array( 'client_id' => $client_id ) );
 			wp_die( esc_html__( 'Unknown OAuth client.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 400 ) );
 		}
 
 		if ( ! in_array( $redirect_uri, $client['redirect_uris'], true ) ) {
+			Mcp_Logger::log(
+				'AUTHORIZE',
+				'rejected: redirect_uri mismatch',
+				array(
+					'provided'   => $redirect_uri,
+					'registered' => $client['redirect_uris'],
+				)
+			);
 			wp_die( esc_html__( 'redirect_uri does not match registered value.', 'sybgo' ), esc_html__( 'OAuth Error', 'sybgo' ), array( 'response' => 400 ) );
 		}
 
@@ -85,6 +119,15 @@ class Authorize_Endpoint {
 
 		$callback_url = add_query_arg( 'state', rawurlencode( $state ), get_site_url() . '/oauth/authorize-callback' );
 		$login_url    = wp_login_url( $callback_url );
+
+		Mcp_Logger::log(
+			'AUTHORIZE',
+			'redirecting to login',
+			array(
+				'state'        => $state,
+				'callback_url' => $callback_url,
+			)
+		);
 
 		wp_redirect( $login_url ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 		exit;

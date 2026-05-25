@@ -41,7 +41,19 @@ class Client_Registration {
 	public function handle_request(): void {
 		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
 
+		Mcp_Logger::log(
+			'REG',
+			'registration request received',
+			array(
+				'method'      => $request_method,
+				'remote_addr' => isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '',
+				'user_agent'  => isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '',
+				'body'        => Mcp_Logger::safe_request_body(),
+			)
+		);
+
 		if ( 'POST' !== $request_method ) {
+			Mcp_Logger::log( 'REG', 'rejected: wrong method', array( 'method' => $request_method ) );
 			$this->send_error( 405, 'invalid_request', 'Method not allowed.' );
 			return;
 		}
@@ -50,6 +62,7 @@ class Client_Registration {
 		$body = json_decode( $raw ? $raw : '{}', true );
 
 		if ( ! is_array( $body ) ) {
+			Mcp_Logger::log( 'REG', 'rejected: body not JSON' );
 			$this->send_error( 400, 'invalid_request', 'Request body must be valid JSON.' );
 			return;
 		}
@@ -59,6 +72,7 @@ class Client_Registration {
 		$grant_types   = $body['grant_types'] ?? array( 'authorization_code' );
 
 		if ( '' === $client_name || ! is_array( $redirect_uris ) || empty( $redirect_uris ) ) {
+			Mcp_Logger::log( 'REG', 'rejected: missing required fields', array( 'client_name' => $client_name, 'redirect_uris_count' => count( (array) $redirect_uris ) ) );
 			$this->send_error( 400, 'invalid_request', 'client_name and redirect_uris are required.' );
 			return;
 		}
@@ -71,6 +85,7 @@ class Client_Registration {
 		);
 
 		if ( empty( $redirect_uris ) ) {
+			Mcp_Logger::log( 'REG', 'rejected: no valid redirect_uris after sanitisation' );
 			$this->send_error( 400, 'invalid_request', 'At least one valid redirect_uri is required.' );
 			return;
 		}
@@ -91,6 +106,17 @@ class Client_Registration {
 		$clients               = (array) get_option( self::OPTION_KEY, array() );
 		$clients[ $client_id ] = $client;
 		update_option( self::OPTION_KEY, $clients, false );
+
+		Mcp_Logger::log(
+			'REG',
+			'client registered successfully',
+			array(
+				'client_id'     => $client_id,
+				'client_name'   => $client_name,
+				'redirect_uris' => $redirect_uris,
+				'grant_types'   => $client['grant_types'],
+			)
+		);
 
 		status_header( 201 );
 		wp_send_json( $client );

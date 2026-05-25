@@ -15,6 +15,7 @@ namespace Sybgo\Modules;
 
 use Sybgo\Ability_Manager;
 use Sybgo\Factory;
+use Sybgo\MCP\Auth\Mcp_Logger;
 
 // Exit if accessed directly.
 if ( ! defined( 'ABSPATH' ) ) {
@@ -61,44 +62,45 @@ class AI_Module implements Module_Interface {
 	/**
 	 * Register the sybgo/generate-summary ability.
 	 *
-	 * Deferred to the 'init' hook at priority 5 so that __() evaluates after
-	 * the 'sybgo' text domain is loaded. See Event_Module::boot() for the same
-	 * rationale. Ability_Manager::init() runs at priority 20 on the same hook.
+	 * Called during plugins_loaded. The label/description strings resolve to
+	 * English at this point (text domain loads on init). Translations are a
+	 * nice-to-have; the ability is functional regardless.
 	 *
 	 * @return void
 	 */
 	public function boot(): void {
-		$abilities = $this->abilities;
-		$factory   = $this->factory;
+		$factory = $this->factory;
 
-		add_action(
-			'init',
-			static function () use ( $abilities, $factory ): void {
-				$abilities->register(
-					'sybgo/generate-summary',
-					array(
-						'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
-						'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
-						'category'            => 'sybgo',
-						'execute_callback'    => static function () use ( $factory ): ?string {
-							$ai_summarizer = $factory->create_ai_summarizer();
-							if ( null === $ai_summarizer ) {
-								return null;
-							}
-							$last_frozen = $factory->create_report_repository()->get_last_frozen();
-							if ( ! $last_frozen ) {
-								return null;
-							}
-							// Summary generation is handled via Report_Generator; stub for Ability API.
-							return null;
-						},
-						'permission_callback' => static function (): bool {
-							return current_user_can( 'manage_options' );
-						},
-					)
-				);
-			},
-			5
+		// Register the ability into the cache immediately — see Event_Module for rationale.
+		Mcp_Logger::log( 'ABILITIES', 'AI_Module: registering sybgo/generate-summary into cache' );
+		$this->abilities->register(
+			'sybgo/generate-summary',
+			array(
+				'label'               => __( 'Generate Weekly Summary', 'sybgo' ),
+				'description'         => __( 'Generates an AI-powered summary of the weekly site activity report.', 'sybgo' ),
+				'category'            => 'sybgo',
+				'execute_callback'    => static function () use ( $factory ): ?string {
+					$ai_summarizer = $factory->create_ai_summarizer();
+					if ( null === $ai_summarizer ) {
+						return null;
+					}
+					$last_frozen = $factory->create_report_repository()->get_last_frozen();
+					if ( ! $last_frozen ) {
+						return null;
+					}
+					// Summary generation is handled via Report_Generator; stub for Ability API.
+					return null;
+				},
+				'permission_callback' => static function (): bool {
+					return current_user_can( 'manage_options' );
+				},
+				'meta'                => array(
+					'mcp' => array(
+						'public' => true,
+						'type'   => 'tool',
+					),
+				),
+			)
 		);
 	}
 }

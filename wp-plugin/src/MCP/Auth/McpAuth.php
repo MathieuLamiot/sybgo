@@ -61,6 +61,104 @@ class Mcp_Auth {
 
 		// Admin UI — hooks only fire in admin context (admin_menu, admin_post_*).
 		( new Admin_Page() )->register_hooks();
+
+		// HttpTransport::check_permission() swallows WP_Error returns and returns false,
+		// causing WordPress to emit a generic rest_forbidden with no WWW-Authenticate header.
+		// MCP clients need that header to know they should attach a Bearer token.
+		// rest_pre_dispatch runs before permission checks, letting us return the proper
+		// 401 + WWW-Authenticate challenge early for MCP adapter requests.
+		add_filter(
+			'rest_pre_dispatch',
+			static function ( $result, \WP_REST_Server $server, \WP_REST_Request $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundBeforeLastUsed
+				if ( null !== $result ) {
+					return $result;
+				}
+
+				if ( false === strpos( $request->get_route(), '/mcp/mcp-adapter-default-server' ) ) {
+					return $result;
+				}
+
+				$auth_result = Request_Validator::validate_request( $request );
+
+				Mcp_Logger::log(
+					'DISPATCH',
+					'rest_pre_dispatch on MCP route',
+					array(
+						'method'      => $request->get_method(),
+						'route'       => $request->get_route(),
+						'has_auth'    => '' !== (string) $request->get_header( 'Authorization' ) ? 'yes' : 'no',
+						'auth_result' => is_wp_error( $auth_result )
+							? 'WP_Error:' . $auth_result->get_error_code()
+							: ( $auth_result instanceof \WP_User ? 'WP_User:' . $auth_result->user_login : 'unknown' ),
+					)
+				);
+
+				if ( ! is_wp_error( $auth_result ) ) {
+					return $result;
+				}
+
+				$error_data = $auth_result->get_error_data();
+				$www_auth   = is_array( $error_data ) ? ( $error_data['WWW-Authenticate'] ?? '' ) : '';
+				$response   = new \WP_REST_Response(
+					array(
+						'code'    => $auth_result->get_error_code(),
+						'message' => $auth_result->get_error_message(),
+						'data'    => array( 'status' => 401 ),
+					),
+					401
+				);
+
+				if ( '' !== $www_auth ) {
+					$response->header( 'WWW-Authenticate', $www_auth );
+				}
+
+				Mcp_Logger::log(
+					'DISPATCH',
+					'returning 401 challenge',
+					array(
+						'error_code'     => $auth_result->get_error_code(),
+						'has_www_auth'   => '' !== $www_auth ? 'yes' : 'no',
+					)
+				);
+
+				return $response;
+			},
+			10,
+			3
+		);
+
+		// Log the final REST response for all authenticated MCP route calls.
+		add_filter(
+			'rest_post_dispatch',
+			static function ( \WP_REST_Response $response, \WP_REST_Server $server, \WP_REST_Request $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundBeforeLastUsed
+				if ( false === strpos( $request->get_route(), '/mcp/mcp-adapter-default-server' ) ) {
+					return $response;
+				}
+
+				$body = $response->get_data();
+
+				Mcp_Logger::log(
+					'DISPATCH',
+					'rest_post_dispatch — MCP route response',
+					array(
+						'status'      => $response->get_status(),
+						'method'      => $request->get_method(),
+						'route'       => $request->get_route(),
+						'body_type'   => gettype( $body ),
+						'body_keys'   => is_array( $body ) ? array_keys( $body ) : null,
+						'jsonrpc_id'  => is_array( $body ) && isset( $body['id'] ) ? $body['id'] : null,
+						'has_result'  => is_array( $body ) && isset( $body['result'] ) ? 'yes' : 'no',
+						'has_error'   => is_array( $body ) && isset( $body['error'] ) ? 'yes' : 'no',
+						'error_code'  => is_array( $body ) && isset( $body['error']['code'] ) ? $body['error']['code'] : null,
+						'error_msg'   => is_array( $body ) && isset( $body['error']['message'] ) ? $body['error']['message'] : null,
+					)
+				);
+
+				return $response;
+			},
+			10,
+			3
+		);
 	}
 
 	/**
