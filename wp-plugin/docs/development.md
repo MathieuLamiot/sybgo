@@ -285,6 +285,17 @@ sybgo/
 ├── class-factory.php             # Dependency injection
 │
 ├── src/MCP/Auth/                 # Self-contained OAuth 2.1 layer (see mcp-auth.md)
+│   ├── McpAuth.php               # Boot + activation entry point
+│   ├── AdminPage.php             # Admin settings page (client management)
+│   ├── JWT.php                   # JWT minting / verification
+│   ├── SecretManager.php         # JWT secret persistence
+│   ├── RequestValidator.php      # Incoming request validation helpers
+│   ├── DiscoveryEndpoints.php    # RFC 8414 / OpenID Connect discovery
+│   ├── AuthorizeEndpoint.php     # /oauth/authorize handler
+│   ├── AuthorizeCallback.php     # Authorization callback (code exchange)
+│   ├── TokenEndpoint.php         # /oauth/token handler
+│   ├── ClientRegistration.php    # Dynamic client registration (RFC 7591)
+│   └── README.md                 # Internal architecture notes
 │
 ├── modules/                      # Feature modules (one per domain area)
 │   ├── interface-module.php      # Module_Interface contract
@@ -332,18 +343,21 @@ sybgo/
 │   └── functions.php
 │
 ├── docs/                         # Documentation
+│   ├── development.md (this file)
+│   ├── mcp-auth.md               # OAuth 2.1 layer design
+│   ├── ajax-actions.md           # Admin AJAX actions reference
+│   ├── database-management.md    # DB schema and queries
+│   ├── E2E_TESTING.md            # End-to-end test setup
 │   ├── event-tracking.md
 │   ├── report-lifecycle.md
-│   ├── extension-api.md
-│   └── development.md (this file)
+│   └── extension-api.md
 │
 └── Tests/                        # Test suite
     ├── Unit/
-    │   ├── Events/
-    │   ├── Reports/
-    │   ├── Email/
-    │   └── Admin/
-    └── Integration/
+    │   ├── Admin/
+    │   └── Modules/
+    └── phpstan/                  # PHPStan custom rules
+        └── Rules/
 ```
 
 ## Feature Module Architecture
