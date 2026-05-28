@@ -482,14 +482,15 @@ class Dashboard_Widget {
 			return; // @phpstan-ignore deadCode.unreachable
 		}
 
-		$events        = $this->event_repo->get_by_report( null );
-		$active_report = $this->report_repo->get_active();
-		$live_summary  = $this->report_generator->generate_live_summary(
+		$events            = $this->event_repo->get_by_report( null );
+		$active_report     = $this->report_repo->get_active();
+		$live_summary      = $this->report_generator->generate_live_summary(
 			$events,
 			$active_report ? (int) $active_report['id'] : 0
 		);
+		$aggregated_events = $this->aggregated_repo->get_rows_for_report( 'php_error', null );
 
-		$summary = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+		$summary = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'], $aggregated_events );
 
 		if ( null === $summary ) {
 			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );

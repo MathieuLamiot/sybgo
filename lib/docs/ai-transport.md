@@ -46,6 +46,28 @@ if ( is_wp_error( $result ) ) {
 return $result;
 ```
 
+## AI_Summarizer Prompt Composition
+
+`AI_Summarizer::generate_summary()` accepts four parameters:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$events` | `array` | Singular event rows for the period |
+| `$totals` | `array` | Event counts by type |
+| `$trends` | `array` | Week-over-week trend data |
+| `$aggregated_events` | `array` (optional, default `[]`) | Aggregated event rows from `Aggregated_Event_Repository::get_rows_for_report()` |
+
+`build_prompt()` assembles the prompt in sections:
+
+1. **Event Summary** — total event count and breakdown by type from `$totals`.
+2. **Trends vs. Last Week** — directional changes (↑/↓) from `$trends`.
+3. **Recent Events** — up to 10 most recent singular events, each formatted via `Event_Registry::get_ai_description()`.
+4. **PHP Errors** — included only when `$aggregated_events` is non-empty. Lists up to 5 error signatures, each showing the error level (from `dimensions['level']`), the message snippet (from `meta['message']`), and the occurrence count (from `total`). Rows arrive pre-sorted by `total DESC` from the repository, so the top-5 are automatically the most frequent.
+
+Callers are responsible for fetching aggregated events before calling `generate_summary()`:
+- For the **current period** (active report), pass `Aggregated_Event_Repository::get_rows_for_report('php_error', null)` — `null` targets the `report_id = 0` sentinel rows.
+- For a **frozen report**, pass `get_rows_for_report('php_error', $report_id)`.
+
 ## Version Gating
 
 `Factory::create_ai_summarizer()` gates on WP 7 availability and returns `null` on WP < 7:

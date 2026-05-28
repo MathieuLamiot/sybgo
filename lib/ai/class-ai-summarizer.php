@@ -64,14 +64,15 @@ class AI_Summarizer {
 	/**
 	 * Generate AI summary for events.
 	 *
-	 * @param array<int, array<string, mixed>>    $events Array of events.
-	 * @param array<string, int>                  $totals Event totals by type.
-	 * @param array<string, array<string, mixed>> $trends Trend data comparing to previous report.
+	 * @param array<int, array<string, mixed>>    $events            Array of events.
+	 * @param array<string, int>                  $totals            Event totals by type.
+	 * @param array<string, array<string, mixed>> $trends            Trend data comparing to previous report.
+	 * @param array<int, array<string, string>>   $aggregated_events Aggregated event rows (e.g. PHP errors) from Aggregated_Event_Repository::get_rows_for_report().
 	 * @return string|null AI-generated summary or null if transport fails.
 	 */
-	public function generate_summary( array $events, array $totals, array $trends ): ?string {
+	public function generate_summary( array $events, array $totals, array $trends, array $aggregated_events = array() ): ?string {
 		// Build the prompt.
-		$prompt = $this->build_prompt( $events, $totals, $trends );
+		$prompt = $this->build_prompt( $events, $totals, $trends, $aggregated_events );
 
 		// Call transport.
 		try {
@@ -87,12 +88,13 @@ class AI_Summarizer {
 	/**
 	 * Build the prompt for the AI provider.
 	 *
-	 * @param array<int, array<string, mixed>>    $events Array of events.
-	 * @param array<string, int>                  $totals Event totals by type.
-	 * @param array<string, array<string, mixed>> $trends Trend data.
+	 * @param array<int, array<string, mixed>>    $events            Array of events.
+	 * @param array<string, int>                  $totals            Event totals by type.
+	 * @param array<string, array<string, mixed>> $trends            Trend data.
+	 * @param array<int, array<string, string>>   $aggregated_events Aggregated event rows (e.g. PHP errors).
 	 * @return string The prompt.
 	 */
-	private function build_prompt( array $events, array $totals, array $trends ): string {
+	private function build_prompt( array $events, array $totals, array $trends, array $aggregated_events = array() ): string {
 		$prompt  = 'You are a friendly coworker reviewing WordPress site activity for the week. ';
 		$prompt .= "Write a conversational summary as if you're telling a colleague what happened on their website. ";
 		$prompt .= 'Be warm, encouraging, and focus on the most important changes. ';
@@ -142,6 +144,21 @@ class AI_Summarizer {
 			if ( $description ) {
 				$prompt .= "- {$description}\n";
 			}
+		}
+
+		// Add PHP errors section if aggregated events are present.
+		if ( ! empty( $aggregated_events ) ) {
+			$prompt    .= "\n## PHP Errors\n";
+			$top_errors = array_slice( $aggregated_events, 0, 5 );
+			foreach ( $top_errors as $row ) {
+				$dimensions = json_decode( $row['dimensions'], true );
+				$meta       = json_decode( $row['meta'], true );
+				$level      = isset( $dimensions['level'] ) ? ucwords( str_replace( '_', ' ', (string) $dimensions['level'] ) ) : 'Unknown';
+				$message    = isset( $meta['message'] ) ? (string) $meta['message'] : '';
+				$count      = (int) $row['total'];
+				$prompt    .= "- {$level}: {$message} — {$count} occurrence" . ( 1 === $count ? '' : 's' ) . "\n";
+			}
+			$prompt .= "\n";
 		}
 
 		$prompt .= "\n## Instructions\n";

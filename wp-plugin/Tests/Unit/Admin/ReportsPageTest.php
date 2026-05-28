@@ -448,8 +448,9 @@ class ReportsPageTest extends TestCase {
 		$this->report_generator->shouldReceive( 'generate_live_summary' )
 			->with( array(), 20 )
 			->andReturn( array( 'totals' => array(), 'trends' => array() ) );
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->with( 'php_error', 20 )->andReturn( array() );
 		$this->ai_summarizer->shouldReceive( 'generate_summary' )
-			->with( array(), array(), array() )
+			->with( array(), array(), array(), array() )
 			->andReturn( 'A great week!' );
 
 		// The key assertion: set_ai_summary must be called with the generated text.
@@ -497,6 +498,9 @@ class ReportsPageTest extends TestCase {
 		$this->report_generator->shouldReceive( 'generate_live_summary' )
 			->with( array(), 30 )
 			->andReturn( $live_summary );
+
+		// Must use null for active report (report_id = 0 sentinel).
+		$this->aggregated_repo->shouldReceive( 'get_rows_for_report' )->with( 'php_error', null )->andReturn( array() );
 
 		$this->ai_summarizer->shouldReceive( 'generate_summary' )
 			->andReturn( 'Active week summary.' );

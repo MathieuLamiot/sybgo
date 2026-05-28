@@ -941,10 +941,11 @@ class Reports_Page {
 			return; // @phpstan-ignore deadCode.unreachable
 		}
 
-		$is_active    = 'active' === $report['status'];
-		$events       = $this->event_repo->get_by_report( $is_active ? null : $report_id );
-		$live_summary = $this->report_generator->generate_live_summary( $events, $report_id );
-		$ai_summary   = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'] );
+		$is_active         = 'active' === $report['status'];
+		$events            = $this->event_repo->get_by_report( $is_active ? null : $report_id );
+		$live_summary      = $this->report_generator->generate_live_summary( $events, $report_id );
+		$aggregated_events = $this->aggregated_repo->get_rows_for_report( 'php_error', $is_active ? null : $report_id );
+		$ai_summary        = $this->ai_summarizer->generate_summary( $events, $live_summary['totals'], $live_summary['trends'], $aggregated_events );
 
 		if ( null === $ai_summary ) {
 			wp_send_json_error( array( 'message' => __( 'The AI summary could not be generated. Please check your WordPress AI connector configuration.', 'sybgo' ) ) );
