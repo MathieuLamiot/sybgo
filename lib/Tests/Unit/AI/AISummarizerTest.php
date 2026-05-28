@@ -218,4 +218,32 @@ class AISummarizerTest extends TestCase {
 
 		$this->assertSame( 'Summary with errors', $result );
 	}
+
+	/**
+	 * Test build_prompt caps PHP Errors section at 5 entries when more than 5 aggregated events are provided.
+	 */
+	public function test_build_prompt_caps_php_errors_section_at_five_entries() {
+		$aggregated_events = array();
+		for ( $i = 1; $i <= 7; $i++ ) {
+			$aggregated_events[] = array(
+				'dimensions' => json_encode( array( 'level' => 'warning', 'signature' => 'sig' . $i ) ),
+				'total'      => (string) ( 10 - $i ),
+				'meta'       => json_encode( array( 'file' => '/app/file.php', 'line' => $i, 'message' => 'Error message ' . $i ) ),
+			);
+		}
+
+		$reflection = new \ReflectionClass( $this->summarizer );
+		$method     = $reflection->getMethod( 'build_prompt' );
+		$method->setAccessible( true );
+
+		$prompt = $method->invoke( $this->summarizer, array(), array(), array(), $aggregated_events );
+
+		// Entries 1–5 should be present.
+		for ( $i = 1; $i <= 5; $i++ ) {
+			$this->assertStringContainsString( 'Error message ' . $i, $prompt );
+		}
+		// Entries 6 and 7 must be absent (capped at 5).
+		$this->assertStringNotContainsString( 'Error message 6', $prompt );
+		$this->assertStringNotContainsString( 'Error message 7', $prompt );
+	}
 }
