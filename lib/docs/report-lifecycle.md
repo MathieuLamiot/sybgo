@@ -259,10 +259,11 @@ AI-generated prose summaries are generated on demand, never at freeze time. The 
 
 On the report detail page (**Sybgo Reports → View Details**), a "Generate AI Summary" button calls the AJAX action `sybgo_generate_ai_summary`, which:
 
-1. Fetches the relevant events — for frozen reports via `Event_Repository::get_by_report($report_id)`, for active reports via `get_by_report(null)` (unassigned events).
-2. Calls `Report_Generator::generate_live_summary()` to compute current totals and trends.
-3. Calls `AI_Summarizer::generate_summary()` via the WP7 native AI API.
-4. Persists the result. For **frozen** reports, `Report_Repository::set_ai_summary()` merges only the AI text into the existing `summary_data` JSON. For **active** reports, `Report_Repository::save_summary_data()` saves the full stats + AI text object atomically (because no frozen `summary_data` exists yet to merge into).
+1. Fetches the relevant singular events — for frozen reports via `Event_Repository::get_by_report($report_id)`, for active reports via `get_by_report(null)` (unassigned events).
+2. Fetches aggregated error rows via `Aggregated_Event_Repository::get_rows_for_report('php_error', ...)` — `null` for active reports (targets the `report_id = 0` sentinel), `$report_id` for frozen reports.
+3. Calls `Report_Generator::generate_live_summary()` to compute current totals and trends.
+4. Calls `AI_Summarizer::generate_summary()` passing both singular events and aggregated error rows. When PHP errors are present, the prompt includes a "PHP Errors" section listing up to 5 signatures with level, message, and occurrence count.
+5. Persists the result. For **frozen** reports, `Report_Repository::set_ai_summary()` merges only the AI text into the existing `summary_data` JSON. For **active** reports, `Report_Repository::save_summary_data()` saves the full stats + AI text object atomically (because no frozen `summary_data` exists yet to merge into).
 
 Once generated, the button label changes to "Regenerate AI Summary" and the text is shown inline.
 
